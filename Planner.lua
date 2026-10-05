@@ -13,7 +13,7 @@ local UNKNOWN_RARE_PRICE = 50000
 -- Helpers
 ---------------------------------------------------------------------------
 local function ItemName(prof, id)
-  return (GetItemInfo(id)) or (prof and prof.names[id]) or CR.extraNames[id] or ("item:" .. id)
+  return (prof and prof.names[id]) and ((GetItemInfo(id)) or prof.names[id]) or CR.ItemName(id)
 end
 CR.ItemName = function(id)
   local name = GetItemInfo(id)
@@ -96,6 +96,16 @@ local function StepActive(route, step)
     end
   end
   return true
+end
+
+-- The Mining smelting recipe that makes this bar, if this character has Mining and the skill for it.
+function CR.Smelter(itemID)
+  local mining = CR.professions.Mining
+  local spell = mining and mining.byItem[itemID]
+  if not spell then return nil end
+  local skill, _, detected = CR.GetSkill("Mining")
+  local r = mining.recipes[spell]
+  if detected and skill >= (r.learn or 1) then return r end
 end
 
 -- Expected crafts to go from skill lo to hi with one recipe (stops when it turns grey).
@@ -495,6 +505,19 @@ function CR.BuildPlan(profName, cur, goal)
     end
   end
 
+  -- Smelting: with Mining learned, bars you're short of can come from ore you already have.
+  -- How many of `recipe` can be made from what's in bags/bank (and smeltable from ore)?
+  local function Smeltable(recipe, depth)
+    local n = math.huge
+    for _, rg in ipairs(recipe.reagents) do
+      local avail = Bags(rg[1])
+      local sub = depth < 3 and CR.Smelter(rg[1])
+      if sub then avail = avail + Smeltable(sub, depth + 1) * sub.makes end
+      n = min(n, floor(avail / rg[2]))
+    end
+    return n == math.huge and 0 or n
+  end
+
   Consume = function(id, qty, label, skillAt, depth)
     local fromPool = min(pool[id] or 0, qty)
     pool[id] = (pool[id] or 0) - fromPool
@@ -503,6 +526,7 @@ function CR.BuildPlan(profName, cur, goal)
     AddUsage(id, label, qty, skillAt)
     need[id] = (need[id] or 0) + qty
     local producer = prof.byItem[id] and prof.recipes[prof.byItem[id]]
+    local smelter = not producer and depth < 3 and CR.Smelter(id)
     if producer and not (route.noExpand and route.noExpand[id]) and depth < 3 and producer.learn <= max(skillAt, cur) then
       local fromBags = min(Bags(id), qty)
       bagsLeft[id] = bagsLeft[id] - fromBags
@@ -511,9 +535,29 @@ function CR.BuildPlan(profName, cur, goal)
         local n = ceil(short / producer.makes)
         crafted[id] = (crafted[id] or 0) + short
         table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
-                                   text = "for " .. label })
+                                   recipe = producer, text = "for " .. label })
         Craft(producer, n, "Extra " .. producer.name .. " (" .. label .. ")", skillAt, depth + 1)
         pool[id] = pool[id] - short -- Craft() added n*makes; any rounding leftover stays pooled
+      end
+    elseif smelter then
+      -- Use the bars you have, then smelt only as many as your ore covers; the rest is bought.
+      local fromBags = min(Bags(id), qty)
+      bagsLeft[id] = bagsLeft[id] - fromBags
+      local short = qty - fromBags
+      local n = short > 0 and min(ceil(short / smelter.makes), Smeltable(smelter, depth)) or 0
+      if n > 0 then
+        local got = min(short, n * smelter.makes)
+        crafted[id] = (crafted[id] or 0) + got
+        table.insert(plan.steps, { kind = "extra", from = skillAt, spell = smelter.spell, crafts = n,
+                                   recipe = smelter, smelt = true, text = "from your ore - for " .. label })
+        local smeltLabel = smelter.name .. " (" .. label .. ")"
+        for _, rg in ipairs(smelter.reagents) do
+          local amount = rg[2] * n
+          Consume(rg[1], amount, smeltLabel, skillAt, depth + 1)
+          -- Raw ore isn't drawn from bags by Consume; reserve it so later steps can't reuse it.
+          if not CR.Smelter(rg[1]) then bagsLeft[rg[1]] = Bags(rg[1]) - min(Bags(rg[1]), amount) end
+        end
+        pool[id] = (pool[id] or 0) + (n * smelter.makes - got)
       end
     end
   end

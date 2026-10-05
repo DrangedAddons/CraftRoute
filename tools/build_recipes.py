@@ -139,6 +139,14 @@ OVERRIDES = {
         'Roasted Boar Meat': {'learn': 1, 'src': 'Trainer'},
         'Herb Baked Egg': {'learn': 1, 'src': 'Trainer'},
     },
+    # Smelting recipes have no item link on endgametools; bar IDs taken from the other professions' reagents.
+    'Mining': {
+        'Smelt Copper': {'item': 2840}, 'Smelt Tin': {'item': 3576}, 'Smelt Bronze': {'item': 2841},
+        'Smelt Silver': {'item': 2842}, 'Smelt Iron': {'item': 3575}, 'Smelt Steel': {'item': 3859},
+        'Smelt Gold': {'item': 3577}, 'Smelt Mithril': {'item': 3860}, 'Smelt Dark Iron': {'item': 11371},
+        'Smelt Truesilver': {'item': 6037}, 'Smelt Thorium': {'item': 12359},
+        'Smelt Azerothium': {'item': 249726}, 'Smelt Heavy Thorium': {'item': 251291},
+    },
 }
 for r in recipes:
     r.update(OVERRIDES.get(prof, {}).get(r['name'], {}))
