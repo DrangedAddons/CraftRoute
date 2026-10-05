@@ -1,0 +1,7 @@
+# Saved third-party pages used to build Data/*Recipes.lua - not redistributed
+tools/sources/
+
+# OS / editor clutter
+Thumbs.db
+.DS_Store
+*.bak
