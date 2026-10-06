@@ -1049,9 +1049,17 @@ function CR.CreateCraftPanel(parent)
     end
     flyout:Show()
   end
-  -- hide once the mouse has left both the slot and the list
-  flyout:SetScript("OnUpdate", function(self)
-    if not (self:IsMouseOver() or eSlot:IsMouseOver()) then self:Hide() end   -- frame method: Forever has no global MouseIsOver
+  -- Hide once the mouse has been away from both the slot and the list for a moment: a margin
+  -- around them covers the gap between, and the delay forgives a wobbly mouse.
+  -- (Frame method - Forever has no global MouseIsOver.)
+  flyout:SetScript("OnShow", function(self) self.awayFor = 0 end)
+  flyout:SetScript("OnUpdate", function(self, elapsed)
+    if self:IsMouseOver(12, -12, -12, 12) or eSlot:IsMouseOver(12, -12, -12, 12) then
+      self.awayFor = 0
+    else
+      self.awayFor = (self.awayFor or 0) + (elapsed or 0)
+      if self.awayFor > 0.6 then self:Hide() end
+    end
   end)
   eSlot:SetScript("OnEnter", function(self)
     ShowFlyout()
