@@ -864,7 +864,37 @@ function CR.CreateCraftPanel(parent)
     end
   end)
   routeList:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -28)
-  routeList:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 6)
+
+  -- Bottom third of the column: the plan's materials, compact, with the cost of what's missing.
+  local costBar = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+  costBar:SetSize(ROUTE_W, 22)
+  costBar:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 6)
+  CR.Backdrop(costBar, 0, 0, 0, 0.55)
+  local costText = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  costText:SetPoint("LEFT", 8, 0)
+  costText:SetPoint("RIGHT", -8, 0)
+  costText:SetJustifyH("LEFT")
+  costText:SetWordWrap(false)
+  local craftMats = CR.CreateList("CraftRouteCraftMatsList", panel, ROUTE_W, 160,
+    function(row) CR.CreateMaterialRow(row, 64, 62) end, CR.UpdateMaterialRow)
+  craftMats:SetPoint("BOTTOMRIGHT", costBar, "TOPRIGHT", 0, 2)
+  local matsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  matsTitle:SetPoint("BOTTOMLEFT", craftMats, "TOPLEFT", 4, 4)
+  matsTitle:SetText("Materials")
+  CR.ThemeRegisterAccentText(matsTitle)
+  local matsHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  matsHdr:SetPoint("BOTTOMRIGHT", craftMats, "TOPRIGHT", -4, 5)
+  matsHdr:SetText("have / need     cost")
+  routeList:SetPoint("BOTTOMRIGHT", craftMats, "TOPRIGHT", 0, 22)
+  -- a third of the column, following the window size
+  local function SizeColumn()
+    local h = panel:GetHeight()
+    if type(h) == "number" and h > 0 then
+      craftMats:SetHeight(math.max(80, math.floor((h - 28 - 6 - 24 - 22) / 3)))
+    end
+  end
+  panel:HookScript("OnSizeChanged", SizeColumn)
+  SizeColumn()
 
   -- Open the profession window by itself (on a click or /cr - the game may block it otherwise).
   -- Once per visit: if you close it yourself, it stays closed until you come back to the tab.
@@ -930,6 +960,9 @@ function CR.CreateCraftPanel(parent)
     end
     routeList:Refresh()
     routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
+    craftMats.data = entry and entry.plan.materials or {}
+    craftMats:Refresh()
+    costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
     if #steps == 0 then
       main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
