@@ -828,6 +828,24 @@ function CR.CreateCraftPanel(parent)
   CR.ThemeRegisterAccentText(routeTitle)
   local routeGoal = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   routeGoal:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -12)
+  -- The goal, the same setting as the Plan tab's Goal dropdown: change it in either place.
+  local goalDD = CR.CreateDropdown(panel, 180, CR.GoalOptions,
+    function() return db().goalMode end,
+    function(v) db().goalMode = v; panel.viewOffset = 0; CR.NotifyChanged() end)
+  goalDD:SetPoint("LEFT", routeTitle, "RIGHT", 10, 0)
+  local goalBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+  goalBox:SetSize(34, 20)
+  goalBox:SetPoint("LEFT", goalDD, "RIGHT", 10, 0)
+  goalBox:SetAutoFocus(false)
+  goalBox:SetNumeric(true)
+  goalBox:SetMaxLetters(3)
+  goalBox:SetScript("OnEnterPressed", function(self)
+    db().customGoal = tonumber(self:GetText()) or 225
+    db().goalMode = "custom"
+    self:ClearFocus()
+    CR.NotifyChanged()
+  end)
+  goalBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   local routeList = CR.CreateList("CraftRouteCraftRouteList", panel, ROUTE_W, 400, function(row)
     row.range = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.range:SetPoint("LEFT", 2, 0)
@@ -938,10 +956,10 @@ function CR.CreateCraftPanel(parent)
   end
   panel:SetScript("OnHide", function(self) self.autoOpened = nil; buyPop:Hide() end)
 
-  -- Craft-able steps of the route (current first), following the full route past the goal.
+  -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
   local function CraftSteps(entry)
     local list = {}
-    for _, st in ipairs(entry.full.steps) do
+    for _, st in ipairs(entry.plan.steps) do
       if CRAFT_KINDS[st.kind] and st.recipe then table.insert(list, st) end
     end
     return list
@@ -972,7 +990,7 @@ function CR.CreateCraftPanel(parent)
 
     -- compact route: everything ahead except the "choose ONE" blocks (the chosen path's steps show)
     local lines, craftIndex = {}, 0
-    for _, s in ipairs(entry and entry.full.steps or {}) do
+    for _, s in ipairs(entry and entry.plan.steps or {}) do
       if s.kind ~= "fork" and s.kind ~= "option" then
         local isCraft = CRAFT_KINDS[s.kind] and s.recipe
         if isCraft then craftIndex = craftIndex + 1 end
@@ -987,7 +1005,16 @@ function CR.CreateCraftPanel(parent)
       routeList.offset = math.max(0, viewLine - 3)
     end
     routeList:Refresh()
-    routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
+    -- goal picker (single-skill routes); the combined guide just follows the whole guide
+    local seq = route and route.sequential
+    goalDD:SetShown(not seq)
+    goalBox:SetShown(not seq and db().goalMode == "custom")
+    if not seq then
+      goalDD:Sync()
+      if not goalBox:HasFocus() then goalBox:SetText(tostring(db().customGoal or "")) end
+    end
+    routeGoal:SetShown(seq and true or false)
+    routeGoal:SetText(entry and string.format("to %d (%s)", entry.goal, entry.route and entry.route.label or "") or "")
     craftMats.data = entry and entry.plan.materials or {}
     craftMats:Refresh()
     costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
@@ -998,6 +1025,8 @@ function CR.CreateCraftPanel(parent)
       stepBar:SetValue(0)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
         and (profName .. " has nothing to craft - see the Plan tab for where to go.")
+        or (entry and cur >= entry.goal and entry.goal < (route.maxSkill or 300))
+        and string.format("Goal reached (%d). Pick a higher goal next to Route to keep going.", entry.goal)
         or "Nothing left to craft on this route.")
       empty:Show()
       return

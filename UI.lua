@@ -435,7 +435,7 @@ CR.OnChange(function() CR.RefreshWindow() end)
 -- Plan panel
 ---------------------------------------------------------------------------
 -- Goals are named after the profession ranks (Apprentice 75 ... Artisan 300).
-local function GoalOptions()
+function CR.GoalOptions()
   local profName = CraftRouteCharDB.profession
   local route = CR.Route(profName)
   local info = CR.RankInfo(profName)
@@ -571,7 +571,7 @@ function CR.CreatePlanPanel(parent)
   seqText:SetPoint("RIGHT", panel, "RIGHT", -4, 0)
   seqText:SetJustifyH("LEFT")
 
-  local goalDD = CR.CreateDropdown(panel, 150, GoalOptions,
+  local goalDD = CR.CreateDropdown(panel, 150, CR.GoalOptions,
     function() return db().goalMode end,
     function(v) db().goalMode = v; CR.NotifyChanged() end)
   goalDD:SetPoint("LEFT", goalLabel, "RIGHT", 6, 0)
