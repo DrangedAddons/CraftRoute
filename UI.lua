@@ -211,7 +211,7 @@ end
 ---------------------------------------------------------------------------
 local function CreateWindow()
   frame = CreateFrame("Frame", "CraftRouteFrame", UIParent, "BackdropTemplate")
-  frame:SetSize(1010, 620)
+  frame:SetSize(1060, 620)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("HIGH")
   frame:SetBackdrop(CR.DEFAULT_BACKDROP)   -- the chosen theme is applied once the window is built
@@ -232,7 +232,7 @@ local function CreateWindow()
   table.insert(UISpecialFrames, "CraftRouteFrame")
 
   -- Resizable from the bottom-right corner; the size is remembered.
-  local MIN_W, MIN_H = 1010, 620   -- room for the Craft tab's recipe row, step bar, milestones and controls
+  local MIN_W, MIN_H = 1060, 620   -- room for the Craft tab's recipe row, route column and controls
   frame:SetResizable(true)
   if frame.SetResizeBounds then
     frame:SetResizeBounds(MIN_W, MIN_H, 2000, 1400)

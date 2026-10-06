@@ -128,8 +128,10 @@ function CR.BagsAndElsewhere(itemID)
   return bags, math.max(0, (total or 0) - bags)
 end
 
--- Green: in your bags, ready to craft. Yellow: enough counting your bank / mail / alts.
--- Red: not enough anywhere.
+-- The count shown is everything you have (bags + bank + mail + alts); the colour says whether
+-- it's enough and where it is: green = enough in your bags, ready to craft; yellow = enough in
+-- total but some isn't on you (fetch it from the bank / mail / an alt); red = not enough even
+-- counting everywhere (5 on you + 5 in the bank of 14 shows red 10/14).
 function CR.ReagentColor(bags, elsewhere, need)
   if bags >= need then return "40ff40" end
   if bags + elsewhere >= need then return "ffd100" end
@@ -147,9 +149,8 @@ local function FillReagents(box, rows, r, perCraft)
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
       local color = CR.ReagentColor(bags, elsewhere, need)
-      local extra = (bags < need and elsewhere > 0)
-        and CR.ColorText(string.format(" · %d in bank/alts", elsewhere), "aaaaaa") or ""
-      row.text:SetText(CR.ColorText(string.format("%d/%d", bags, need), color) .. "  " .. CR.ItemName(rg[1]) .. extra)
+      local have = bags >= need and bags or (bags + elsewhere)
+      row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
       row:Show()
     else
       row:Hide()
@@ -167,10 +168,10 @@ function CR.CreateCraftPanel(parent)
 
   -- Layout: the craft area fills the left (everything centred in it, so it follows the window
   -- size), the compact route runs down the right. In the craft area: a row of three recipes -
-  -- the current one and the next two, their reagent boxes level - then the step bar, the
-  -- milestones card and the craft controls stacked underneath.
+  -- the current one and the next two, their reagent boxes level - with the step bar under the
+  -- skill bar at the top and the craft controls at the bottom.
   local LEFT_W, ROUTE_W = 684, 290
-  local MAIN_X, NEXT_X, AFTER_X = -180, 80, 262   -- column centres, relative to the craft area's centre
+  local MAIN_X, NEXT_X, AFTER_X = -170, 85, 272   -- column centres, relative to the craft area's centre
   local leftArea = CreateFrame("Frame", nil, panel)
   leftArea:SetPoint("TOPLEFT")
   leftArea:SetPoint("BOTTOMLEFT")
@@ -206,8 +207,9 @@ function CR.CreateCraftPanel(parent)
   -- Step progress: how far through the current guide step you are (fills as you skill up).
   -- Placed under the recipe row in Refresh, below whichever reagent box ends lowest.
   local stepBar = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
-  stepBar:SetSize(520, 16)
-  stepBar:SetPoint("TOP", leftArea, "TOP", 0, -330)   -- moved under the recipe row on refresh
+  stepBar:SetHeight(16)
+  stepBar:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -6)
+  stepBar:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, -6)
   stepBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   stepBar:SetMinMaxValues(0, 1)
   CR.Backdrop(stepBar, 0, 0, 0, 0.6)
@@ -240,8 +242,8 @@ function CR.CreateCraftPanel(parent)
   -- Main recipe (left-centre)
   local main = CreateFrame("Frame", nil, panel)
   main:SetSize(320, 300)
-  main:SetPoint("TOP", leftArea, "TOP", MAIN_X, -44)
-  local bigIcon = IconButton(main, 64)
+  main:SetPoint("TOP", leftArea, "TOP", MAIN_X, -92)
+  local bigIcon = IconButton(main, 80)
   bigIcon:SetPoint("TOP", 0, 0)
   prevBtn:SetPoint("RIGHT", bigIcon, "LEFT", -24, 0)
   nextBtn:SetPoint("LEFT", bigIcon, "RIGHT", 24, 0)
@@ -296,7 +298,7 @@ function CR.CreateCraftPanel(parent)
   end
 
   local reagentBox = CreateFrame("Frame", nil, main, "BackdropTemplate")
-  reagentBox:SetSize(280, 40)
+  reagentBox:SetSize(300, 40)
   reagentBox:SetPoint("TOP", bandText, "BOTTOM", 0, -10)
   CR.Backdrop(reagentBox, 0, 0, 0, 0.35)
   local reagentTitle = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -305,8 +307,9 @@ function CR.CreateCraftPanel(parent)
   CR.ThemeRegisterAccentText(reagentTitle)
   local reagentRows = {}
   for i = 1, 6 do
-    local row = ReagentRow(reagentBox, 30, "GameFontHighlight")
-    row:SetPoint("TOPLEFT", 12, -22 - (i - 1) * 34)
+    local row = ReagentRow(reagentBox, 36, "GameFontHighlight")
+    row:SetSize(276, 40)
+    row:SetPoint("TOPLEFT", 12, -24 - (i - 1) * 40)
     reagentRows[i] = row
   end
   local totalNote = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -325,12 +328,12 @@ function CR.CreateCraftPanel(parent)
     local p = CreateFrame("Frame", nil, panel)
     p:SetAllPoints(leftArea)
     p.box = CreateFrame("Frame", nil, p, "BackdropTemplate")
-    p.box:SetSize(170, 30)
+    p.box:SetSize(180, 30)
     p.box:SetPoint("TOP", reagentBox, "TOP", x - MAIN_X, 0)
     CR.Backdrop(p.box, 0, 0, 0, 0.35)
     p.sub = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     p.sub:SetPoint("BOTTOM", p.box, "TOP", 0, 6)
-    p.name = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    p.name = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     p.name:SetPoint("BOTTOM", p.sub, "TOP", 0, 2)
     p.name:SetWidth(176)
     p.iconBtn = IconButton(p, iconSize)
@@ -341,15 +344,15 @@ function CR.CreateCraftPanel(parent)
     CR.ThemeRegisterAccentText(p.label)
     p.rows = {}
     for i = 1, 6 do
-      local row = ReagentRow(p.box, 20, "GameFontHighlightSmall")
-      row:SetSize(150, 24)
-      row:SetPoint("TOPLEFT", 8, -5 - (i - 1) * 24)
+      local row = ReagentRow(p.box, 26, "GameFontHighlightSmall")
+      row:SetSize(166, 30)
+      row:SetPoint("TOPLEFT", 8, -6 - (i - 1) * 30)
       p.rows[i] = row
     end
     return p
   end
-  local nextFrame = Preview("Up next", 40, NEXT_X)
-  local afterFrame = Preview("After that", 32, AFTER_X)
+  local nextFrame = Preview("Up next", 54, NEXT_X)
+  local afterFrame = Preview("After that", 44, AFTER_X)
 
   -- Craft controls (bottom)
   local controls = CreateFrame("Frame", nil, panel, "BackdropTemplate")
@@ -396,68 +399,6 @@ function CR.CreateCraftPanel(parent)
   local status = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   status:SetPoint("BOTTOM", controls, "TOP", 0, 6)
   status:SetWidth(400)
-
-  -- Next milestones card (centred under the step bar): next training, target recipe, rank cap.
-  local CARD_W = 420
-  local card = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-  card:SetPoint("TOP", stepBar, "BOTTOM", 0, -12)
-  card:SetSize(CARD_W, 92)
-  CR.Backdrop(card, 0, 0, 0, 0.35)
-  local cardTitle = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  cardTitle:SetPoint("TOPLEFT", 10, -7)
-  cardTitle:SetText("Next milestones")
-  CR.ThemeRegisterAccentText(cardTitle)
-  card.lines = {}
-  for i = 1, 3 do
-    local l = CreateFrame("Frame", nil, card)
-    l:SetSize(CARD_W - 20, 26)
-    l:SetPoint("TOPLEFT", 10, -22 - (i - 1) * 27)
-    l.icon = l:CreateTexture(nil, "ARTWORK")
-    l.icon:SetSize(20, 20)
-    l.icon:SetPoint("TOPLEFT", 0, -2)
-    l.text = l:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    l.text:SetPoint("TOPLEFT", l.icon, "TOPRIGHT", 6, 1)
-    l.text:SetPoint("RIGHT", 0, 0)
-    l.text:SetJustifyH("LEFT")
-    l.text:SetMaxLines(2)
-    card.lines[i] = l
-  end
-
-  -- Builds the milestone lines: { icon, text } (at most three).
-  local function Milestones(entry, rprof, profName, cur)
-    local out = {}
-    -- next training (rank, book or quest) still ahead on the route
-    for _, s in ipairs(entry and entry.full.steps or {}) do
-      if s.kind == "train" or (s.kind == "guide" and s.train) then
-        local warn = s.ok == false and CR.ColorText("  (level too low)", "ff4040") or ""
-        local at = (s.from and s.from > cur) and string.format("At %d: ", s.from) or ""
-        table.insert(out, { icon = "Interface\\Icons\\INV_Misc_Book_09", text = at .. (s.text or "") .. warn })
-        break
-      end
-    end
-    -- next target recipe you picked on the Recipes tab
-    for _, t in ipairs(CR.ActiveTargets(rprof.name)) do
-      local r = t.recipe
-      local lvl = CR.ItemMinLevel(r.item)
-      local where = r.learn > cur and string.format("craftable at %d - %d points to go", r.learn, r.learn - cur)
-        or "you can craft it now"
-      table.insert(out, { icon = r.item > 0 and GetItemIcon(r.item) or "Interface\\Icons\\INV_Misc_QuestionMark",
-        text = CR.ColorText("Target: ", "33ccff") .. CR.ColorText(r.name, CR.QualityHex(r.q)) .. "  ·  " .. where
-          .. (lvl and string.format("  ·  equip level %d", lvl) or "") })
-      break
-    end
-    -- the cap of your current rank
-    local info = CR.RankInfo(profName)
-    if info.current and info.current.cap > cur then
-      table.insert(out, { icon = "Interface\\Icons\\INV_Misc_Note_01",
-        text = string.format("%s cap: %d  ·  %d points to go", info.current.name, info.current.cap, info.current.cap - cur) })
-    end
-    if #out == 0 then
-      table.insert(out, { icon = "Interface\\Icons\\Achievement_Profession_ChefHat",
-        text = "Nothing else ahead - tick target recipes on the Recipes tab to plan for gear." })
-    end
-    return out
-  end
 
   local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
   empty:SetPoint("TOP", leftArea, "TOP", 0, -160)
@@ -600,19 +541,10 @@ function CR.CreateCraftPanel(parent)
     routeList:Refresh()
     routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
 
-    -- milestones card
-    local ms = Milestones(entry, rprof, profName, cur)
-    for i, l in ipairs(card.lines) do
-      local m = ms[i]
-      if m then l.icon:SetTexture(m.icon); l.text:SetText(m.text); l:Show() else l:Hide() end
-    end
-
     if #steps == 0 then
       main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
-      stepBar:ClearAllPoints()
-      stepBar:SetPoint("TOP", empty, "BOTTOM", 0, -24)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
         and (profName .. " has nothing to craft - see the Plan tab for where to go.")
         or "Nothing left to craft on this route.")
@@ -662,7 +594,7 @@ function CR.CreateCraftPanel(parent)
 
     profDD:Sync()
     FillReagents(reagentBox, reagentRows, r, 1)
-    reagentBox:SetHeight(28 + #r.reagents * 34)
+    reagentBox:SetHeight(32 + #r.reagents * 40)
     if st.crafts > 1 then totalNote:SetText(string.format("per craft  ·  x%d for this step", st.crafts))
     else totalNote:SetText("") end
 
@@ -709,25 +641,10 @@ function CR.CreateCraftPanel(parent)
       p.name:SetTextColor(QualityRGB(pr.q))
       p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts))
       FillReagents(p.box, p.rows, pr, 1)
-      p.box:SetHeight(10 + #pr.reagents * 24)
+      p.box:SetHeight(12 + #pr.reagents * 30)
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
-
-    -- Step bar (and the milestones card under it) go below whichever column ends lowest.
-    local function H(f) local h = f:GetHeight(); return type(h) == "number" and h or 0 end
-    local sh = stepNeed:GetStringHeight()
-    local mainH = H(reagentBox) + 8 + (type(sh) == "number" and sh or 24)
-    local nextH = nextFrame:IsShown() and H(nextFrame.box) or 0
-    local afterH = afterFrame:IsShown() and H(afterFrame.box) or 0
-    stepBar:ClearAllPoints()
-    if mainH >= nextH and mainH >= afterH then
-      stepBar:SetPoint("TOP", stepNeed, "BOTTOM", -MAIN_X, -16)
-    elseif nextH >= afterH then
-      stepBar:SetPoint("TOP", nextFrame.box, "BOTTOM", -NEXT_X, -16)
-    else
-      stepBar:SetPoint("TOP", afterFrame.box, "BOTTOM", -AFTER_X, -16)
-    end
 
     -- Controls
     local open = CR.TradeSkillOpenFor(rprof.name)

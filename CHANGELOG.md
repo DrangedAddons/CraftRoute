@@ -1,23 +1,18 @@
 # CraftRoute changelog
 
 ## 0.12.0 (in testing on the `crafting-tab` branch)
-- New **Craft** tab, now the first tab. The window remembers the last tab you used.
-  - **Top:** a skill bar ("Leatherworking 141/225") and the current step, e.g. "Step 141-155 · 16 to make".
-  - **Centre:** the recipe to craft now. It shows a big icon in its quality colour, its name, and how many skill points each craft gives at your skill. Below that are its reagents, showing what's in your bags against what one craft needs.
-  - **Right:** an "Up next" preview of the following recipe and its reagents.
+- New **Craft** tab, now the first tab. It shows what to craft right now, and the window reopens on whichever tab you used last.
+  - **Top:** a profession switcher, the skill bar ("Leatherworking 141/225"), and under it a step progress bar for the current guide step. For example, "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.
+  - **Recipe row:** the recipe to craft now (big icon, name, and how many points each craft gives), with "Up next" and "After that" beside it at a smaller scale. Their reagent boxes are level.
+  - **Skill-up colour band** under the recipe name: the recipe's orange, yellow, green and grey ranges, with a marker at your skill.
+  - **Reagents:** the count is everything you have, against what one craft needs. **Green** means it's in your bags, ready to craft. **Yellow** means you have enough but some is in your bank, mailbox or on an alt. **Red** means you don't have enough even counting everywhere: 5 on you plus 5 in the bank of 14 shows red 10/14. Hover a reagent to see exactly where it is.
+  - **For the whole step:** what to fetch from the bank or alts, then what you still need to buy, with the cost.
   - **Browse:** ‹ › arrows look ahead through the route without losing your place.
-  - **Bottom:** Create All [N], a count box with arrows, and Create, which becomes Stop while crafting several. The game only allows crafting with the profession window open, so until it is, an "Open <profession>" button appears instead.
-  - **Profession:** a small switcher on the tab for the professions you have.
-- Follows the whole route even past your goal, including extra crafts and your target recipes.
-- The profession window opens by itself when you go to the Craft tab or switch profession there. If you close it, it stays closed until you come back to the tab. The Open button remains as a fallback.
-- "Up next" and "After that" previews sit side by side, so you can see the next two crafts. The window is now at least 1010 wide to fit them.
-- A compact **Route** column down the right lists the upcoming steps: crafts, extra crafts, targets, training and instructions. The current craft is lightly tinted and the one you're viewing is highlighted. Click any craft to view it.
-- **Step progress bar** under the skill bar: how far through the current guide step you are, e.g. "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.
-- **Skill-up colour band** under the recipe name: the recipe's orange, yellow, green and grey ranges with a marker at your skill, plus the breakpoints written underneath.
-- **Layout:** the current recipe, "Up next" and "After that" sit in a row, with their reagent boxes level. Under them, centred: the step bar, the milestones card, then the status and Create controls. The craft area recentres when you resize. The window is at least 1010 x 620.
-- **Next milestones card**: your next training (rank, book or quest, with a level warning), your next target recipe (points to go and equip level), and your current rank's cap. The Create controls moved under the main recipe to make room.
-- **Reagent colours:** green when it's in your bags and ready to craft; yellow when you have enough counting your bank, mailbox or alts, with how many are there ("· 40 in bank/alts"); red when you don't have enough anywhere. Hover a reagent to see exactly where it is.
-- Under the reagents, a "Fetch from bank/alts" line in yellow, then what you still need to buy. Then a line shows what the whole step still needs beyond your bags and what buying it would cost.
+  - **Bottom:** Create All [N], a count box, and Create (Stop while crafting several).
+  - **Route column** on the right: the upcoming steps (crafts, extra crafts, targets, training, instructions). The current craft is tinted and the one you're viewing is highlighted. Click a craft to view it.
+- The profession window opens by itself when you go to the Craft tab or switch profession there. The game only allows crafting with it open. If you close it, it stays closed until you come back to the tab, and an Open button remains as a fallback.
+- Follows the whole route even past your goal.
+- The window is now at least 1060 x 620, to fit the Craft tab. It recentres its contents when resized.
 
 ## 0.11.0
 - Guide alternatives are now shown as what you'd craft instead of material sources. For example: "A: 20x Cured Heavy Hide, 16x Hillman's Leather Gloves, 10x Barbaric Shoulders, 10x Guardian Gloves" or "B: 21x Hillman's Leather Gloves, 15x Barbaric Leggings, 10x Barbaric Harness".
