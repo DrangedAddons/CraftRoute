@@ -2,7 +2,7 @@
 
 ## 0.13.0
 
-- Craft tab: make components right from the reagent box. A reagent you're short of and can make yourself gets a "Make" button (or click its line): Medium/Heavy/Thick Leather, Bolts of Cloth, Handfuls of Bolts and other same-profession parts, plus enchanting essences (combine 3 lesser into 1 greater, or split a greater). The popup shows what it's made from, how many you're short, how many you can make now, and Make N / Make 1 buttons. Its own components can be clicked to go a level deeper (Back returns).
+- Craft tab: make components right from the reagent box. A reagent you're short of and can make yourself gets a small + (or click its line): the line opens up underneath to show what it's made from (e.g. 23/4 Light Leather under Medium Leather) and a "Make 5" button that starts crafting it straight away. Nothing else moves off screen. Works for Medium/Heavy/Thick Leather, Bolts of Cloth, Handfuls of Bolts and other same-profession parts; for enchanting essences it tells you to right-click them in your bags to combine or split.
 - Craft tab: the current recipe's colours now say whether you can make any at all. Green = at least one craft from your bags; yellow = none from your bags but at least one counting bank / mail / alts; red = not even one anywhere. "Crafts ready" follows the same rule (yellow shows how many the bank / alts would cover). Counts still show the whole step.
 
 ## 0.12.1
