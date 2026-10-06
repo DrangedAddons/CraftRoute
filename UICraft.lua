@@ -560,7 +560,7 @@ function CR.CreateCraftPanel(parent)
     buyPop.itemID, buyPop.need = itemID, short
     buyPop:ClearAllPoints()
     buyPop:SetPoint("TOPLEFT", button, "TOPRIGHT", 6, 0)
-    bpBox:SetNumber(math.max(1, short))
+    bpBox:SetNumber(1)   -- "Buy needed" covers the usual case; a stray click here buys just one
     buyPop:Show()
     UpdateBuyPop()
   end
