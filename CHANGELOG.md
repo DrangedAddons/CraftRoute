@@ -12,6 +12,9 @@
 - The profession window opens by itself when you go to the Craft tab or switch profession there. If you close it, it stays closed until you come back to the tab. The Open button remains as a fallback.
 - "Up next" and "After that" previews sit side by side, so you can see the next two crafts. The window is now at least 1010 wide to fit them.
 - A compact **Route** column down the right lists the upcoming steps: crafts, extra crafts, targets, training and instructions. The current craft is lightly tinted and the one you're viewing is highlighted. Click any craft to view it.
+- **Step progress bar** under the skill bar: how far through the current guide step you are, e.g. "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.
+- **Skill-up colour band** under the recipe name: the recipe's orange, yellow, green and grey ranges with a marker at your skill, plus the breakpoints written underneath.
+- **Next milestones card** under the previews: your next training (rank, book or quest, with a level warning), your next target recipe (points to go and equip level), and your current rank's cap. The Create controls moved under the main recipe to make room.
 - Under the reagents, a line shows what the whole step still needs beyond your bags and what buying it would cost.
 
 ## 0.11.0

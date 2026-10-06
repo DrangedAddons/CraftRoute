@@ -323,6 +323,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
   local out = { kind = st.kind or "craft", from = lo, to = hi, skill = skillName, catches = st.catches,
                 note = st.note and CR.FactionText(st.note), text = st.text and CR.FactionText(st.text),
                 fork = st.when ~= nil, index = index,
+                stepFrom = st.from, stepTo = st.to,   -- the guide's full range, for progress bars
                 -- A band's general instruction goes above its "pick one" block (forks sort at lo - 0.6).
                 sort = route.sequential and index or ((st.kind == "guide" and not st.when) and lo - 0.8 or lo),
                 train = (st.trainCap or st.learnStep) and true or nil }
