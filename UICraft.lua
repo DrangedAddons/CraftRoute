@@ -144,14 +144,20 @@ function CR.CreateCraftPanel(parent)
   local db = function() return CraftRouteCharDB end
   panel.viewOffset = 0   -- browsing ahead with the arrows; 0 = the current craft
 
-  -- Layout: the craft area on the left (fixed width), the compact route down the right.
-  -- craft area: main recipe (320) + "Up next" + "After that" side by side (180 each); route on the right
+  -- Layout: the craft area fills the left (everything centred in it, so it follows the window
+  -- size), the compact route runs down the right. In the craft area: a row of three recipes -
+  -- the current one and the next two, their reagent boxes level - then the step bar, the
+  -- milestones card and the craft controls stacked underneath.
   local LEFT_W, ROUTE_W = 684, 290
+  local MAIN_X, NEXT_X, AFTER_X = -180, 80, 262   -- column centres, relative to the craft area's centre
+  local leftArea = CreateFrame("Frame", nil, panel)
+  leftArea:SetPoint("TOPLEFT")
+  leftArea:SetPoint("BOTTOMLEFT")
+  leftArea:SetPoint("RIGHT", panel, "RIGHT", -(ROUTE_W + 10), 0)
 
   -- Skill bar
   local bar = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
-  bar:SetSize(LEFT_W - 150, 20)
-  bar:SetPoint("TOPLEFT", 146, -8)
+  bar:SetHeight(20)
   bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   bar:SetMinMaxValues(0, 1)
   CR.Backdrop(bar, 0, 0, 0, 0.6)
@@ -173,11 +179,14 @@ function CR.CreateCraftPanel(parent)
     CR.NotifyChanged()
   end)
   profDD:SetPoint("TOPLEFT", 4, -8)
+  bar:SetPoint("LEFT", profDD, "RIGHT", 12, 0)
+  bar:SetPoint("RIGHT", leftArea, "RIGHT", -10, 0)
 
   -- Step progress: how far through the current guide step you are (fills as you skill up).
+  -- Placed under the recipe row in Refresh, below whichever reagent box ends lowest.
   local stepBar = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
-  stepBar:SetSize(LEFT_W - 150, 16)
-  stepBar:SetPoint("TOP", bar, "BOTTOM", 0, -6)
+  stepBar:SetSize(520, 16)
+  stepBar:SetPoint("TOP", leftArea, "TOP", 0, -330)   -- moved under the recipe row on refresh
   stepBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   stepBar:SetMinMaxValues(0, 1)
   CR.Backdrop(stepBar, 0, 0, 0, 0.6)
@@ -210,7 +219,7 @@ function CR.CreateCraftPanel(parent)
   -- Main recipe (left-centre)
   local main = CreateFrame("Frame", nil, panel)
   main:SetSize(320, 300)
-  main:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -64)
+  main:SetPoint("TOP", leftArea, "TOP", MAIN_X, -44)
   local bigIcon = IconButton(main, 64)
   bigIcon:SetPoint("TOP", 0, 0)
   prevBtn:SetPoint("RIGHT", bigIcon, "LEFT", -24, 0)
@@ -288,25 +297,27 @@ function CR.CreateCraftPanel(parent)
   stepNeed:SetWidth(300)
   stepNeed:SetJustifyH("CENTER")
 
-  -- Previews of the next two crafts (middle column, stacked): "Up next" and "After that".
-  local function Preview(title, iconSize)
+  -- Previews of the next two crafts, beside the current one: "Up next" and "After that".
+  -- Each reagent box's top is level with the current recipe's reagent box; the icon, name and
+  -- labels stack upwards from it.
+  local function Preview(title, iconSize, x)
     local p = CreateFrame("Frame", nil, panel)
-    p:SetSize(180, 10)
-    p.label = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    p.label:SetPoint("TOP", 0, 0)
-    p.label:SetText(title)
-    CR.ThemeRegisterAccentText(p.label)
-    p.iconBtn = IconButton(p, iconSize)
-    p.iconBtn:SetPoint("TOP", p.label, "BOTTOM", 0, -6)
-    p.name = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    p.name:SetPoint("TOP", p.iconBtn, "BOTTOM", 0, -4)
-    p.name:SetWidth(176)
-    p.sub = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    p.sub:SetPoint("TOP", p.name, "BOTTOM", 0, -2)
+    p:SetAllPoints(leftArea)
     p.box = CreateFrame("Frame", nil, p, "BackdropTemplate")
     p.box:SetSize(170, 30)
-    p.box:SetPoint("TOP", p.sub, "BOTTOM", 0, -6)
+    p.box:SetPoint("TOP", reagentBox, "TOP", x - MAIN_X, 0)
     CR.Backdrop(p.box, 0, 0, 0, 0.35)
+    p.sub = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    p.sub:SetPoint("BOTTOM", p.box, "TOP", 0, 6)
+    p.name = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    p.name:SetPoint("BOTTOM", p.sub, "TOP", 0, 2)
+    p.name:SetWidth(176)
+    p.iconBtn = IconButton(p, iconSize)
+    p.iconBtn:SetPoint("BOTTOM", p.name, "TOP", 0, 4)
+    p.label = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    p.label:SetPoint("BOTTOM", p.iconBtn, "TOP", 0, 6)
+    p.label:SetText(title)
+    CR.ThemeRegisterAccentText(p.label)
     p.rows = {}
     for i = 1, 6 do
       local row = ReagentRow(p.box, 20, "GameFontHighlightSmall")
@@ -316,23 +327,21 @@ function CR.CreateCraftPanel(parent)
     end
     return p
   end
-  local nextFrame = Preview("Up next", 40)
-  nextFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 324, -64)
-  local afterFrame = Preview("After that", 32)
-  afterFrame:SetPoint("TOPLEFT", nextFrame, "TOPRIGHT", 0, 0)
+  local nextFrame = Preview("Up next", 40, NEXT_X)
+  local afterFrame = Preview("After that", 32, AFTER_X)
 
   -- Craft controls (bottom)
   local controls = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-  controls:SetSize(330, 40)
-  controls:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 6)   -- under the main recipe
+  controls:SetSize(400, 40)
+  controls:SetPoint("BOTTOM", leftArea, "BOTTOM", 0, 6)   -- centred at the bottom of the craft area
   CR.Backdrop(controls, 0, 0, 0, 0.45)
   local createAll = CreateFrame("Button", nil, controls, "UIPanelButtonTemplate")
-  createAll:SetSize(116, 24)
-  createAll:SetPoint("LEFT", 8, 0)
+  createAll:SetSize(130, 24)
+  createAll:SetPoint("LEFT", 10, 0)
   CR.ThemeRegisterButton(createAll)
   local create = CreateFrame("Button", nil, controls, "UIPanelButtonTemplate")
-  create:SetSize(92, 24)
-  create:SetPoint("RIGHT", -8, 0)
+  create:SetSize(110, 24)
+  create:SetPoint("RIGHT", -10, 0)
   CR.ThemeRegisterButton(create)
   local countBox = CreateFrame("EditBox", nil, controls, "InputBoxTemplate")
   countBox:SetSize(40, 20)
@@ -365,12 +374,13 @@ function CR.CreateCraftPanel(parent)
   CR.ThemeRegisterButton(openBtn)
   local status = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   status:SetPoint("BOTTOM", controls, "TOP", 0, 6)
-  status:SetWidth(320)
+  status:SetWidth(400)
 
-  -- Next milestones card (under the previews): the next training, target recipe and rank cap.
+  -- Next milestones card (centred under the step bar): next training, target recipe, rank cap.
+  local CARD_W = 420
   local card = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-  card:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 340, 6)
-  card:SetSize(LEFT_W - 344, 104)
+  card:SetPoint("TOP", stepBar, "BOTTOM", 0, -12)
+  card:SetSize(CARD_W, 92)
   CR.Backdrop(card, 0, 0, 0, 0.35)
   local cardTitle = card:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   cardTitle:SetPoint("TOPLEFT", 10, -7)
@@ -379,7 +389,7 @@ function CR.CreateCraftPanel(parent)
   card.lines = {}
   for i = 1, 3 do
     local l = CreateFrame("Frame", nil, card)
-    l:SetSize(LEFT_W - 364, 26)
+    l:SetSize(CARD_W - 20, 26)
     l:SetPoint("TOPLEFT", 10, -22 - (i - 1) * 27)
     l.icon = l:CreateTexture(nil, "ARTWORK")
     l.icon:SetSize(20, 20)
@@ -429,8 +439,8 @@ function CR.CreateCraftPanel(parent)
   end
 
   local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-  empty:SetPoint("TOPLEFT", 20, -160)
-  empty:SetWidth(LEFT_W - 40)
+  empty:SetPoint("TOP", leftArea, "TOP", 0, -160)
+  empty:SetWidth(560)
 
   -- Compact route (right): the upcoming steps, current one highlighted. Click a craft to view it.
   local routeTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -580,6 +590,8 @@ function CR.CreateCraftPanel(parent)
       main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
+      stepBar:ClearAllPoints()
+      stepBar:SetPoint("TOP", empty, "BOTTOM", 0, -24)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
         and (profName .. " has nothing to craft - see the Plan tab for where to go.")
         or "Nothing left to craft on this route.")
@@ -666,6 +678,21 @@ function CR.CreateCraftPanel(parent)
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
+
+    -- Step bar (and the milestones card under it) go below whichever column ends lowest.
+    local function H(f) local h = f:GetHeight(); return type(h) == "number" and h or 0 end
+    local sh = stepNeed:GetStringHeight()
+    local mainH = H(reagentBox) + 8 + (type(sh) == "number" and sh or 24)
+    local nextH = nextFrame:IsShown() and H(nextFrame.box) or 0
+    local afterH = afterFrame:IsShown() and H(afterFrame.box) or 0
+    stepBar:ClearAllPoints()
+    if mainH >= nextH and mainH >= afterH then
+      stepBar:SetPoint("TOP", stepNeed, "BOTTOM", -MAIN_X, -16)
+    elseif nextH >= afterH then
+      stepBar:SetPoint("TOP", nextFrame.box, "BOTTOM", -NEXT_X, -16)
+    else
+      stepBar:SetPoint("TOP", afterFrame.box, "BOTTOM", -AFTER_X, -16)
+    end
 
     -- Controls
     local open = CR.TradeSkillOpenFor(rprof.name)

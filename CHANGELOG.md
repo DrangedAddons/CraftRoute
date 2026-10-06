@@ -14,7 +14,8 @@
 - A compact **Route** column down the right lists the upcoming steps: crafts, extra crafts, targets, training and instructions. The current craft is lightly tinted and the one you're viewing is highlighted. Click any craft to view it.
 - **Step progress bar** under the skill bar: how far through the current guide step you are, e.g. "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.
 - **Skill-up colour band** under the recipe name: the recipe's orange, yellow, green and grey ranges with a marker at your skill, plus the breakpoints written underneath.
-- **Next milestones card** under the previews: your next training (rank, book or quest, with a level warning), your next target recipe (points to go and equip level), and your current rank's cap. The Create controls moved under the main recipe to make room.
+- **Layout:** the current recipe, "Up next" and "After that" sit in a row, with their reagent boxes level. Under them, centred: the step bar, the milestones card, then the status and Create controls. The craft area recentres when you resize. The window is at least 1010 x 620.
+- **Next milestones card**: your next training (rank, book or quest, with a level warning), your next target recipe (points to go and equip level), and your current rank's cap. The Create controls moved under the main recipe to make room.
 - Under the reagents, a line shows what the whole step still needs beyond your bags and what buying it would cost.
 
 ## 0.11.0
