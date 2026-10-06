@@ -1,5 +1,8 @@
 # CraftRoute changelog
 
+## 0.12.1
+- Craft tab: a crafting cast bar above the status line. It shows the recipe's icon, a filling bar with a spark, and "Crafting <recipe> · N left" when the game reports how many are queued. It flashes green when a craft finishes and red if it's interrupted, and sits dimmed ("Not crafting") between crafts. Only profession casts are shown.
+
 ## 0.12.0
 - New **Craft** tab, now the first tab. It shows what to craft right now, and the window reopens on whichever tab you used last.
   - **Top:** a profession switcher, the skill bar ("Leatherworking 141/225"), and under it a step progress bar for the current guide step. For example, "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.

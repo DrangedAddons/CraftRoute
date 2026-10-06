@@ -400,6 +400,79 @@ function CR.CreateCraftPanel(parent)
   status:SetPoint("BOTTOM", controls, "TOP", 0, 6)
   status:SetWidth(400)
 
+  -- Crafting cast bar (above the status line): the profession cast in progress, Blizzard
+  -- cast-bar style. Dimmed and empty between crafts so the space stays steady.
+  local cast = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
+  cast:SetSize(480, 22)
+  cast:SetPoint("BOTTOM", status, "TOP", 12, 26)
+  cast:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  cast:SetMinMaxValues(0, 1)
+  cast:SetValue(0)
+  CR.Backdrop(cast, 0, 0, 0, 0.6)
+  cast.icon = cast:CreateTexture(nil, "ARTWORK")
+  cast.icon:SetSize(24, 24)
+  cast.icon:SetPoint("RIGHT", cast, "LEFT", -6, 0)
+  cast.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+  cast.spark = cast:CreateTexture(nil, "OVERLAY")
+  cast.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
+  cast.spark:SetBlendMode("ADD")
+  cast.spark:SetSize(24, 44)
+  cast.text = cast:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  cast.text:SetPoint("CENTER")
+
+  local function CastIdle()
+    cast:SetScript("OnUpdate", nil)
+    cast.casting = nil
+    cast:SetValue(0)
+    cast:SetAlpha(0.55)
+    cast.spark:Hide()
+    cast.icon:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
+    cast.icon:SetDesaturated(true)
+    cast.text:SetText(CR.ColorText("Not crafting", "999999"))
+  end
+
+  -- Called on spell-cast events; only profession casts are shown.
+  function panel:UpdateCast(event)
+    if event == "UNIT_SPELLCAST_SUCCEEDED" and cast.casting then
+      cast.casting = nil
+      cast:SetScript("OnUpdate", nil)
+      cast:SetValue(1)
+      cast:SetStatusBarColor(0.2, 0.9, 0.2)
+      cast.spark:Hide()
+      C_Timer.After(0.6, function() if not cast.casting then self:UpdateCast() end end)
+      return
+    elseif (event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED") and cast.casting then
+      cast.casting = nil
+      cast:SetScript("OnUpdate", nil)
+      cast:SetStatusBarColor(0.9, 0.15, 0.15)
+      cast.spark:Hide()
+      cast.text:SetText("Interrupted")
+      C_Timer.After(1, function() if not cast.casting then self:UpdateCast() end end)
+      return
+    end
+    local name, _, texture, startMS, endMS, isTradeSkill = UnitCastingInfo("player")
+    if not (name and isTradeSkill and startMS and endMS and endMS > startMS) then
+      CastIdle()
+      return
+    end
+    cast.casting = true
+    cast:SetAlpha(1)
+    cast:SetStatusBarColor(1, 0.7, 0)
+    cast.icon:SetTexture(texture)
+    cast.icon:SetDesaturated(false)
+    cast.spark:Show()
+    local left = TS.GetRemainingRecasts and TS.GetRemainingRecasts() or 0
+    cast.text:SetText("Crafting " .. name .. (left and left > 0 and string.format("  ·  %d left", left) or ""))
+    local start, dur = startMS / 1000, (endMS - startMS) / 1000
+    cast:SetScript("OnUpdate", function(bar)
+      local v = math.max(0, math.min(1, (GetTime() - start) / dur))
+      bar:SetValue(v)
+      bar.spark:ClearAllPoints()
+      bar.spark:SetPoint("CENTER", bar, "LEFT", v * bar:GetWidth(), 0)
+    end)
+  end
+  CastIdle()
+
   local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
   empty:SetPoint("TOP", leftArea, "TOP", 0, -160)
   empty:SetWidth(560)
@@ -702,13 +775,15 @@ function CR.CreateCraftPanel(parent)
     CR.OpenTradeSkill(route and route.recipeProf or db().profession)
   end)
 
+  CR.craftPanel = panel
   return panel
 end
 
--- Keep the Craft tab live: the profession window opening/closing and crafts finishing.
+-- Keep the Craft tab live: the profession window opening/closing, casts and crafts finishing.
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDATE",
-                     "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED",
+                     "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_SUCCEEDED",
+                     "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
                      "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
     pcall(ev.RegisterEvent, ev, e)
@@ -716,5 +791,9 @@ for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_
 end
 ev:SetScript("OnEvent", function(_, event, unit)
   if (event:find("^UNIT_") and unit ~= "player") then return end
+  if event:find("^UNIT_SPELLCAST") and CR.craftPanel then
+    CR.SafeCall(CR.craftPanel.UpdateCast, CR.craftPanel, event)
+    if event == "UNIT_SPELLCAST_START" then return end   -- nothing else changes until it finishes
+  end
   CR.NotifyChanged()
 end)
