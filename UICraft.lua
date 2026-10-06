@@ -476,7 +476,7 @@ function CR.CreateCraftPanel(parent)
   -- Buy popup, opened from a reagent's Buy button while a vendor is open: buy one, the amount
   -- this step still needs in your bags, or any amount.
   local buyPop = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-  buyPop:SetSize(236, 142)
+  buyPop:SetSize(236, 150)
   CR.Backdrop(buyPop, 0.04, 0.04, 0.06, 0.97)
   CR.ThemeRegisterBorder(buyPop)
   buyPop:SetFrameLevel(panel:GetFrameLevel() + 40)
@@ -497,14 +497,14 @@ function CR.CreateCraftPanel(parent)
     return b
   end
   local bpOne = PopButton(64, "Buy 1")
-  bpOne:SetPoint("TOPLEFT", 10, -44)
+  bpOne:SetPoint("TOPLEFT", 10, -60)
   local bpNeed = PopButton(144)
   bpNeed:SetPoint("LEFT", bpOne, "RIGHT", 8, 0)
   local bpNeedCost = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")   -- what "Buy needed" costs
-  bpNeedCost:SetPoint("TOP", bpNeed, "BOTTOM", 0, -3)
+  bpNeedCost:SetPoint("BOTTOM", bpNeed, "TOP", 0, 3)
   local bpBox = CreateFrame("EditBox", nil, buyPop, "InputBoxTemplate")
   bpBox:SetSize(44, 20)
-  bpBox:SetPoint("TOPLEFT", 40, -88)
+  bpBox:SetPoint("TOPLEFT", 40, -94)
   bpBox:SetAutoFocus(false)
   bpBox:SetNumeric(true)
   bpBox:SetMaxLetters(4)
