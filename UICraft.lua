@@ -1048,7 +1048,7 @@ function CR.CreateCraftPanel(parent)
   end
   -- hide once the mouse has left both the slot and the list
   flyout:SetScript("OnUpdate", function(self)
-    if not (MouseIsOver(self) or MouseIsOver(eSlot)) then self:Hide() end
+    if not (self:IsMouseOver() or eSlot:IsMouseOver()) then self:Hide() end   -- frame method: Forever has no global MouseIsOver
   end)
   eSlot:SetScript("OnEnter", function(self)
     ShowFlyout()
