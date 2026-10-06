@@ -3,6 +3,38 @@ local _, CR = ...
 local GetItemInfo, GetItemCount, GetItemIcon, IsEquippedItem = CR.GetItemInfo, CR.GetItemCount, CR.GetItemIcon, CR.IsEquippedItem
 
 -- Recipe details appended to an item tooltip (used by both tabs).
+-- Special crafting stations a recipe needs you to stand next to (from its "Needs ..." text).
+-- Everyday ones (Anvil, Forge, Cooking Fire) and tools you carry (rods, spanners, Philosopher's
+-- Stone...) are left out; these are the ones worth warning about, mostly new in Forever.
+local STRUCTURES = {
+  ["Tanning Rack"] = true, ["Sewing Machine"] = true,          -- Leatherworking
+  ["Spinning Wheel"] = true, ["Loom"] = true, ["Moonwell"] = true, -- Tailoring
+  ["Master Forge"] = true, ["Black Anvil"] = true, ["Icebellow Anvil"] = true, -- Blacksmithing
+  ["Black Forge"] = true, ["Arcane Forge"] = true,             -- Enchanting
+  ["Alchemy Lab"] = true, ["Fermenter"] = true,                -- Alchemy
+  ["Anarchist's Workbench"] = true,                            -- Engineering
+  ["Iron Oven"] = true,                                        -- Cooking
+}
+function CR.RequiredStructures(r)
+  local list, inNeeds = {}, false
+  for seg in ((r.stats or "") .. " · "):gmatch("(.-) · ") do   -- "a · b · Needs X"
+    local need = seg:match("^Needs (.+)$") or (inNeeds and seg or nil)   -- everything after "Needs" is a need
+    inNeeds = inNeeds or need ~= nil
+    for part in (need or ""):gmatch("[^,]+") do
+      part = part:match("^%s*(.-)%s*$")
+      if STRUCTURES[part] then table.insert(list, part) end
+    end
+  end
+  return list
+end
+
+-- "Tanning Rack required" in red, or nil.
+function CR.StructureText(r)
+  local list = CR.RequiredStructures(r)
+  if #list == 0 then return nil end
+  return CR.ColorText(table.concat(list, ", ") .. " required", "ff4040")
+end
+
 function CR.RecipeTooltip(tt, r, crafts)
   if r.item > 0 then
     tt:SetItemByID(r.item)
@@ -18,6 +50,8 @@ function CR.RecipeTooltip(tt, r, crafts)
     string.format("|cffff8040%d|r / |cffffff00%d|r / |cff40bf40%d|r / |cff808080%d|r", r.learn, r.y, r.g, r.x),
     0.8, 0.8, 0.8)
   if r.pattern then tt:AddDoubleLine("Pattern", r.pattern, 0.8, 0.8, 0.8, 1, 1, 1) end
+  local structure = CR.StructureText(r)
+  if structure then tt:AddLine(structure) end
   tt:AddLine("Source: " .. CR.FactionText(r.src), 0.8, 0.8, 0.8, true)
   local mult = crafts or 1
   tt:AddLine(crafts and string.format("Reagents (x%d):", crafts) or "Reagents:", 0.8, 0.8, 0.8)

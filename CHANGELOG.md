@@ -3,6 +3,7 @@
 ## 0.13.0
 
 - Craft tab: make components right from the reagent box. A reagent you're short of and can make yourself gets a small + (or click its line): the line opens up underneath to show what it's made from (e.g. 23/4 Light Leather under Medium Leather) and a "Make 5" button that starts crafting it straight away. Nothing else moves off screen. Works for Medium/Heavy/Thick Leather, Bolts of Cloth, Handfuls of Bolts and other same-profession parts; for enchanting essences it tells you to right-click them in your bags to combine or split.
+- Special crafting stations are flagged in red: "Tanning Rack required" above the recipe on the Craft tab, under the Up next / After that previews, and in recipe tooltips. Covers Tanning Rack, Sewing Machine, Spinning Wheel, Loom, Master Forge, Anarchist's Workbench, Iron Oven, Fermenter, Alchemy Lab, Arcane Forge, Black Anvil/Forge, Icebellow Anvil and Moonwell. Everyday Anvil / Forge / Cooking Fire and carried tools aren't flagged.
 - Craft tab: the current recipe's colours now say whether you can make any at all. Green = at least one craft from your bags; yellow = none from your bags but at least one counting bank / mail / alts; red = not even one anywhere. "Crafts ready" follows the same rule (yellow shows how many the bank / alts would cover). Counts still show the whole step.
 
 ## 0.12.1
