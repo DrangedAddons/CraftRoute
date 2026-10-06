@@ -107,16 +107,39 @@ local function IconButton(parent, size)
   return b
 end
 
--- One reagent line: icon, "have/need Name".
+-- One reagent line: icon, "have/need Name", and (when you can make the reagent yourself) a
+-- "Make" button. Clicking the line or the button opens the component maker.
 local function ReagentRow(parent, iconSize, font)
-  local row = CreateFrame("Frame", nil, parent)
+  local row = CreateFrame("Button", nil, parent)
   row:SetSize(240, iconSize + 4)
   row.btn = IconButton(row, iconSize)
   row.btn:SetPoint("LEFT", 0, 0)
+  row.hl = row:CreateTexture(nil, "BACKGROUND")
+  row.hl:SetAllPoints()
+  row.hl:SetColorTexture(1, 1, 1, 0.08)
+  row.hl:Hide()
+  row.make = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.make:SetSize(50, 20)
+  row.make:SetPoint("RIGHT", -2, 0)
+  row.make:SetText("Make")
+  row.make:Hide()
+  CR.ThemeRegisterButton(row.make)
   row.text = row:CreateFontString(nil, "OVERLAY", font)
   row.text:SetPoint("LEFT", row.btn, "RIGHT", 8, 0)
   row.text:SetPoint("RIGHT", 0, 0)
   row.text:SetJustifyH("LEFT")
+  local function Click() if row.onMake then row.onMake() end end
+  row:SetScript("OnClick", Click)
+  row.make:SetScript("OnClick", Click)
+  row:SetScript("OnEnter", function(self)
+    if not self.onMake then return end
+    self.hl:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Make " .. CR.ItemName(self.btn.itemID), 1, 0.82, 0)
+    GameTooltip:AddLine("Craft it here from its own components.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  row:SetScript("OnLeave", function(self) self.hl:Hide() GameTooltip_Hide() end)
   return row
 end
 
@@ -128,31 +151,58 @@ function CR.BagsAndElsewhere(itemID)
   return bags, math.max(0, (total or 0) - bags)
 end
 
--- The count shown is everything you have (bags + bank + mail + alts); the colour says whether
--- it's enough and where it is: green = enough in your bags, ready to craft; yellow = enough in
--- total but some isn't on you (fetch it from the bank / mail / an alt); red = not enough even
--- counting everywhere (5 on you + 5 in the bank of 14 shows red 10/14).
+-- Colour for "have/need": green = enough in your bags; yellow = enough counting the bank /
+-- mail / alts; red = not enough anywhere. Previews judge the whole step; the current recipe
+-- judges one craft (can you make any at all?), while the count still shows the step total.
 function CR.ReagentColor(bags, elsewhere, need)
   if bags >= need then return "40ff40" end
   if bags + elsewhere >= need then return "ffd100" end
   return "ff6060"
 end
 
-local function FillReagents(box, rows, r, perCraft)
+-- Components you can make yourself without a trade skill recipe: enchanting essences combine
+-- (3 lesser -> 1 greater) and split (1 greater -> 3 lesser) by using the item.
+-- [wanted item] = { use = item to use, uses = how many it takes, makes = how many you get }
+local CONVERSIONS = {}
+for _, pair in ipairs({ { 10938, 10939 }, { 10998, 11082 }, { 11134, 11135 },
+                        { 11174, 11175 }, { 16202, 16203 } }) do
+  local lesser, greater = pair[1], pair[2]
+  CONVERSIONS[greater] = { use = lesser, uses = 3, makes = 1 }
+  CONVERSIONS[lesser] = { use = greater, uses = 1, makes = 3 }
+end
+
+-- How this profession can make an item: a recipe, or an item-use conversion. nil if it can't.
+function CR.ComponentMaker(prof, itemID)
+  local spell = prof and prof.byItem[itemID]
+  if spell and prof.recipes[spell] then return { recipe = prof.recipes[spell] } end
+  if CONVERSIONS[itemID] then return { convert = CONVERSIONS[itemID] } end
+end
+
+-- opts.perCraft: colour by one craft rather than the step total (the current recipe).
+-- opts.prof + opts.onMake(itemID, need): offer "Make" for reagents you're short of in your
+-- bags and can make yourself.
+local function FillReagents(box, rows, r, crafts, opts)
+  opts = opts or {}
   for i, row in ipairs(rows) do
     local rg = r and r.reagents[i]
     if rg then
       local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
-      local need = rg[2] * perCraft
+      local need = rg[2] * crafts
       row.btn.itemID = rg[1]
       row.btn.icon:SetTexture(GetItemIcon(rg[1]))
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
-      local color = CR.ReagentColor(bags, elsewhere, need)
+      local color = CR.ReagentColor(bags, elsewhere, opts.perCraft and rg[2] or need)
       local have = bags >= need and bags or (bags + elsewhere)
       row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
+      local canMake = opts.onMake and bags < need and CR.ComponentMaker(opts.prof, rg[1])
+      local id = rg[1]
+      row.onMake = canMake and function() opts.onMake(id, need) end or nil
+      row.make:SetShown(canMake and true or false)
+      row.text:SetPoint("RIGHT", canMake and -56 or 0, 0)
       row:Show()
     else
+      row.onMake = nil
       row:Hide()
     end
   end
@@ -356,6 +406,173 @@ function CR.CreateCraftPanel(parent)
   end
   local nextFrame = Preview("Up next", 54, NEXT_X)
   local afterFrame = Preview("After that", 44, AFTER_X)
+
+  -- Component maker: "use these parts to make the part you need". Opens over the previews when
+  -- you click a reagent you can make yourself (Medium Leather from Light Leather, Bolts of
+  -- Cloth, Handfuls of Bolts, essences...). Its own reagents can be clicked too, to go a level
+  -- deeper (Heavy Leather -> Medium Leather -> Light Leather).
+  local maker = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+  maker:SetWidth(352)
+  maker:SetPoint("TOPLEFT", reagentBox, "TOPRIGHT", 14, 0)
+  CR.Backdrop(maker, 0.04, 0.04, 0.06, 0.97)
+  CR.ThemeRegisterBorder(maker)
+  maker:SetFrameLevel(panel:GetFrameLevel() + 30)
+  maker:EnableMouse(true)
+  maker:Hide()
+  local mTitle = maker:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  mTitle:SetPoint("TOPLEFT", 12, -10)
+  mTitle:SetText("Make a component")
+  CR.ThemeRegisterAccentText(mTitle)
+  local mClose = CreateFrame("Button", nil, maker, "UIPanelCloseButton")
+  mClose:SetPoint("TOPRIGHT", 2, 2)
+  local mBack = CreateFrame("Button", nil, maker, "UIPanelButtonTemplate")
+  mBack:SetSize(56, 20)
+  mBack:SetPoint("RIGHT", mClose, "LEFT", -2, 0)
+  mBack:SetText("Back")
+  CR.ThemeRegisterButton(mBack)
+  local mIcon = IconButton(maker, 40)
+  mIcon:SetPoint("TOPLEFT", 12, -32)
+  local mName = maker:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+  mName:SetPoint("TOPLEFT", mIcon, "TOPRIGHT", 10, -2)
+  mName:SetPoint("RIGHT", -12, 0)
+  mName:SetJustifyH("LEFT")
+  local mSub = maker:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  mSub:SetPoint("TOPLEFT", mName, "BOTTOMLEFT", 0, -3)
+  mSub:SetPoint("RIGHT", -12, 0)
+  mSub:SetJustifyH("LEFT")
+  local mFrom = maker:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  mFrom:SetPoint("TOPLEFT", mIcon, "BOTTOMLEFT", 0, -10)
+  CR.ThemeRegisterAccentText(mFrom)
+  local mRows = {}
+  for i = 1, 6 do
+    local row = ReagentRow(maker, 30, "GameFontHighlight")
+    row:SetSize(328, 34)
+    row:SetPoint("TOPLEFT", 12, -100 - (i - 1) * 34)
+    mRows[i] = row
+  end
+  local mInfo = maker:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  mInfo:SetWidth(328)
+  mInfo:SetJustifyH("LEFT")
+  local mMake = CreateFrame("Button", nil, maker, "UIPanelButtonTemplate")
+  mMake:SetSize(150, 24)
+  CR.ThemeRegisterButton(mMake)
+  local mOne = CreateFrame("Button", nil, maker, "UIPanelButtonTemplate")
+  mOne:SetSize(90, 24)
+  mOne:SetText("Make 1")
+  CR.ThemeRegisterButton(mOne)
+  -- Essences combine / split by using the item, which only a secure button may do.
+  local mUse = CreateFrame("Button", "CraftRouteMakerUse", maker, "SecureActionButtonTemplate, UIPanelButtonTemplate")
+  mUse:SetSize(200, 24)
+  mUse:RegisterForClicks("AnyUp", "AnyDown")
+  mUse:SetAttribute("type", "item")
+  CR.ThemeRegisterButton(mUse)
+  local mOpen = CreateFrame("Button", nil, maker, "UIPanelButtonTemplate")
+  mOpen:SetSize(200, 24)
+  CR.ThemeRegisterButton(mOpen)
+
+  maker.stack = {}   -- { itemID, need } - drilling into a component pushes; Back pops
+  function panel:OpenMaker(itemID, need, nested)
+    if not nested then wipe(maker.stack) end
+    table.insert(maker.stack, { itemID = itemID, need = need })
+    maker:Show()
+    panel:Refresh()
+  end
+  mClose:SetScript("OnClick", function() wipe(maker.stack) maker:Hide() panel:Refresh() end)
+  mBack:SetScript("OnClick", function()
+    table.remove(maker.stack)
+    if #maker.stack == 0 then maker:Hide() end
+    panel:Refresh()
+  end)
+  local function NestedOpen(itemID, need) panel:OpenMaker(itemID, need, true) end
+
+  local function RefreshMaker(prof)
+    local top = maker.stack[#maker.stack]
+    local how = top and CR.ComponentMaker(prof, top.itemID)
+    if not how then wipe(maker.stack) maker:Hide() return end
+    local itemID, need = top.itemID, top.need
+    mBack:SetShown(#maker.stack > 1)
+    mIcon.itemID, mIcon.recipe = itemID, nil
+    mIcon.icon:SetTexture(GetItemIcon(itemID))
+    mIcon:SetBackdropBorderColor(QualityRGB(select(3, GetItemInfo(itemID)) or 1))
+    mName:SetText(CR.ItemName(itemID))
+    local bags, elsewhere = CR.BagsAndElsewhere(itemID)
+    local missing = math.max(0, need - bags - elsewhere)   -- not anywhere: has to be made
+    local shortBags = math.max(0, need - bags)              -- not on you
+    local makes = how.recipe and how.recipe.makes or how.convert.makes
+    local toMake = math.ceil((missing > 0 and missing or shortBags) / makes)
+    mSub:SetText(string.format("Need %d  ·  %s in bags  ·  %s elsewhere", need,
+      CR.ColorText(tostring(bags), bags >= need and "40ff40" or "ff6060"),
+      CR.ColorText(tostring(elsewhere), "ffd100")))
+
+    local info, available
+    mMake:Hide(); mOne:Hide(); mUse:Hide(); mOpen:Hide()
+    if how.recipe then
+      local r = how.recipe
+      mFrom:SetText((r.makes > 1 and ("Makes " .. r.makes .. " per craft. ") or "")
+        .. string.format("Components for %d %s:", math.max(1, toMake), toMake > 1 and "crafts" or "craft"))
+      FillReagents(maker, mRows, r, math.max(1, toMake), { perCraft = true, prof = prof, onMake = NestedOpen })
+      local learned
+      learned, available = RecipeState(prof, r)
+      available = available or 0
+      if learned == false then
+        info = CR.ColorText("You haven't learned " .. r.name .. " - " .. CR.FactionText(r.pattern or r.src), "ff9966")
+      elseif r.learn and (CR.GetSkill(prof.name) or 0) < r.learn then
+        info = CR.ColorText("Needs " .. r.learn .. " " .. prof.name .. " skill.", "ff6060")
+      elseif not CR.TradeSkillOpenFor(prof.name) then
+        info = "The profession window is closed - crafting needs it open."
+        mOpen:SetText("Open " .. prof.name)
+        mOpen:SetEnabled(not InCombatLockdown())
+        mOpen:Show()
+      else
+        local n = math.min(toMake, available)
+        info = available > 0 and string.format("You can make %s now.", CR.ColorText(tostring(available), "40ff40"))
+          or CR.ColorText("Not enough components in your bags.", "ff6060")
+        mMake:SetText(string.format("Make %d", n))
+        mMake:SetEnabled(n > 0 and not IsRepeating())
+        mOne:SetEnabled(available > 0 and not IsRepeating())
+        mMake.recipe, mMake.count, mOne.recipe = r, n, r
+        mMake:Show(); mOne:Show()
+      end
+    else
+      local c = how.convert
+      mFrom:SetText(string.format("Each use turns %d into %d. For %d %s:", c.uses, c.makes,
+        math.max(1, toMake), toMake > 1 and "uses" or "use"))
+      FillReagents(maker, mRows, { reagents = { { c.use, c.uses } } }, math.max(1, toMake),
+        { perCraft = true, prof = prof, onMake = NestedOpen })
+      available = math.floor((GetItemCount(c.use, false) or 0) / c.uses)
+      info = available > 0 and string.format("You can do this %s times now - one per click.", CR.ColorText(tostring(available), "40ff40"))
+        or CR.ColorText("Not enough in your bags.", "ff6060")
+      if not InCombatLockdown() then mUse:SetAttribute("item", "item:" .. c.use) end
+      mUse:SetText(c.uses > 1 and ("Combine " .. c.uses .. " into 1") or ("Split into " .. c.makes))
+      mUse:SetEnabled(available > 0 and not InCombatLockdown())
+      mUse:Show()
+    end
+    if toMake > 0 then
+      info = info .. "\n" .. (missing > 0
+        and string.format("You're %d short - %d %s%s cover%s it.", missing, toMake, how.recipe and "craft" or "use",
+          toMake == 1 and "" or "s", toMake == 1 and "s" or "")
+        or string.format("Enough counting the bank / alts, but %d aren't on you.", shortBags))
+    end
+    mInfo:SetText(info)
+    local nRows = how.recipe and #how.recipe.reagents or 1
+    local y = -100 - nRows * 34 - 6
+    mInfo:ClearAllPoints()
+    mInfo:SetPoint("TOPLEFT", 12, y)
+    local by = y - mInfo:GetStringHeight() - 10
+    for _, b in ipairs({ mMake, mUse, mOpen }) do
+      b:ClearAllPoints()
+      b:SetPoint("TOPLEFT", 12, by)
+    end
+    mOne:ClearAllPoints()
+    mOne:SetPoint("LEFT", mMake, "RIGHT", 8, 0)
+    maker:SetHeight(-by + 36)
+  end
+  mMake:SetScript("OnClick", function(self) if self.recipe and self.count > 0 then Craft(self.recipe, self.count) end end)
+  mOne:SetScript("OnClick", function(self) if self.recipe then Craft(self.recipe, 1) end end)
+  mOpen:SetScript("OnClick", function()
+    local route = CR.Route(db().profession)
+    CR.OpenTradeSkill(route and route.recipeProf or db().profession)
+  end)
 
   -- Craft controls (bottom)
   local controls = CreateFrame("Frame", nil, panel, "BackdropTemplate")
@@ -565,7 +782,7 @@ function CR.CreateCraftPanel(parent)
     self.autoOpened = craftProf
     pcall(CR.OpenTradeSkill, craftProf)
   end
-  panel:SetScript("OnHide", function(self) self.autoOpened = nil end)
+  panel:SetScript("OnHide", function(self) self.autoOpened = nil; wipe(maker.stack); maker:Hide() end)
 
   -- Craft-able steps of the route (current first), following the full route past the goal.
   local function CraftSteps(entry)
@@ -618,7 +835,7 @@ function CR.CreateCraftPanel(parent)
     routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
 
     if #steps == 0 then
-      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
+      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); maker:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
@@ -669,11 +886,23 @@ function CR.CreateCraftPanel(parent)
     FillBand(r, cur)
 
     profDD:Sync()
-    FillReagents(reagentBox, reagentRows, r, st.crafts)   -- totals for the whole step
+    -- counts are totals for the whole step; colours say whether you can make any at all
+    FillReagents(reagentBox, reagentRows, r, st.crafts,
+      { perCraft = true, prof = rprof, onMake = function(id, need) panel:OpenMaker(id, need) end })
+    -- Crafts ready: green = your bags can make some now (that many); yellow = none from your
+    -- bags but some counting the bank / mail / alts (that many); red = none anywhere.
     local _, readyNow = RecipeState(rprof, r)
     readyNow = readyNow or 0
-    local readyColor = readyNow >= st.crafts and "40ff40" or (readyNow > 0 and "ffd100" or "ff6060")
-    readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyNow, st.crafts), st.crafts), readyColor))
+    local anywhere = math.huge
+    for _, rg in ipairs(r.reagents) do
+      local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+      anywhere = math.min(anywhere, math.floor((bags + elsewhere) / rg[2]))
+    end
+    if anywhere == math.huge then anywhere = 0 end
+    local readyN, readyColor = 0, "ff6060"
+    if readyNow > 0 then readyN, readyColor = readyNow, "40ff40"
+    elseif anywhere > 0 then readyN, readyColor = anywhere, "ffd100" end
+    readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyN, st.crafts), st.crafts), readyColor))
     reagentBox:SetHeight(32 + #r.reagents * 40)
     if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
@@ -725,6 +954,10 @@ function CR.CreateCraftPanel(parent)
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
+    if maker:IsShown() then
+      nextFrame:Hide(); afterFrame:Hide()
+      RefreshMaker(rprof)
+    end
 
     -- Controls
     local open = CR.TradeSkillOpenFor(rprof.name)

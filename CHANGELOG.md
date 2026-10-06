@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.13.0
+
+- Craft tab: make components right from the reagent box. A reagent you're short of and can make yourself gets a "Make" button (or click its line): Medium/Heavy/Thick Leather, Bolts of Cloth, Handfuls of Bolts and other same-profession parts, plus enchanting essences (combine 3 lesser into 1 greater, or split a greater). The popup shows what it's made from, how many you're short, how many you can make now, and Make N / Make 1 buttons. Its own components can be clicked to go a level deeper (Back returns).
+- Craft tab: the current recipe's colours now say whether you can make any at all. Green = at least one craft from your bags; yellow = none from your bags but at least one counting bank / mail / alts; red = not even one anywhere. "Crafts ready" follows the same rule (yellow shows how many the bank / alts would cover). Counts still show the whole step.
+
 ## 0.12.1
 - Craft tab: "Crafts ready: 1/16" in the reagent box shows how many of the step your bags can make right now (green all, yellow some, red none).
 - Craft tab: reagent counts now cover the whole step, not a single craft. For 16 Hillman's Leather Gloves you'll see 42/224 Medium Leather and 4/64 Fine Thread, in green, yellow or red as before. The previews show their whole step too.
