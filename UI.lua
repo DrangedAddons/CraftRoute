@@ -316,6 +316,7 @@ local function CreateWindow()
       GameTooltip:Show()
     end)
     lookDD:SetScript("OnLeave", GameTooltip_Hide)
+    lookDD:HookScript("OnClick", GameTooltip_Hide)  -- and it goes away once the menu opens
     frame.lookDD = lookDD
   end
 
