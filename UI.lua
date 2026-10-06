@@ -20,6 +20,73 @@ local function Backdrop(f, r, g, b, a)
 end
 CR.Backdrop = Backdrop
 
+-- A material line (Plan tab and the Craft tab's compact list): icon, name, have/need, cost.
+function CR.CreateMaterialRow(row, costW, countW)
+  row.icon = row:CreateTexture(nil, "ARTWORK")
+  row.icon:SetSize(14, 14)
+  row.icon:SetPoint("LEFT", 2, 0)
+  -- cost is pinned right, count before it, and the name takes whatever width is left
+  row.cost = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.cost:SetPoint("RIGHT", -2, 0)
+  row.cost:SetWidth(costW or 100)
+  row.cost:SetJustifyH("RIGHT")
+  row.count = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.count:SetPoint("RIGHT", row.cost, "LEFT", -6, 0)
+  row.count:SetWidth(countW or 70)
+  row.count:SetJustifyH("RIGHT")
+  row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+  row.name:SetPoint("RIGHT", row.count, "LEFT", -4, 0)
+  row.name:SetJustifyH("LEFT")
+  row.name:SetWordWrap(false)
+  row:SetScript("OnEnter", function(self)
+    if not self.mat then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetItemByID(self.mat.id) -- CraftRoute lines are added by the tooltip hook
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
+    CR.AddLocationLines(GameTooltip, self.mat.id)
+    GameTooltip:Show()
+  end)
+  row:SetScript("OnLeave", GameTooltip_Hide)
+  row:SetScript("OnClick", function(self)
+    if IsModifiedClick("CHATLINK") and self.mat then
+      local _, link = GetItemInfo(self.mat.id)
+      if link then ChatEdit_InsertLink(link) end
+    end
+  end)
+end
+
+function CR.UpdateMaterialRow(row, m)
+  row.mat = m
+  row.icon:SetTexture(GetItemIcon(m.id))
+  row.name:SetText(m.name)
+  local covered = m.have + m.crafted
+  local color = covered >= m.need and "40ff40" or "ffffff"
+  local count = CR.ColorText(string.format("%d/%d", math.min(m.have, m.need), m.need), color)
+  if m.crafted > 0 then count = count .. CR.ColorText(" +" .. m.crafted, "33ccff") end
+  row.count:SetText(count)
+  if m.crafted > 0 then
+    row.cost:SetText(CR.ColorText("crafted", "33ccff"))
+  elseif m.missing == 0 then
+    row.cost:SetText(CR.ColorText("done", "40ff40"))
+  else
+    local txt = CR.FormatMoney(m.missingCost)
+    if m.priceSrc == "vendor" then txt = CR.ColorText("vendor ", "aaaaaa") .. txt end
+    row.cost:SetText(txt)
+  end
+end
+
+-- "Cost to buy what's missing: 2g 1s" (+ unpriced items / no Auctionator notes)
+function CR.MissingCostText(plan, short)
+  if not CR.HasAuctionator() then return CR.ColorText("Install Auctionator for material prices.", "ff9966") end
+  local t = string.format(short and "Missing: %s" or "Cost to buy what's missing: %s", CR.FormatMoney(plan.missingCost))
+  if plan.unpriced > 0 then
+    t = t .. CR.ColorText(string.format(short and "  +%d unpriced" or "  (+%d items with no price - scan the AH)", plan.unpriced), "ff9966")
+  end
+  return t
+end
+
 function CR.CreateList(name, parent, width, height, createRow, updateRow)
   local list = CreateFrame("Frame", nil, parent, "BackdropTemplate")
   list:SetSize(width, height)
@@ -368,7 +435,7 @@ CR.OnChange(function() CR.RefreshWindow() end)
 -- Plan panel
 ---------------------------------------------------------------------------
 -- Goals are named after the profession ranks (Apprentice 75 ... Artisan 300).
-local function GoalOptions()
+function CR.GoalOptions()
   local profName = CraftRouteCharDB.profession
   local route = CR.Route(profName)
   local info = CR.RankInfo(profName)
@@ -504,7 +571,7 @@ function CR.CreatePlanPanel(parent)
   seqText:SetPoint("RIGHT", panel, "RIGHT", -4, 0)
   seqText:SetJustifyH("LEFT")
 
-  local goalDD = CR.CreateDropdown(panel, 150, GoalOptions,
+  local goalDD = CR.CreateDropdown(panel, 150, CR.GoalOptions,
     function() return db().goalMode end,
     function(v) db().goalMode = v; CR.NotifyChanged() end)
   goalDD:SetPoint("LEFT", goalLabel, "RIGHT", 6, 0)
@@ -814,59 +881,8 @@ function CR.CreatePlanPanel(parent)
   matHdr:SetPoint("TOPRIGHT", -28, -42)
   matHdr:SetText("have / need      cost to buy")
 
-  local mats = CR.CreateList("CraftRouteMatsScroll", panel, 360, 382, function(row)
-    row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(14, 14)
-    row.icon:SetPoint("LEFT", 2, 0)
-    -- cost is pinned right, count before it, and the name takes whatever width is left
-    row.cost = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.cost:SetPoint("RIGHT", -2, 0)
-    row.cost:SetWidth(100)
-    row.cost:SetJustifyH("RIGHT")
-    row.count = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.count:SetPoint("RIGHT", row.cost, "LEFT", -6, 0)
-    row.count:SetWidth(70)
-    row.count:SetJustifyH("RIGHT")
-    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-    row.name:SetPoint("RIGHT", row.count, "LEFT", -4, 0)
-    row.name:SetJustifyH("LEFT")
-    row.name:SetWordWrap(false)
-    row:SetScript("OnEnter", function(self)
-      if not self.mat then return end
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:SetItemByID(self.mat.id) -- CraftRoute lines are added by the tooltip hook
-      GameTooltip:AddLine(" ")
-      GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
-      CR.AddLocationLines(GameTooltip, self.mat.id)
-      GameTooltip:Show()
-    end)
-    row:SetScript("OnLeave", GameTooltip_Hide)
-    row:SetScript("OnClick", function(self)
-      if IsModifiedClick("CHATLINK") and self.mat then
-        local _, link = GetItemInfo(self.mat.id)
-        if link then ChatEdit_InsertLink(link) end
-      end
-    end)
-  end, function(row, m)
-    row.mat = m
-    row.icon:SetTexture(GetItemIcon(m.id))
-    row.name:SetText(m.name)
-    local covered = m.have + m.crafted
-    local color = covered >= m.need and "40ff40" or "ffffff"
-    local count = CR.ColorText(string.format("%d/%d", math.min(m.have, m.need), m.need), color)
-    if m.crafted > 0 then count = count .. CR.ColorText(" +" .. m.crafted, "33ccff") end
-    row.count:SetText(count)
-    if m.crafted > 0 then
-      row.cost:SetText(CR.ColorText("crafted", "33ccff"))
-    elseif m.missing == 0 then
-      row.cost:SetText(CR.ColorText("done", "40ff40"))
-    else
-      local txt = CR.FormatMoney(m.missingCost)
-      if m.priceSrc == "vendor" then txt = CR.ColorText("vendor ", "aaaaaa") .. txt end
-      row.cost:SetText(txt)
-    end
-  end)
+  local mats = CR.CreateList("CraftRouteMatsScroll", panel, 360, 382, function(row) CR.CreateMaterialRow(row) end,
+    CR.UpdateMaterialRow)
   mats:SetPoint("TOPLEFT", steps, "TOPRIGHT", 6, 0)
   mats:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 50)
 
@@ -946,12 +962,7 @@ function CR.CreatePlanPanel(parent)
     mats.data = e.plan.materials
     mats:Refresh()
 
-    local t = string.format("Cost to buy what's missing: %s", CR.FormatMoney(e.plan.missingCost))
-    if e.plan.unpriced > 0 then
-      t = t .. CR.ColorText(string.format("  (+%d items with no price - scan the AH)", e.plan.unpriced), "ff9966")
-    end
-    if not CR.HasAuctionator() then t = CR.ColorText("Install Auctionator for material prices.", "ff9966") end
-    totals:SetText(t)
+    totals:SetText(CR.MissingCostText(e.plan))
     shop:SetEnabled(CR.HasAuctionator())
     altsCB:SetChecked(db().includeAlts)
     unlearnedCB:SetChecked(db().showUnlearned)

@@ -20,11 +20,19 @@ function CR.GetUnitPrice(itemID)
   return nil
 end
 
+-- Money with the gold / silver / copper coin icons, like vendors show it: "13 (s) 50 (c)".
+-- Units that are zero are left out (but 0 shows as "0 (c)").
+local COIN = "|TInterface\\MoneyFrame\\UI-%sIcon:0:0:2:0|t"
+local GOLD, SILVER, COPPER = COIN:format("Gold"), COIN:format("Silver"), COIN:format("Copper")
 function CR.FormatMoney(copper)
   if not copper then return "|cff808080?|r" end
   copper = math.floor(copper + 0.5)
-  if GetCoinTextureString then return GetCoinTextureString(copper) end
-  return string.format("%dg %ds %dc", copper / 10000, (copper / 100) % 100, copper % 100)
+  local g, sv, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+  local parts = {}
+  if g > 0 then table.insert(parts, (BreakUpLargeNumbers and BreakUpLargeNumbers(g) or g) .. GOLD) end
+  if sv > 0 then table.insert(parts, sv .. SILVER) end
+  if c > 0 or #parts == 0 then table.insert(parts, c .. COPPER) end
+  return table.concat(parts, " ")
 end
 
 -- Builds (or replaces) an Auctionator shopping list with the missing AH-bought materials.

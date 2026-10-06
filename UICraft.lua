@@ -71,6 +71,131 @@ local function IsRepeating()
 end
 
 ---------------------------------------------------------------------------
+-- Enchanting: a target item for "Enchant <slot> - ..." recipes, so you can enchant the same
+-- item over and over while levelling.
+---------------------------------------------------------------------------
+-- Which kinds of gear each enchant goes on (by the part of its name before " - ").
+local WEAPONS = { INVTYPE_WEAPON = true, INVTYPE_WEAPONMAINHAND = true, INVTYPE_WEAPONOFFHAND = true, INVTYPE_2HWEAPON = true }
+local ENCHANT_SLOTS = {
+  ["2H Weapon"] = { INVTYPE_2HWEAPON = true },
+  ["Weapon"]    = WEAPONS,
+  ["Bracer"]    = { INVTYPE_WRIST = true },
+  ["Boots"]     = { INVTYPE_FEET = true },
+  ["Gloves"]    = { INVTYPE_HAND = true },
+  ["Chest"]     = { INVTYPE_CHEST = true, INVTYPE_ROBE = true },
+  ["Cloak"]     = { INVTYPE_CLOAK = true },
+  ["Shield"]    = { INVTYPE_SHIELD = true },
+  ["Off-Hand"]  = { INVTYPE_HOLDABLE = true },
+  ["Necklace"]  = { INVTYPE_NECK = true },
+}
+-- The gear kinds this recipe enchants (nil if it isn't an item enchant), and its slot word.
+function CR.EnchantSlotFor(r)
+  local kind = r and r.name:match("^Enchant (.-) %- ")
+  return kind and ENCHANT_SLOTS[kind], kind
+end
+
+local function EquipLoc(itemID)
+  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if not f or not itemID then return nil end
+  return select(4, f(itemID))
+end
+
+local function HasEnchant(link)
+  local e = link and link:match("item:%-?%d+:(%-?%d*)")
+  return (tonumber(e) or 0) > 0
+end
+
+local function NumBagSlots(bag)
+  if C_Container and C_Container.GetContainerNumSlots then return C_Container.GetContainerNumSlots(bag) or 0 end
+  return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
+end
+
+-- itemID, link, bound? of a bag slot
+local function BagItem(bag, slot)
+  if C_Container and C_Container.GetContainerItemInfo then
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if not info then return nil end
+    local bound = info.isBound
+    if bound == nil and C_Item and C_Item.IsBound and ItemLocation then
+      local ok, b = pcall(C_Item.IsBound, ItemLocation:CreateFromBagAndSlot(bag, slot))
+      bound = ok and b or false
+    end
+    return info.itemID, info.hyperlink or (C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(bag, slot)), bound
+  end
+end
+
+-- Gear you could put this enchant on: what you're wearing and what's in your bags (never the
+-- bank or alts). Bag items and unenchanted ones first, so your worn gear is the last resort.
+-- Unbound items are fine; enchanting one binds it, and the game asks you about that itself.
+function CR.EnchantCandidates(fits)
+  local list = {}
+  if not fits then return list end
+  for slot = 1, 19 do
+    local id = GetInventoryItemID and GetInventoryItemID("player", slot)
+    if id and fits[EquipLoc(id) or ""] then
+      local link = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+      table.insert(list, { equipSlot = slot, itemID = id, link = link, enchanted = HasEnchant(link) })
+    end
+  end
+  for bag = 0, NUM_BAG_SLOTS or 4 do
+    for slot = 1, NumBagSlots(bag) do
+      local id, link, bound = BagItem(bag, slot)
+      if id and fits[EquipLoc(id) or ""] then
+        table.insert(list, { bag = bag, slot = slot, itemID = id, link = link, enchanted = HasEnchant(link), unbound = bound == false })
+      end
+    end
+  end
+  table.sort(list, function(a, b)
+    if (a.equipSlot ~= nil) ~= (b.equipSlot ~= nil) then return a.equipSlot == nil end
+    if a.enchanted ~= b.enchanted then return not a.enchanted end
+    return (a.bag or 0) * 100 + (a.slot or a.equipSlot) < (b.bag or 0) * 100 + (b.slot or b.equipSlot)
+  end)
+  return list
+end
+
+-- Is the target still where we left it? If it moved, find it again by item.
+local function ResolveTarget(t, fits)
+  if not t then return nil end
+  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+    if c.itemID == t.itemID and c.equipSlot == t.equipSlot and c.bag == t.bag and c.slot == t.slot then return c end
+  end
+  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+    if c.itemID == t.itemID then return c end
+  end
+end
+
+-- Cast the enchant on the target. The game's "replace the existing enchant?" question is
+-- answered for you (see REPLACE_ENCHANT below), so clicking again keeps enchanting.
+local function EnchantTarget(r, t)
+  if InCombatLockdown() then CR.Print("Can't enchant in combat.") return end
+  CR.enchantArmedUntil = GetTime() + 6
+  local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
+    or ItemLocation:CreateFromBagAndSlot(t.bag, t.slot))
+  local cast = false
+  if TS.CraftEnchant and loc then cast = pcall(TS.CraftEnchant, r.spell, 1, nil, loc) end
+  if not cast then Craft(r, 1) end
+  -- Classic-style: the enchant waits for a target - hand it the item.
+  if SpellIsTargeting and SpellIsTargeting() then
+    if t.equipSlot then
+      PickupInventoryItem(t.equipSlot)
+    elseif C_Container and C_Container.PickupContainerItem then
+      C_Container.PickupContainerItem(t.bag, t.slot)
+    elseif PickupContainerItem then
+      PickupContainerItem(t.bag, t.slot)
+    end
+    if CursorHasItem and CursorHasItem() then ClearCursor() end   -- never leave it on the cursor
+  end
+end
+
+function CR.AutoReplaceEnchant()
+  if CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil and ReplaceEnchant then
+    ReplaceEnchant()
+    C_Timer.After(0, function() if StaticPopup_Hide then StaticPopup_Hide("REPLACE_ENCHANT") end end)
+    return true
+  end
+end
+
+---------------------------------------------------------------------------
 -- Widgets
 ---------------------------------------------------------------------------
 local function QualityRGB(q)
@@ -107,17 +232,112 @@ local function IconButton(parent, size)
   return b
 end
 
--- One reagent line: icon, "have/need Name".
+-- One reagent line: icon, "have/need Name", and (when you can make the reagent yourself) a
+-- +/- toggle. Clicking the line or the toggle opens it up to show how to make it.
 local function ReagentRow(parent, iconSize, font)
-  local row = CreateFrame("Frame", nil, parent)
+  local row = CreateFrame("Button", nil, parent)
   row:SetSize(240, iconSize + 4)
   row.btn = IconButton(row, iconSize)
   row.btn:SetPoint("LEFT", 0, 0)
+  row.hl = row:CreateTexture(nil, "BACKGROUND")
+  row.hl:SetAllPoints()
+  row.hl:SetColorTexture(1, 1, 1, 0.08)
+  row.hl:Hide()
+  row.make = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.make:SetSize(22, 20)
+  row.make:SetPoint("RIGHT", -2, 0)
+  row.make:SetText("+")
+  row.make:Hide()
+  CR.ThemeRegisterButton(row.make)
+  row.buy = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.buy:SetSize(42, 20)
+  row.buy:SetText("Buy")
+  row.buy:Hide()
+  CR.ThemeRegisterButton(row.buy)
   row.text = row:CreateFontString(nil, "OVERLAY", font)
   row.text:SetPoint("LEFT", row.btn, "RIGHT", 8, 0)
   row.text:SetPoint("RIGHT", 0, 0)
   row.text:SetJustifyH("LEFT")
+  local function Click() if row.onMake then row.onMake() end end
+  row:SetScript("OnClick", Click)
+  row.make:SetScript("OnClick", Click)
+  row:SetScript("OnEnter", function(self)
+    if not self.onMake then return end
+    self.hl:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(CR.ItemName(self.btn.itemID), 1, 0.82, 0)
+    GameTooltip:AddLine(self.expanded and "Click to hide how to make it."
+      or "You can make this yourself - click to show its components and craft it here.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  row:SetScript("OnLeave", function(self) self.hl:Hide() GameTooltip_Hide() end)
   return row
+end
+
+-- A scrolling area inside a reagent box: rows go on `content`; Fit() caps the visible height
+-- and shows a slim scroll bar (mouse wheel or drag) when they don't all fit.
+local function ScrollArea(box, left, top, width)
+  local sf = CreateFrame("ScrollFrame", nil, box)
+  sf:SetPoint("TOPLEFT", left, top)
+  sf:SetSize(width, 40)
+  local content = CreateFrame("Frame", nil, sf)
+  content:SetSize(width, 40)
+  sf:SetScrollChild(content)
+  local track = CreateFrame("Frame", nil, box, "BackdropTemplate")
+  track:SetWidth(5)
+  track:SetPoint("TOPRIGHT", box, "TOPRIGHT", -3, top)
+  track:SetPoint("BOTTOM", sf, "BOTTOM", 0, 0)
+  CR.Backdrop(track, 0.1, 0.1, 0.1, 0.8)
+  track.crOwnBorder = true
+  local thumb = track:CreateTexture(nil, "OVERLAY")
+  thumb:SetColorTexture(0.6, 0.6, 0.6, 0.9)
+  thumb:SetWidth(5)
+  sf.contentH, sf.visibleH = 40, 40
+  local function MaxScroll() return math.max(0, sf.contentH - sf.visibleH) end
+  function sf:UpdateThumb()
+    local max = MaxScroll()
+    track:SetShown(max > 0)
+    if max <= 0 then return end
+    local th = self.visibleH
+    local h = math.max(12, th * self.visibleH / self.contentH)
+    thumb:SetHeight(h)
+    thumb:ClearAllPoints()
+    thumb:SetPoint("TOP", track, "TOP", 0, -(th - h) * (self:GetVerticalScroll() / max))
+  end
+  function sf:ScrollTo(v)
+    self:SetVerticalScroll(math.max(0, math.min(MaxScroll(), v)))
+    self:UpdateThumb()
+  end
+  -- contentH: everything; maxH: the most to show. Returns the height shown.
+  function sf:Fit(contentH, maxH)
+    self.contentH = contentH
+    self.visibleH = math.max(1, math.min(contentH, maxH))
+    content:SetHeight(contentH)
+    self:SetHeight(self.visibleH)
+    self:ScrollTo(self:GetVerticalScroll() or 0)
+    return self.visibleH
+  end
+  sf:EnableMouseWheel(true)
+  sf:SetScript("OnMouseWheel", function(self, delta) self:ScrollTo((self:GetVerticalScroll() or 0) - delta * 30) end)
+  local function FromCursor()
+    local _, y = GetCursorPosition()
+    y = y / track:GetEffectiveScale()
+    local frac = (track:GetTop() - y) / track:GetHeight()
+    sf:ScrollTo(frac * MaxScroll())
+  end
+  track:EnableMouse(true)
+  track:SetScript("OnMouseDown", function(self) FromCursor() self:SetScript("OnUpdate", FromCursor) end)
+  track:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
+  track:Hide()
+  return sf, content
+end
+
+-- How tall a reagent box may be: down to just above the cast bar (keeping `reserve` free for
+-- the text under it), at least `minH`. Before layout has happened, `fallback`.
+local function RoomBelow(box, floorFrame, reserve, minH, fallback)
+  local top, bottom = box:GetTop(), floorFrame:GetTop()
+  if type(top) ~= "number" or type(bottom) ~= "number" or top <= bottom then return fallback end
+  return math.max(minH, top - bottom - reserve)
 end
 
 -- How many of an item are in your bags (craftable now) and how many are elsewhere: your bank,
@@ -128,31 +348,127 @@ function CR.BagsAndElsewhere(itemID)
   return bags, math.max(0, (total or 0) - bags)
 end
 
--- The count shown is everything you have (bags + bank + mail + alts); the colour says whether
--- it's enough and where it is: green = enough in your bags, ready to craft; yellow = enough in
--- total but some isn't on you (fetch it from the bank / mail / an alt); red = not enough even
--- counting everywhere (5 on you + 5 in the bank of 14 shows red 10/14).
-function CR.ReagentColor(bags, elsewhere, need)
+-- Colour for "have/need" (need = the whole step, perCraft = one craft):
+-- green = the whole step is in your bags; yellow = not the whole step, but at least one craft
+-- (counting the bank / mail / alts); red = not even one craft anywhere.
+function CR.ReagentColor(bags, elsewhere, need, perCraft)
   if bags >= need then return "40ff40" end
-  if bags + elsewhere >= need then return "ffd100" end
+  if bags + elsewhere >= (perCraft or need) then return "ffd100" end
   return "ff6060"
 end
 
-local function FillReagents(box, rows, r, perCraft)
+-- Components you can make yourself without a trade skill recipe: enchanting essences combine
+-- (3 lesser -> 1 greater) and split (1 greater -> 3 lesser) by using the item.
+-- [wanted item] = { use = item to use, uses = how many it takes, makes = how many you get }
+local CONVERSIONS = {}
+for _, pair in ipairs({ { 10938, 10939 }, { 10998, 11082 }, { 11134, 11135 },
+                        { 11174, 11175 }, { 16202, 16203 } }) do
+  local lesser, greater = pair[1], pair[2]
+  CONVERSIONS[greater] = { use = lesser, uses = 3, makes = 1 }
+  CONVERSIONS[lesser] = { use = greater, uses = 1, makes = 3 }
+end
+
+-- How this profession can make an item: a recipe, or an item-use conversion. nil if it can't.
+function CR.ComponentMaker(prof, itemID)
+  local spell = prof and prof.byItem[itemID]
+  if spell and prof.recipes[spell] then return { recipe = prof.recipes[spell] } end
+  if CONVERSIONS[itemID] then return { convert = CONVERSIONS[itemID] } end
+end
+
+---------------------------------------------------------------------------
+-- Vendor: when a merchant window is open, reagents it sells get a Buy button.
+---------------------------------------------------------------------------
+local merchantOpen, merchantIndex = false, {}   -- [itemID] = merchant slot
+
+-- price (for one purchase), how many one purchase gives, how many are left (-1 = unlimited)
+local function MerchantSlotInfo(i)
+  if C_MerchantFrame and C_MerchantFrame.GetItemInfo then
+    local ok, info = pcall(C_MerchantFrame.GetItemInfo, i)
+    if ok and info then return info.price, info.stackCount, info.numAvailable, info.hasExtendedCost end
+  end
+  if GetMerchantItemInfo then
+    local _, _, price, quantity, numAvailable, _, _, extendedCost = GetMerchantItemInfo(i)
+    return price, quantity, numAvailable, extendedCost
+  end
+end
+
+local function ScanMerchant()
+  wipe(merchantIndex)
+  if not merchantOpen or not GetMerchantNumItems or not GetMerchantItemID then return end
+  for i = 1, GetMerchantNumItems() do
+    local id = GetMerchantItemID(i)
+    local price, _, _, extended = MerchantSlotInfo(i)
+    if id and price and price > 0 and not extended then merchantIndex[id] = i end   -- gold only
+  end
+end
+
+function CR.MerchantSells(itemID) return merchantOpen and merchantIndex[itemID] or nil end
+
+-- What buying `count` would actually get you: purchases, items, cost (capped by stock and gold).
+local function BuyPlan(itemID, count)
+  local i = merchantIndex[itemID]
+  if not i or count <= 0 then return 0, 0, 0 end
+  local price, batch, avail = MerchantSlotInfo(i)
+  batch = math.max(1, batch or 1)
+  local purchases = math.ceil(count / batch)
+  if avail and avail >= 0 then purchases = math.min(purchases, avail) end
+  if price and price > 0 then purchases = math.min(purchases, math.floor((GetMoney and GetMoney() or 0) / price)) end
+  return purchases, purchases * batch, purchases * (price or 0)
+end
+
+local function BuyFromMerchant(itemID, count)
+  local i = merchantIndex[itemID]
+  local purchases = BuyPlan(itemID, count)
+  if not i or purchases <= 0 then return end
+  local _, batch = MerchantSlotInfo(i)
+  if (batch or 1) > 1 then
+    for _ = 1, purchases do BuyMerchantItem(i) end   -- sold in bundles: one call per bundle
+  else
+    local maxStack = math.max(1, GetMerchantItemMaxStack and GetMerchantItemMaxStack(i) or 1)
+    local left = purchases
+    while left > 0 do
+      local n = math.min(left, maxStack)
+      BuyMerchantItem(i, n)
+      left = left - n
+    end
+  end
+end
+
+-- opts.perCraft: colour by one craft rather than the step total (the current recipe).
+-- opts.onBuy(itemID, short, button): offer "Buy" for reagents the open vendor sells.
+-- opts.prof + opts.onMake(itemID): offer the +/- toggle for reagents you're short of in your
+-- bags and can make yourself; opts.expanded is the one that's open.
+local function FillReagents(box, rows, r, crafts, opts)
+  opts = opts or {}
   for i, row in ipairs(rows) do
     local rg = r and r.reagents[i]
     if rg then
       local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
-      local need = rg[2] * perCraft
+      local need = rg[2] * crafts
       row.btn.itemID = rg[1]
       row.btn.icon:SetTexture(GetItemIcon(rg[1]))
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
-      local color = CR.ReagentColor(bags, elsewhere, need)
+      local color = CR.ReagentColor(bags, elsewhere, need, opts.perCraft and rg[2] or nil)
       local have = bags >= need and bags or (bags + elsewhere)
       row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
+      local id = rg[1]
+      local open = opts.expanded == id
+      local canMake = opts.onMake and (bags < need or open) and CR.ComponentMaker(opts.prof, id)
+      row.onMake = canMake and function() opts.onMake(id) end or nil
+      row.expanded = open
+      row.make:SetText(open and "-" or "+")
+      row.make:SetShown(canMake and true or false)
+      -- "Buy" when the open vendor sells it and your bags are short
+      local canBuy = opts.onBuy and bags < need and CR.MerchantSells(id)
+      row.buy:ClearAllPoints()
+      row.buy:SetPoint("RIGHT", canMake and -28 or -2, 0)
+      row.buy:SetShown(canBuy and true or false)
+      row.buy:SetScript("OnClick", canBuy and function(self) opts.onBuy(id, need - bags, self) end or nil)
+      row.text:SetPoint("RIGHT", -((canMake and 28 or 0) + (canBuy and 46 or 0)), 0)
       row:Show()
     else
+      row.onMake = nil
       row:Hide()
     end
   end
@@ -191,7 +507,9 @@ function CR.CreateCraftPanel(parent)
     local opts = {}
     for _, n in ipairs(CR.SupportedProfessions()) do
       local _, _, detected = CR.GetSkill(n)
-      if detected or n == db().profession then table.insert(opts, { value = n, text = n }) end
+      if detected or db().showUnlearned or n == db().profession then
+        table.insert(opts, { value = n, text = detected and n or CR.ColorText(n, "808080") })
+      end
     end
     return opts
   end, function() return db().profession end,
@@ -201,6 +519,27 @@ function CR.CreateCraftPanel(parent)
     CR.NotifyChanged()
   end)
   profDD:SetPoint("TOPLEFT", 4, -8)
+
+  -- Same setting as the Plan tab's tickbox: list professions this character hasn't learned.
+  local unlearnedCB = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+  unlearnedCB:SetSize(20, 20)
+  unlearnedCB:SetPoint("TOPLEFT", profDD, "BOTTOMLEFT", -2, -4)
+  unlearnedCB.label = unlearnedCB:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  unlearnedCB.label:SetPoint("LEFT", unlearnedCB, "RIGHT", 2, 0)
+  unlearnedCB.label:SetText("Show unlearned")
+  unlearnedCB:SetScript("OnClick", function(self)
+    db().showUnlearned = self:GetChecked() and true or false
+    CR.NotifyChanged()
+  end)
+  unlearnedCB:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Show professions I haven't learned")
+    GameTooltip:AddLine("Ticked, the profession list also offers professions this character doesn't have "
+      .. "(greyed out), so you can look through their route. Untick to list only your own professions.", 1, 1, 1, true)
+    GameTooltip:AddLine("Shared with the Plan tab's tickbox.", 0.7, 0.7, 0.7, true)
+    GameTooltip:Show()
+  end)
+  unlearnedCB:SetScript("OnLeave", GameTooltip_Hide)
   bar:SetPoint("LEFT", profDD, "RIGHT", 12, 0)
   bar:SetPoint("RIGHT", leftArea, "RIGHT", -10, 0)
 
@@ -247,6 +586,9 @@ function CR.CreateCraftPanel(parent)
   bigIcon:SetPoint("TOP", 0, 0)
   prevBtn:SetPoint("RIGHT", bigIcon, "LEFT", -24, 0)
   nextBtn:SetPoint("LEFT", bigIcon, "RIGHT", 24, 0)
+  -- "Tanning Rack required" - special crafting stations, in the gap above the icon
+  local structureText = main:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  structureText:SetPoint("BOTTOM", bigIcon, "TOP", 0, 8)
   local name = main:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
   name:SetPoint("TOP", bigIcon, "BOTTOM", 0, -10)
   name:SetWidth(320)
@@ -308,15 +650,206 @@ function CR.CreateCraftPanel(parent)
   -- "Crafts ready: 1/16" - how many of this step your bags can make right now
   local readyText = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   readyText:SetPoint("TOPRIGHT", -12, -8)
+  local reagentScroll, reagentContent = ScrollArea(reagentBox, 0, -24, 292)
   local reagentRows = {}
-  for i = 1, 6 do
-    local row = ReagentRow(reagentBox, 36, "GameFontHighlight")
+  for i = 1, 8 do
+    local row = ReagentRow(reagentContent, 36, "GameFontHighlight")
     row:SetSize(276, 40)
-    row:SetPoint("TOPLEFT", 12, -24 - (i - 1) * 40)
+    row:SetPoint("TOPLEFT", 12, -(i - 1) * 40)
     reagentRows[i] = row
   end
   local totalNote = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   totalNote:SetPoint("BOTTOMRIGHT", -10, 6)
+
+  -- Inline component maker: click a reagent you can make yourself (Medium Leather from Light
+  -- Leather, Bolts of Cloth, Handfuls of Bolts, essences...) and its line opens up to show what
+  -- it's made from, with a Make button that starts crafting it straight away.
+  local expand = CreateFrame("Frame", nil, reagentContent, "BackdropTemplate")
+  expand:SetWidth(264)
+  CR.Backdrop(expand, 0, 0, 0, 0.5)
+  expand:Hide()
+  expand.rows = {}
+  for i = 1, 4 do
+    local row = ReagentRow(expand, 28, "GameFontHighlightSmall")
+    row:SetSize(172, 32)
+    row:SetPoint("TOPLEFT", 8, -4 - (i - 1) * 32)
+    expand.rows[i] = row
+  end
+  expand.info = expand:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  expand.info:SetPoint("BOTTOMLEFT", 8, 6)
+  expand.info:SetPoint("RIGHT", -8, 0)
+  expand.info:SetJustifyH("LEFT")
+  expand.make = CreateFrame("Button", nil, expand, "UIPanelButtonTemplate")
+  expand.make:SetSize(76, 22)
+  expand.make:SetPoint("TOPRIGHT", -8, -9)
+  CR.ThemeRegisterButton(expand.make)
+  expand.make:SetScript("OnClick", function(self)
+    if self.openProf then CR.OpenTradeSkill(self.openProf)
+    elseif self.recipe and (self.count or 0) > 0 then Craft(self.recipe, self.count) end
+  end)
+
+  -- Buy popup, opened from a reagent's Buy button while a vendor is open: buy one, the amount
+  -- this step still needs in your bags, or any amount.
+  local buyPop = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+  buyPop:SetSize(236, 150)
+  CR.Backdrop(buyPop, 0.04, 0.04, 0.06, 0.97)
+  CR.ThemeRegisterBorder(buyPop)
+  buyPop:SetFrameLevel(panel:GetFrameLevel() + 40)
+  buyPop:EnableMouse(true)
+  buyPop:Hide()
+  local bpTitle = buyPop:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  bpTitle:SetPoint("TOPLEFT", 10, -10)
+  bpTitle:SetPoint("RIGHT", -10, 0)
+  bpTitle:SetJustifyH("LEFT")
+  CR.ThemeRegisterAccentText(bpTitle)
+  local bpPrice = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  bpPrice:SetPoint("TOPLEFT", bpTitle, "BOTTOMLEFT", 0, -3)
+  local function PopButton(w, text)
+    local b = CreateFrame("Button", nil, buyPop, "UIPanelButtonTemplate")
+    b:SetSize(w, 22)
+    if text then b:SetText(text) end
+    CR.ThemeRegisterButton(b)
+    return b
+  end
+  local bpOne = PopButton(64, "Buy 1")
+  bpOne:SetPoint("TOPLEFT", 10, -60)
+  local bpNeed = PopButton(144)
+  bpNeed:SetPoint("LEFT", bpOne, "RIGHT", 8, 0)
+  local bpNeedCost = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")   -- what "Buy needed" costs
+  bpNeedCost:SetPoint("BOTTOM", bpNeed, "TOP", 0, 3)
+  local bpBox = CreateFrame("EditBox", nil, buyPop, "InputBoxTemplate")
+  bpBox:SetSize(44, 20)
+  bpBox:SetPoint("TOPLEFT", 40, -94)
+  bpBox:SetAutoFocus(false)
+  bpBox:SetNumeric(true)
+  bpBox:SetMaxLetters(4)
+  bpBox:SetJustifyH("CENTER")
+  local function BpStep(dir)
+    local b = CreateFrame("Button", nil, buyPop)
+    b:SetSize(22, 22)
+    local base = dir < 0 and "Interface\\Buttons\\UI-SpellbookIcon-PrevPage-" or "Interface\\Buttons\\UI-SpellbookIcon-NextPage-"
+    b:SetNormalTexture(base .. "Up")
+    b:SetPushedTexture(base .. "Down")
+    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    b:SetScript("OnClick", function() bpBox:SetNumber(math.max(1, (bpBox:GetNumber() or 1) + dir)) end)
+    return b
+  end
+  BpStep(-1):SetPoint("RIGHT", bpBox, "LEFT", -6, 0)
+  BpStep(1):SetPoint("LEFT", bpBox, "RIGHT", 2, 0)
+  local bpBuy = PopButton(92)
+  bpBuy:SetPoint("LEFT", bpBox, "RIGHT", 30, 0)
+  local bpCancel = PopButton(80, "Cancel")
+  bpCancel:SetPoint("BOTTOMRIGHT", -10, 8)
+  local bpTotal = buyPop:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  bpTotal:SetPoint("BOTTOMLEFT", 10, 13)
+
+  local function BuyText(prefix, count)
+    local _, items, cost = BuyPlan(buyPop.itemID, count)
+    return items > 0 and string.format("%s (%d)", prefix, items) or prefix, items, cost
+  end
+  local function UpdateBuyPop()
+    local id = buyPop.itemID
+    if not id or not CR.MerchantSells(id) then buyPop:Hide() return end
+    local price, batch = MerchantSlotInfo(merchantIndex[id])
+    bpTitle:SetText("Buy " .. CR.ItemName(id))
+    bpPrice:SetText(CR.FormatMoney(price or 0) .. ((batch or 1) > 1 and string.format(" per %d", batch) or " each"))
+    local t, items, needCost = BuyText("Buy needed", buyPop.need)
+    bpNeed:SetText(t)
+    bpNeed:SetEnabled(items > 0)
+    bpNeedCost:SetText(items > 0 and CR.FormatMoney(needCost)
+      or CR.ColorText(buyPop.need > 0 and "Can't afford" or "Nothing needed", buyPop.need > 0 and "ff6060" or "40ff40"))
+    bpOne:SetEnabled((BuyPlan(id, 1)) > 0)
+    local n = math.max(1, bpBox:GetNumber() or 1)
+    local _, boxItems, boxCost = BuyPlan(id, n)
+    bpBuy:SetText("Buy " .. boxItems)
+    bpBuy:SetEnabled(boxItems > 0)
+    bpTotal:SetText(boxItems > 0 and ("Total: " .. CR.FormatMoney(boxCost)) or CR.ColorText("Can't afford", "ff6060"))
+  end
+  bpBox:SetScript("OnTextChanged", UpdateBuyPop)
+  bpBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  bpBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+  bpOne:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, 1) end)
+  bpNeed:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, buyPop.need) buyPop:Hide() end)
+  bpBuy:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, math.max(1, bpBox:GetNumber() or 1)) buyPop:Hide() end)
+  bpCancel:SetScript("OnClick", function() buyPop:Hide() end)
+
+  -- short: how many more this step needs in your bags
+  local function OpenBuy(itemID, short, button)
+    if buyPop:IsShown() and buyPop.itemID == itemID then buyPop:Hide() return end
+    buyPop.itemID, buyPop.need = itemID, short
+    buyPop:ClearAllPoints()
+    buyPop:SetPoint("TOPLEFT", button, "TOPRIGHT", 6, 0)
+    bpBox:SetNumber(1)   -- "Buy needed" covers the usual case; a stray click here buys just one
+    buyPop:Show()
+    UpdateBuyPop()
+  end
+  panel.UpdateBuyPop = function()
+    if buyPop:IsShown() then
+      -- keep "Buy needed" in step with your bags; close if the recipe moved on
+      local found
+      for _, rg in ipairs(panel.current and panel.current.reagents or {}) do
+        if rg[1] == buyPop.itemID then
+          found = true
+          buyPop.need = math.max(0, rg[2] * (panel.currentCrafts or 1) - (GetItemCount(rg[1], false) or 0))
+        end
+      end
+      if found then UpdateBuyPop() else buyPop:Hide() end
+    end
+  end
+
+  -- Fills the open line for itemID (the step needs `need` of it); returns its height.
+  local function FillExpand(prof, itemID, need)
+    local how = CR.ComponentMaker(prof, itemID)
+    if not how then return 0 end
+    local bags, elsewhere = CR.BagsAndElsewhere(itemID)
+    local missing = math.max(0, need - bags - elsewhere)   -- not anywhere: has to be made
+    local shortBags = math.max(0, need - bags)              -- not on you
+    local makes = how.recipe and how.recipe.makes or how.convert.makes
+    local toMake = math.ceil((missing > 0 and missing or shortBags) / makes)
+    local shortText = missing > 0 and CR.ColorText(missing .. " short", "ff6060")
+      or (shortBags > 0 and CR.ColorText(shortBags .. " not on you", "ffd100"))
+      or CR.ColorText("enough", "40ff40")
+    -- the components, as have / per craft
+    FillReagents(expand, expand.rows, how.recipe or { reagents = { { how.convert.use, how.convert.uses } } }, 1, { perCraft = true })
+    local m, info = expand.make, nil
+    m.recipe, m.count, m.openProf = nil, nil, nil
+    if how.recipe then
+      local r = how.recipe
+      local learned, available = RecipeState(prof, r)
+      available = available or 0
+      m:Show()
+      m:SetText("Make")
+      m:Disable()
+      if learned == false then
+        info = CR.ColorText("Not learned - " .. CR.FactionText(r.pattern or r.src), "ff9966")
+      elseif r.learn and (CR.GetSkill(prof.name) or 0) < r.learn then
+        info = CR.ColorText("Needs " .. r.learn .. " skill", "ff6060")
+      elseif not CR.TradeSkillOpenFor(prof.name) then
+        m:SetText("Open")
+        m:SetEnabled(not InCombatLockdown())
+        m.openProf = prof.name
+        info = "Open " .. prof.name .. " to craft  ·  " .. shortText
+      else
+        local n = math.min(toMake, available)
+        m.recipe, m.count = r, n
+        if n > 0 then m:SetText("Make " .. n) end
+        m:SetEnabled(n > 0 and not IsRepeating())
+        info = string.format("Can make %s now  ·  %s", CR.ColorText(tostring(available), available > 0 and "40ff40" or "ff6060"), shortText)
+        if r.makes > 1 then info = info .. "  ·  " .. r.makes .. " per craft" end
+      end
+    else
+      -- essences combine / split by right-clicking them in your bags
+      m:Hide()
+      local c = how.convert
+      info = (c.uses > 1 and string.format("Right-click %d %s in your bags to combine them", c.uses, CR.ItemName(c.use))
+        or string.format("Right-click a %s in your bags to split it", CR.ItemName(c.use))) .. "  ·  " .. shortText
+    end
+    expand.info:SetText(info)
+    local nRows = how.recipe and #how.recipe.reagents or 1
+    local h = 8 + nRows * 32 + 16
+    expand:SetHeight(h)
+    return h
+  end
 
   -- What the whole step needs that your bags don't have yet, and what buying it costs.
   local stepNeed = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -345,11 +878,12 @@ function CR.CreateCraftPanel(parent)
     p.label:SetPoint("BOTTOM", p.iconBtn, "TOP", 0, 6)
     p.label:SetText(title)
     CR.ThemeRegisterAccentText(p.label)
+    p.scroll, p.content = ScrollArea(p.box, 0, -6, 172)
     p.rows = {}
-    for i = 1, 6 do
-      local row = ReagentRow(p.box, 26, "GameFontHighlightSmall")
-      row:SetSize(166, 30)
-      row:SetPoint("TOPLEFT", 8, -6 - (i - 1) * 30)
+    for i = 1, 8 do
+      local row = ReagentRow(p.content, 26, "GameFontHighlightSmall")
+      row:SetSize(162, 30)
+      row:SetPoint("TOPLEFT", 8, -(i - 1) * 30)
       p.rows[i] = row
     end
     return p
@@ -423,6 +957,160 @@ function CR.CreateCraftPanel(parent)
   cast.text = cast:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   cast.text:SetPoint("CENTER")
 
+  -- Enchanting target (bottom centre, above the cast bar): only for "Enchant <slot> - ..."
+  -- recipes. Hover to pick from matching gear you're wearing or carrying; click to enchant it.
+  local ench = {}   -- target = { equipSlot | bag, slot, itemID }; fits / kind of the current enchant
+  panel.crEnch = ench
+  local enchantArea = CreateFrame("Frame", nil, panel)
+  enchantArea:SetSize(480, 64)
+  enchantArea:SetPoint("BOTTOM", cast, "TOP", -12, 14)
+  enchantArea:Hide()
+  local eSlot = CreateFrame("Button", nil, enchantArea, "BackdropTemplate")
+  eSlot:SetSize(56, 56)
+  eSlot:SetPoint("CENTER", -40, 0)
+  eSlot:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+  eSlot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  eSlot.icon = eSlot:CreateTexture(nil, "ARTWORK")
+  eSlot.icon:SetPoint("TOPLEFT", 2, -2)
+  eSlot.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+  eSlot.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+  local eHl = eSlot:CreateTexture(nil, "HIGHLIGHT")
+  eHl:SetAllPoints(eSlot.icon)
+  eHl:SetColorTexture(1, 1, 1, 0.15)
+  local eLabel = enchantArea:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  eLabel:SetPoint("BOTTOMRIGHT", eSlot, "LEFT", -10, 2)
+  eLabel:SetJustifyH("RIGHT")
+  eLabel:SetText("Enchant target")
+  CR.ThemeRegisterAccentText(eLabel)
+  local eName = enchantArea:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  eName:SetPoint("TOPRIGHT", eSlot, "LEFT", -10, -2)
+  eName:SetWidth(170)
+  eName:SetJustifyH("RIGHT")
+  eName:SetWordWrap(false)
+
+  -- the pick list, to the right of the slot while you hover
+  local flyout = CreateFrame("Frame", nil, enchantArea, "BackdropTemplate")
+  flyout:SetPoint("LEFT", eSlot, "RIGHT", 6, 0)
+  flyout:SetHeight(52)
+  CR.Backdrop(flyout, 0.04, 0.04, 0.06, 0.95)
+  flyout:SetFrameLevel(eSlot:GetFrameLevel() + 5)
+  flyout:Hide()
+  local flyEmpty = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  flyEmpty:SetPoint("LEFT", 10, 0)
+  flyout.buttons = {}
+  local function FlyButton(i)
+    local b = flyout.buttons[i]
+    if b then return b end
+    b = IconButton(flyout, 42)
+    b:SetPoint("LEFT", 5 + (i - 1) * 46, 0)
+    b:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      if self.cand.link then GameTooltip:SetHyperlink(self.cand.link) else GameTooltip:SetItemByID(self.cand.itemID) end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine(self.cand.equipSlot and "You're wearing this" or "In your bags", 0.8, 0.8, 0.8)
+      if self.cand.enchanted then
+        GameTooltip:AddLine("Already enchanted - it will be replaced without asking.", 1, 0.4, 0.4, true)
+      end
+      if self.cand.unbound then
+        GameTooltip:AddLine("Not soulbound yet - enchanting it binds it to you (the game asks first).", 1, 0.82, 0, true)
+      end
+      GameTooltip:AddLine("Click to make it the target.", 0.2, 1, 0.2)
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnClick", function(self)
+      local c = self.cand
+      ench.target = { equipSlot = c.equipSlot, bag = c.bag, slot = c.slot, itemID = c.itemID }
+      flyout:Hide()
+      GameTooltip_Hide()
+      panel:Refresh()
+    end)
+    flyout.buttons[i] = b
+    return b
+  end
+  local function ShowFlyout()
+    local list = CR.EnchantCandidates(ench.fits)
+    local n = math.min(#list, 10)
+    for i = 1, n do
+      local b, c = FlyButton(i), list[i]
+      b.cand = c
+      b.icon:SetTexture(GetItemIcon(c.itemID))
+      b:SetBackdropBorderColor(QualityRGB(select(3, GetItemInfo(c.itemID)) or 1))
+      b:Show()
+    end
+    for i = n + 1, #flyout.buttons do flyout.buttons[i]:Hide() end
+    if n == 0 then
+      flyEmpty:SetText(string.format("No %s you're wearing or in your bags.",
+        (ench.kind or "item"):lower()))
+      flyEmpty:Show()
+      flyout:SetWidth(flyEmpty:GetStringWidth() + 20)
+    else
+      flyEmpty:Hide()
+      flyout:SetWidth(10 + n * 46)
+    end
+    flyout:Show()
+  end
+  -- Hide once the mouse has been away from both the slot and the list for a moment: a margin
+  -- around them covers the gap between, and the delay forgives a wobbly mouse.
+  -- (Frame method - Forever has no global MouseIsOver.)
+  flyout:SetScript("OnShow", function(self) self.awayFor = 0 end)
+  flyout:SetScript("OnUpdate", function(self, elapsed)
+    if self:IsMouseOver(12, -12, -12, 12) or eSlot:IsMouseOver(12, -12, -12, 12) then
+      self.awayFor = 0
+    else
+      self.awayFor = (self.awayFor or 0) + (elapsed or 0)
+      if self.awayFor > 0.6 then self:Hide() end
+    end
+  end)
+  eSlot:SetScript("OnEnter", function(self)
+    ShowFlyout()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    local t = ench.target
+    if t then
+      local link = t.equipSlot and GetInventoryItemLink("player", t.equipSlot)
+        or (C_Container and C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(t.bag, t.slot))
+      if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(t.itemID) end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine("Left-click: enchant it with " .. (panel.current and panel.current.name or "this enchant"), 0.2, 1, 0.2, true)
+      GameTooltip:AddLine("Its current enchant is replaced without asking.", 1, 0.4, 0.4, true)
+      GameTooltip:AddLine("Right-click: clear the target", 0.8, 0.8, 0.8)
+    else
+      GameTooltip:SetText("Enchant target")
+      GameTooltip:AddLine("Pick something to enchant from the list beside this slot: gear you're wearing, "
+        .. "or gear in your bags that this enchant fits.", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+  end)
+  eSlot:SetScript("OnLeave", GameTooltip_Hide)
+  eSlot:SetScript("OnClick", function(self, button)
+    if button == "RightButton" then ench.target = nil panel:Refresh() return end
+    local r, t = panel.current, ench.target
+    if not t then ShowFlyout() return end
+    if r and not self.blocked then EnchantTarget(r, t) end
+  end)
+
+  -- Called from Refresh. fits: the gear kinds this recipe enchants (nil = not an enchant).
+  function panel:UpdateEnchant(r, fits, kind, canCraft)
+    ench.fits, ench.kind = fits, kind
+    enchantArea:SetShown(fits and true or false)
+    if not fits then flyout:Hide() return end
+    local t = ResolveTarget(ench.target, fits)
+    ench.target = t and { equipSlot = t.equipSlot, bag = t.bag, slot = t.slot, itemID = t.itemID } or nil
+    if t then
+      eSlot.icon:SetTexture(GetItemIcon(t.itemID))
+      eSlot.icon:SetDesaturated(not canCraft)
+      eSlot:SetBackdropBorderColor(QualityRGB(select(3, GetItemInfo(t.itemID)) or 1))
+      eName:SetText(CR.ItemName(t.itemID) .. (t.equipSlot and CR.ColorText(" (worn)", "aaaaaa") or ""))
+    else
+      eSlot.icon:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+      eSlot.icon:SetDesaturated(false)
+      eSlot:SetBackdropBorderColor(0.4, 0.4, 0.4)
+      eName:SetText(CR.ColorText("Hover to choose a " .. kind:lower(), "aaaaaa"))
+    end
+    eSlot.blocked = not canCraft
+    if flyout:IsShown() then ShowFlyout() end
+    return t
+  end
+
   local function CastIdle()
     cast:SetScript("OnUpdate", nil)
     cast.casting = nil
@@ -487,6 +1175,24 @@ function CR.CreateCraftPanel(parent)
   CR.ThemeRegisterAccentText(routeTitle)
   local routeGoal = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   routeGoal:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -12)
+  -- The goal, the same setting as the Plan tab's Goal dropdown: change it in either place.
+  local goalDD = CR.CreateDropdown(panel, 180, CR.GoalOptions,
+    function() return db().goalMode end,
+    function(v) db().goalMode = v; panel.viewOffset = 0; CR.NotifyChanged() end)
+  goalDD:SetPoint("LEFT", routeTitle, "RIGHT", 10, 0)
+  local goalBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+  goalBox:SetSize(34, 20)
+  goalBox:SetPoint("LEFT", goalDD, "RIGHT", 10, 0)
+  goalBox:SetAutoFocus(false)
+  goalBox:SetNumeric(true)
+  goalBox:SetMaxLetters(3)
+  goalBox:SetScript("OnEnterPressed", function(self)
+    db().customGoal = tonumber(self:GetText()) or 225
+    db().goalMode = "custom"
+    self:ClearFocus()
+    CR.NotifyChanged()
+  end)
+  goalBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   local routeList = CR.CreateList("CraftRouteCraftRouteList", panel, ROUTE_W, 400, function(row)
     row.range = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.range:SetPoint("LEFT", 2, 0)
@@ -550,7 +1256,37 @@ function CR.CreateCraftPanel(parent)
     end
   end)
   routeList:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -28)
-  routeList:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 6)
+
+  -- Bottom third of the column: the plan's materials, compact, with the cost of what's missing.
+  local costBar = CreateFrame("Frame", nil, panel, "BackdropTemplate")
+  costBar:SetSize(ROUTE_W, 22)
+  costBar:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 6)
+  CR.Backdrop(costBar, 0, 0, 0, 0.55)
+  local costText = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  costText:SetPoint("LEFT", 8, 0)
+  costText:SetPoint("RIGHT", -8, 0)
+  costText:SetJustifyH("LEFT")
+  costText:SetWordWrap(false)
+  local craftMats = CR.CreateList("CraftRouteCraftMatsList", panel, ROUTE_W, 160,
+    function(row) CR.CreateMaterialRow(row, 64, 62) end, CR.UpdateMaterialRow)
+  craftMats:SetPoint("BOTTOMRIGHT", costBar, "TOPRIGHT", 0, 2)
+  local matsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  matsTitle:SetPoint("BOTTOMLEFT", craftMats, "TOPLEFT", 4, 4)
+  matsTitle:SetText("Materials")
+  CR.ThemeRegisterAccentText(matsTitle)
+  local matsHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  matsHdr:SetPoint("BOTTOMRIGHT", craftMats, "TOPRIGHT", -4, 5)
+  matsHdr:SetText("have / need     cost")
+  routeList:SetPoint("BOTTOMRIGHT", craftMats, "TOPRIGHT", 0, 22)
+  -- a third of the column, following the window size
+  local function SizeColumn()
+    local h = panel:GetHeight()
+    if type(h) == "number" and h > 0 then
+      craftMats:SetHeight(math.max(80, math.floor((h - 28 - 6 - 24 - 22) / 3)))
+    end
+  end
+  panel:HookScript("OnSizeChanged", SizeColumn)
+  SizeColumn()
 
   -- Open the profession window by itself (on a click or /cr - the game may block it otherwise).
   -- Once per visit: if you close it yourself, it stays closed until you come back to the tab.
@@ -565,12 +1301,12 @@ function CR.CreateCraftPanel(parent)
     self.autoOpened = craftProf
     pcall(CR.OpenTradeSkill, craftProf)
   end
-  panel:SetScript("OnHide", function(self) self.autoOpened = nil end)
+  panel:SetScript("OnHide", function(self) self.autoOpened = nil; buyPop:Hide() end)
 
-  -- Craft-able steps of the route (current first), following the full route past the goal.
+  -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
   local function CraftSteps(entry)
     local list = {}
-    for _, st in ipairs(entry.full.steps) do
+    for _, st in ipairs(entry.plan.steps) do
       if CRAFT_KINDS[st.kind] and st.recipe then table.insert(list, st) end
     end
     return list
@@ -584,6 +1320,7 @@ function CR.CreateCraftPanel(parent)
 
   function panel:Refresh()
     local profName = db().profession
+    unlearnedCB:SetChecked(db().showUnlearned)
     local entry = CR.GetPlans(profName)
     local cur, maxRank, detected = CR.GetSkill(profName)
     local prof = CR.professions[profName]
@@ -600,7 +1337,7 @@ function CR.CreateCraftPanel(parent)
 
     -- compact route: everything ahead except the "choose ONE" blocks (the chosen path's steps show)
     local lines, craftIndex = {}, 0
-    for _, s in ipairs(entry and entry.full.steps or {}) do
+    for _, s in ipairs(entry and entry.plan.steps or {}) do
       if s.kind ~= "fork" and s.kind ~= "option" then
         local isCraft = CRAFT_KINDS[s.kind] and s.recipe
         if isCraft then craftIndex = craftIndex + 1 end
@@ -615,14 +1352,28 @@ function CR.CreateCraftPanel(parent)
       routeList.offset = math.max(0, viewLine - 3)
     end
     routeList:Refresh()
-    routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
+    -- goal picker (single-skill routes); the combined guide just follows the whole guide
+    local seq = route and route.sequential
+    goalDD:SetShown(not seq)
+    goalBox:SetShown(not seq and db().goalMode == "custom")
+    if not seq then
+      goalDD:Sync()
+      if not goalBox:HasFocus() then goalBox:SetText(tostring(db().customGoal or "")) end
+    end
+    routeGoal:SetShown(seq and true or false)
+    routeGoal:SetText(entry and string.format("to %d (%s)", entry.goal, entry.route and entry.route.label or "") or "")
+    craftMats.data = entry and entry.plan.materials or {}
+    craftMats:Refresh()
+    costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
     if #steps == 0 then
-      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
+      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); enchantArea:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
         and (profName .. " has nothing to craft - see the Plan tab for where to go.")
+        or (entry and cur >= entry.goal and entry.goal < (route.maxSkill or 300))
+        and string.format("Goal reached (%d). Pick a higher goal next to Route to keep going.", entry.goal)
         or "Nothing left to craft on this route.")
       empty:Show()
       return
@@ -632,6 +1383,9 @@ function CR.CreateCraftPanel(parent)
     local st = steps[1 + panel.viewOffset]
     local nst = steps[2 + panel.viewOffset]
     local r = st.recipe
+    local enchantFits, enchantKind = CR.EnchantSlotFor(r)
+    -- the reagent boxes stop above the enchant target when it's showing, else above the cast bar
+    local floor = enchantFits and enchantArea or cast
     prevBtn:SetShown(true); nextBtn:SetShown(true)
     prevBtn:SetEnabled(panel.viewOffset > 0)
     nextBtn:SetEnabled(nst ~= nil)
@@ -667,14 +1421,55 @@ function CR.CreateCraftPanel(parent)
     name:SetTextColor(QualityRGB(r.q))
     sub:SetText(CR.ColorText(diffText, CR.DIFF_COLORS[diff]) .. (st.note and CR.ColorText("  ·  " .. st.note, "999999") or ""))
     FillBand(r, cur)
+    structureText:SetText(CR.StructureText(r) or "")
 
     profDD:Sync()
-    FillReagents(reagentBox, reagentRows, r, st.crafts)   -- totals for the whole step
+    -- counts are totals for the whole step; colours say whether you can make any at all
+    if panel.lastSpell ~= r.spell then panel.expanded = nil end
+    FillReagents(reagentBox, reagentRows, r, st.crafts, { perCraft = true, prof = rprof, expanded = panel.expanded,
+      onBuy = OpenBuy,
+      onMake = function(id)
+        panel.expanded = panel.expanded ~= id and id or nil
+        panel:Refresh()
+      end })
+    local y, extra = 0, 0
+    expand:Hide()
+    for i, row in ipairs(reagentRows) do
+      row:ClearAllPoints()
+      row:SetPoint("TOPLEFT", 12, y)
+      y = y - 40
+      local rg = r.reagents[i]
+      if rg and rg[1] == panel.expanded then
+        local h = FillExpand(rprof, rg[1], rg[2] * st.crafts)
+        if h > 0 then
+          expand:ClearAllPoints()
+          expand:SetPoint("TOPLEFT", 24, y + 2)
+          expand:Show()
+          y, extra = y - h - 4, h + 4
+        end
+      end
+    end
+    -- Crafts ready: green = your bags can make some now (that many); yellow = none from your
+    -- bags but some counting the bank / mail / alts (that many); red = none anywhere.
     local _, readyNow = RecipeState(rprof, r)
     readyNow = readyNow or 0
-    local readyColor = readyNow >= st.crafts and "40ff40" or (readyNow > 0 and "ffd100" or "ff6060")
-    readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyNow, st.crafts), st.crafts), readyColor))
-    reagentBox:SetHeight(32 + #r.reagents * 40)
+    local anywhere = math.huge
+    for _, rg in ipairs(r.reagents) do
+      local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+      anywhere = math.min(anywhere, math.floor((bags + elsewhere) / rg[2]))
+    end
+    if anywhere == math.huge then anywhere = 0 end
+    -- green = the whole step from your bags; yellow = some (from bags, else counting bank /
+    -- alts); red = none anywhere
+    local readyN, readyColor = 0, "ff6060"
+    if readyNow >= st.crafts then readyN, readyColor = readyNow, "40ff40"
+    elseif readyNow > 0 then readyN, readyColor = readyNow, "ffd100"
+    elseif anywhere > 0 then readyN, readyColor = anywhere, "ffd100" end
+    readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyN, st.crafts), st.crafts), readyColor))
+    -- cap the box at the room above the cast bar; scroll the rest
+    if panel.lastSpell ~= r.spell then reagentScroll:ScrollTo(0) end
+    local shown = reagentScroll:Fit(#r.reagents * 40 + extra, RoomBelow(reagentBox, floor, 32 + 44, 120, 200))
+    reagentBox:SetHeight(32 + shown)
     if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
 
@@ -719,9 +1514,13 @@ function CR.CreateCraftPanel(parent)
       p.iconBtn:SetBackdropBorderColor(QualityRGB(pr.q))
       p.name:SetText(pr.name)
       p.name:SetTextColor(QualityRGB(pr.q))
-      p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts))
-      FillReagents(p.box, p.rows, pr, ps.crafts)
-      p.box:SetHeight(12 + #pr.reagents * 30)
+      local structure = CR.StructureText(pr)
+      p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts)
+        .. (structure and ("\n" .. structure) or ""))
+      FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
+      if p.lastSpell ~= pr.spell then p.scroll:ScrollTo(0) end
+      p.lastSpell = pr.spell
+      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, floor, 12 + 16, 90, 150)))
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
@@ -749,11 +1548,21 @@ function CR.CreateCraftPanel(parent)
     else
       status:SetText(string.format("You can make %d now.", available))
     end
+    local target = panel:UpdateEnchant(r, enchantFits, enchantKind, craftable and (available or 0) > 0)
+    if enchantFits and open and learned ~= false and (available or 0) > 0 then
+      status:SetText(target and string.format("Click the target (or Enchant) for each cast - %d possible now.", available)
+        or CR.ColorText("Hover the enchant target slot to pick what to enchant.", "ffd100"))
+    end
     createAll:SetText(string.format("Create All [%d]", available or 0))
     createAll:SetEnabled(craftable and (available or 0) > 0)
     if IsRepeating() then
       create:SetText("Stop")
       create:Enable()
+    elseif enchantFits then
+      -- one cast per click, onto the target
+      create:SetText("Enchant")
+      create:SetEnabled(craftable and (available or 0) > 0 and target ~= nil)
+      createAll:Disable()
     else
       create:SetText("Create")
       create:SetEnabled(craftable and (available or 0) > 0)
@@ -763,7 +1572,9 @@ function CR.CreateCraftPanel(parent)
       if panel.lastSpell ~= r.spell then countBox:SetNumber(want) end
     end
     panel.lastSpell = r.spell
+    panel.currentCrafts = st.crafts
     panel.current = r
+    panel.UpdateBuyPop()
   end
 
   createAll:SetScript("OnClick", function()
@@ -775,6 +1586,10 @@ function CR.CreateCraftPanel(parent)
   create:SetScript("OnClick", function()
     if IsRepeating() and TS.StopRecipeRepeat then TS.StopRecipeRepeat() return end
     local r = panel.current
+    if r and CR.EnchantSlotFor(r) then
+      if ench.target then EnchantTarget(r, ench.target) end
+      return
+    end
     if r then Craft(r, math.max(1, countBox:GetNumber() or 1)) end
   end)
   openBtn:SetScript("OnClick", function()
@@ -791,13 +1606,20 @@ local ev = CreateFrame("Frame")
 for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_UPDATE",
                      "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_SUCCEEDED",
                      "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
-                     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
+                     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+                     "MERCHANT_SHOW", "MERCHANT_CLOSED", "MERCHANT_UPDATE",
+                     "REPLACE_ENCHANT", "PLAYER_EQUIPMENT_CHANGED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
     pcall(ev.RegisterEvent, ev, e)
   end
 end
 ev:SetScript("OnEvent", function(_, event, unit)
   if (event:find("^UNIT_") and unit ~= "player") then return end
+  if event == "REPLACE_ENCHANT" then CR.AutoReplaceEnchant() return end
+  if event:find("^MERCHANT_") then
+    if event == "MERCHANT_SHOW" then merchantOpen = true elseif event == "MERCHANT_CLOSED" then merchantOpen = false end
+    ScanMerchant()
+  end
   if event:find("^UNIT_SPELLCAST") and CR.craftPanel then
     CR.SafeCall(CR.craftPanel.UpdateCast, CR.craftPanel, event)
     if event == "UNIT_SPELLCAST_START" then return end   -- nothing else changes until it finishes
