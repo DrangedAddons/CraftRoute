@@ -316,7 +316,9 @@ function CR.CreateCraftPanel(parent)
     local opts = {}
     for _, n in ipairs(CR.SupportedProfessions()) do
       local _, _, detected = CR.GetSkill(n)
-      if detected or n == db().profession then table.insert(opts, { value = n, text = n }) end
+      if detected or db().showUnlearned or n == db().profession then
+        table.insert(opts, { value = n, text = detected and n or CR.ColorText(n, "808080") })
+      end
     end
     return opts
   end, function() return db().profession end,
@@ -326,6 +328,27 @@ function CR.CreateCraftPanel(parent)
     CR.NotifyChanged()
   end)
   profDD:SetPoint("TOPLEFT", 4, -8)
+
+  -- Same setting as the Plan tab's tickbox: list professions this character hasn't learned.
+  local unlearnedCB = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+  unlearnedCB:SetSize(20, 20)
+  unlearnedCB:SetPoint("TOPLEFT", profDD, "BOTTOMLEFT", -2, -4)
+  unlearnedCB.label = unlearnedCB:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  unlearnedCB.label:SetPoint("LEFT", unlearnedCB, "RIGHT", 2, 0)
+  unlearnedCB.label:SetText("Show unlearned")
+  unlearnedCB:SetScript("OnClick", function(self)
+    db().showUnlearned = self:GetChecked() and true or false
+    CR.NotifyChanged()
+  end)
+  unlearnedCB:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Show professions I haven't learned")
+    GameTooltip:AddLine("Ticked, the profession list also offers professions this character doesn't have "
+      .. "(greyed out), so you can look through their route. Untick to list only your own professions.", 1, 1, 1, true)
+    GameTooltip:AddLine("Shared with the Plan tab's tickbox.", 0.7, 0.7, 0.7, true)
+    GameTooltip:Show()
+  end)
+  unlearnedCB:SetScript("OnLeave", GameTooltip_Hide)
   bar:SetPoint("LEFT", profDD, "RIGHT", 12, 0)
   bar:SetPoint("RIGHT", leftArea, "RIGHT", -10, 0)
 
@@ -932,6 +955,7 @@ function CR.CreateCraftPanel(parent)
 
   function panel:Refresh()
     local profName = db().profession
+    unlearnedCB:SetChecked(db().showUnlearned)
     local entry = CR.GetPlans(profName)
     local cur, maxRank, detected = CR.GetSkill(profName)
     local prof = CR.professions[profName]
