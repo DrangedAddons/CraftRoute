@@ -157,12 +157,12 @@ function CR.BagsAndElsewhere(itemID)
   return bags, math.max(0, (total or 0) - bags)
 end
 
--- Colour for "have/need": green = enough in your bags; yellow = enough counting the bank /
--- mail / alts; red = not enough anywhere. The Craft tab judges one craft (can you make any at
--- all?) for the current recipe and the previews alike; the count still shows the step total.
-function CR.ReagentColor(bags, elsewhere, need)
+-- Colour for "have/need" (need = the whole step, perCraft = one craft):
+-- green = the whole step is in your bags; yellow = not the whole step, but at least one craft
+-- (counting the bank / mail / alts); red = not even one craft anywhere.
+function CR.ReagentColor(bags, elsewhere, need, perCraft)
   if bags >= need then return "40ff40" end
-  if bags + elsewhere >= need then return "ffd100" end
+  if bags + elsewhere >= (perCraft or need) then return "ffd100" end
   return "ff6060"
 end
 
@@ -258,7 +258,7 @@ local function FillReagents(box, rows, r, crafts, opts)
       row.btn.icon:SetTexture(GetItemIcon(rg[1]))
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
-      local color = CR.ReagentColor(bags, elsewhere, opts.perCraft and rg[2] or need)
+      local color = CR.ReagentColor(bags, elsewhere, need, opts.perCraft and rg[2] or nil)
       local have = bags >= need and bags or (bags + elsewhere)
       row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
       local id = rg[1]
@@ -1052,8 +1052,11 @@ function CR.CreateCraftPanel(parent)
       anywhere = math.min(anywhere, math.floor((bags + elsewhere) / rg[2]))
     end
     if anywhere == math.huge then anywhere = 0 end
+    -- green = the whole step from your bags; yellow = some (from bags, else counting bank /
+    -- alts); red = none anywhere
     local readyN, readyColor = 0, "ff6060"
-    if readyNow > 0 then readyN, readyColor = readyNow, "40ff40"
+    if readyNow >= st.crafts then readyN, readyColor = readyNow, "40ff40"
+    elseif readyNow > 0 then readyN, readyColor = readyNow, "ffd100"
     elseif anywhere > 0 then readyN, readyColor = anywhere, "ffd100" end
     readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyN, st.crafts), st.crafts), readyColor))
     reagentBox:SetHeight(32 + #r.reagents * 40 + extra)
