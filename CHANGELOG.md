@@ -1,5 +1,16 @@
 # CraftRoute changelog
 
+## 0.10.0 (in testing on the `themes` branch)
+- With EllesmereUI installed, a "Look:" picker in the title bar matches CraftRoute to one of EllesmereUI's styles:
+  - **EllesmereUI Style:** flat dark panel, thin border, your EllesmereUI accent colour (headings and the active tab's underline) and EllesmereUI's font.
+  - **WoW Forever:** Blizzard's frame art, which the Forever client draws in bronze.
+  - **Blizzard Style:** retail's frame art.
+  - **Classic WoW UI:** the vanilla dialog border over the rock background.
+  - **Match EllesmereUI:** follows whichever style EllesmereUI is using.
+  - **CraftRoute default:** the original look. This is the default, so nothing changes until you pick something.
+- The look is saved account-wide and applies instantly, with no reload. If a style's art can't be drawn on this client, the window falls back to the default look and says so in chat.
+- Without EllesmereUI, nothing changes and no picker is shown.
+
 ## 0.9.0
 - Routes updated to match the wow-professions.com Forever guides as of 6 Oct 2026. The guide author reworked several of them:
   - **Leatherworking**: rewritten to the new guide.

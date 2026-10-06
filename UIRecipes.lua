@@ -100,6 +100,7 @@ function CR.CreateRecipesPanel(parent)
                        { 256, "Category" } }) do
     local fs = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     fs:SetText(h[2])
+    CR.ThemeRegisterAccentText(fs)
     fs.offset = h[1]
     table.insert(headers, fs)
   end

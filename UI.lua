@@ -15,7 +15,8 @@ local frame
 local function Backdrop(f, r, g, b, a)
   f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
   f:SetBackdropColor(r, g, b, a)
-  f:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.9)
+  f:SetBackdropBorderColor(CR.ThemeBorderColor())
+  CR.ThemeRegisterBorder(f)   -- recoloured when the theme changes
 end
 CR.Backdrop = Backdrop
 
@@ -213,12 +214,7 @@ local function CreateWindow()
   frame:SetSize(860, 540)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("HIGH")
-  frame:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 24,
-    insets = { left = 6, right = 6, top = 6, bottom = 6 },
-  })
+  frame:SetBackdrop(CR.DEFAULT_BACKDROP)   -- the chosen theme is applied once the window is built
   frame:SetMovable(true)
   frame:EnableMouse(true)
   frame:RegisterForDrag("LeftButton")
@@ -265,6 +261,7 @@ local function CreateWindow()
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
   title:SetText("CraftRoute")
+  frame.crTitle = title
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
@@ -278,9 +275,49 @@ local function CreateWindow()
     b:SetText(label)
     b:SetScript("OnClick", function() CR.ShowWindow(key) end)
     frame.tabs[key] = b
+    CR.ThemeRegisterButton(b)
   end
   AddTab("plan", "Plan", 130)
   AddTab("recipes", "Recipes", 234)
+
+  -- Look picker: only when EllesmereUI is installed, to match its four styles.
+  if CR.HasEllesmere() then
+    local lookLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    lookLabel:SetPoint("TOPLEFT", 352, -19)
+    lookLabel:SetText("Look:")
+    CR.ThemeRegisterAccentText(lookLabel)
+    local lookDD = CR.CreateDropdown(frame, 170, function()
+      local opts = {}
+      for _, t in ipairs(CR.THEMES) do
+        if not t.foreverOnly or EllesmereUI.IS_FOREVER then
+          local text = t.text
+          if t.key == "auto" then
+            local ok, look = pcall(EllesmereUI.RenderedLook)
+            for _, x in ipairs(CR.THEMES) do
+              if ok and x.key == look then text = text .. " (" .. x.text .. ")" end
+            end
+          end
+          table.insert(opts, { value = t.key, text = text })
+        end
+      end
+      return opts
+    end, function() return CraftRouteDB.theme or "default" end,
+    function(v)
+      CraftRouteDB.theme = v
+      CR.ApplyTheme(frame)
+      CR.RefreshWindow()
+    end)
+    lookDD:SetPoint("LEFT", lookLabel, "RIGHT", 6, 0)
+    lookDD:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+      GameTooltip:SetText("CraftRoute look")
+      GameTooltip:AddLine("Match one of EllesmereUI's styles, or follow whichever one EllesmereUI is using. "
+        .. "Pick \"CraftRoute default\" to go back to the original look at any time.", 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    lookDD:SetScript("OnLeave", GameTooltip_Hide)
+    frame.lookDD = lookDD
+  end
 
   frame.panels.plan = CR.CreatePlanPanel(frame)
   frame.panels.recipes = CR.CreateRecipesPanel(frame)
@@ -289,6 +326,7 @@ local function CreateWindow()
     p:SetPoint("BOTTOMRIGHT", -14, 12)
   end
   frame:SetScript("OnShow", function() CR.RefreshWindow() end)
+  CR.ApplyTheme(frame)
 end
 
 function CR.ShowWindow(tab)
@@ -298,6 +336,7 @@ function CR.ShowWindow(tab)
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
   for key, b in pairs(frame.tabs) do
     if key == tab then b:LockHighlight() else b:UnlockHighlight() end
+    CR.ThemeSetButtonActive(b, key == tab)
   end
   frame:Show()
   CR.RefreshWindow()
@@ -311,6 +350,8 @@ function CR.RefreshWindow()
   if not frame or not frame:IsShown() then return end
   local p = frame.panels[frame.current]
   if p and p.Refresh then p:Refresh() end
+  -- rows are created as lists grow, so give new ones EllesmereUI's font too
+  if CR.ActiveTheme() == "eui" then CR.ApplyThemeFonts(frame) end
 end
 
 CR.OnChange(function() CR.RefreshWindow() end)
@@ -362,7 +403,7 @@ local function StepRowText(st, profName, route)
   if st.kind == "fork" then
     return RangeText(st, route),
            CR.ColorText((route and route.sequential and (st.text .. " - ") or "Guide alternatives - ")
-             .. "choose ONE:", "ffd100")
+             .. "choose ONE:", CR.AccentHex())
   elseif st.kind == "option" then
     -- Returns the option name as the row text, plus a detail line (materials / catch + cost)
     -- shown underneath. The radio marker and Choose button are drawn by the row itself.
@@ -479,6 +520,7 @@ function CR.CreatePlanPanel(parent)
   local stepsTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   stepsTitle:SetPoint("TOPLEFT", 4, -40)
   stepsTitle:SetText("Steps")
+  CR.ThemeRegisterAccentText(stepsTitle)
 
   local unlearnedCB = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
   unlearnedCB:SetSize(20, 20)
@@ -545,6 +587,7 @@ function CR.CreatePlanPanel(parent)
     row.optBtn:SetSize(OPTION_BUTTON_W, 16)
     row.optBtn:SetPoint("RIGHT", -2, 0)
     Backdrop(row.optBtn, 0.25, 0.2, 0.05, 0.9)
+    row.optBtn.crOwnBorder = true   -- coloured by its own selected state, not the theme
     row.optBtn.label = row.optBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.optBtn.label:SetPoint("CENTER")
     local btnHl = row.optBtn:CreateTexture(nil, "HIGHLIGHT")
@@ -743,6 +786,7 @@ function CR.CreatePlanPanel(parent)
   local matTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   matTitle:SetPoint("BOTTOMLEFT", steps, "TOPRIGHT", 10, 4)
   matTitle:SetText("Materials")
+  CR.ThemeRegisterAccentText(matTitle)
   local matHdr = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   matHdr:SetPoint("TOPRIGHT", -28, -42)
   matHdr:SetText("have / need      cost to buy")
@@ -813,6 +857,7 @@ function CR.CreatePlanPanel(parent)
   shop:SetSize(190, 22)
   shop:SetPoint("BOTTOMRIGHT", -2, 4)
   shop:SetText("Auctionator shopping list")
+  CR.ThemeRegisterButton(shop)
   shop:SetScript("OnClick", function()
     local e = CR.GetPlans()
     if e then CR.CreateShoppingList(e.plan) end

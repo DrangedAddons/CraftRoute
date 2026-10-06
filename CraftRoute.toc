@@ -3,7 +3,7 @@
 ## Notes: Profession leveling planner for WoW Forever - guide routes, target crafts, materials and Auctionator costs for every crafting profession plus Cooking, Fishing and First Aid.
 ## Author: Dranged
 ## Version: 0.9.0
-## OptionalDeps: Auctionator, Syndicator
+## OptionalDeps: Auctionator, Syndicator, EllesmereUI
 ## SavedVariables: CraftRouteDB
 ## SavedVariablesPerCharacter: CraftRouteCharDB
 ## IconTexture: Interface\Icons\Trade_LeatherWorking
@@ -32,5 +32,6 @@ Pricing.lua
 Inventory.lua
 Planner.lua
 Tooltip.lua
+Theme.lua
 UI.lua
 UIRecipes.lua
