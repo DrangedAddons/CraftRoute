@@ -1,6 +1,7 @@
 # CraftRoute changelog
 
 ## 0.12.1
+- Craft tab: "Crafts ready: 1/16" in the reagent box shows how many of the step your bags can make right now (green all, yellow some, red none).
 - Craft tab: reagent counts now cover the whole step, not a single craft. For 16 Hillman's Leather Gloves you'll see 42/224 Medium Leather and 4/64 Fine Thread, in green, yellow or red as before. The previews show their whole step too.
 - Craft tab: a crafting cast bar above the status line. It shows the recipe's icon, a filling bar with a spark, and "Crafting <recipe> · N left" when the game reports how many are queued. It flashes green when a craft finishes and red if it's interrupted, and sits dimmed ("Not crafting") between crafts. Only profession casts are shown.
 

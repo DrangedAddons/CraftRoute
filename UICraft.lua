@@ -305,6 +305,9 @@ function CR.CreateCraftPanel(parent)
   reagentTitle:SetPoint("TOPLEFT", 12, -8)
   reagentTitle:SetText("Reagents:")
   CR.ThemeRegisterAccentText(reagentTitle)
+  -- "Crafts ready: 1/16" - how many of this step your bags can make right now
+  local readyText = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  readyText:SetPoint("TOPRIGHT", -12, -8)
   local reagentRows = {}
   for i = 1, 6 do
     local row = ReagentRow(reagentBox, 36, "GameFontHighlight")
@@ -667,6 +670,10 @@ function CR.CreateCraftPanel(parent)
 
     profDD:Sync()
     FillReagents(reagentBox, reagentRows, r, st.crafts)   -- totals for the whole step
+    local _, readyNow = RecipeState(rprof, r)
+    readyNow = readyNow or 0
+    local readyColor = readyNow >= st.crafts and "40ff40" or (readyNow > 0 and "ffd100" or "ff6060")
+    readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyNow, st.crafts), st.crafts), readyColor))
     reagentBox:SetHeight(32 + #r.reagents * 40)
     if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
