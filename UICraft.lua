@@ -145,7 +145,8 @@ function CR.CreateCraftPanel(parent)
   panel.viewOffset = 0   -- browsing ahead with the arrows; 0 = the current craft
 
   -- Layout: the craft area on the left (fixed width), the compact route down the right.
-  local LEFT_W, ROUTE_W = 520, 290
+  -- craft area: main recipe (320) + "Up next" + "After that" side by side (180 each); route on the right
+  local LEFT_W, ROUTE_W = 684, 290
 
   -- Skill bar
   local bar = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
@@ -237,32 +238,38 @@ function CR.CreateCraftPanel(parent)
   stepNeed:SetWidth(300)
   stepNeed:SetJustifyH("CENTER")
 
-  -- Up next (middle)
-  local nextFrame = CreateFrame("Frame", nil, panel)
-  nextFrame:SetSize(190, 260)
-  nextFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 326, -110)
-  local nextLabel = nextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  nextLabel:SetPoint("TOP", 0, 0)
-  nextLabel:SetText("Up next")
-  CR.ThemeRegisterAccentText(nextLabel)
-  local nextIcon = IconButton(nextFrame, 44)
-  nextIcon:SetPoint("TOP", nextLabel, "BOTTOM", 0, -8)
-  local nextName = nextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  nextName:SetPoint("TOP", nextIcon, "BOTTOM", 0, -6)
-  nextName:SetWidth(200)
-  local nextSub = nextFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  nextSub:SetPoint("TOP", nextName, "BOTTOM", 0, -2)
-  local nextBox = CreateFrame("Frame", nil, nextFrame, "BackdropTemplate")
-  nextBox:SetSize(170, 30)
-  nextBox:SetPoint("TOP", nextSub, "BOTTOM", 0, -8)
-  CR.Backdrop(nextBox, 0, 0, 0, 0.35)
-  local nextRows = {}
-  for i = 1, 6 do
-    local row = ReagentRow(nextBox, 22, "GameFontHighlightSmall")
-    row:SetSize(150, 26)
-    row:SetPoint("TOPLEFT", 8, -6 - (i - 1) * 26)
-    nextRows[i] = row
+  -- Previews of the next two crafts (middle column, stacked): "Up next" and "After that".
+  local function Preview(title, iconSize)
+    local p = CreateFrame("Frame", nil, panel)
+    p:SetSize(180, 10)
+    p.label = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    p.label:SetPoint("TOP", 0, 0)
+    p.label:SetText(title)
+    CR.ThemeRegisterAccentText(p.label)
+    p.iconBtn = IconButton(p, iconSize)
+    p.iconBtn:SetPoint("TOP", p.label, "BOTTOM", 0, -6)
+    p.name = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    p.name:SetPoint("TOP", p.iconBtn, "BOTTOM", 0, -4)
+    p.name:SetWidth(176)
+    p.sub = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    p.sub:SetPoint("TOP", p.name, "BOTTOM", 0, -2)
+    p.box = CreateFrame("Frame", nil, p, "BackdropTemplate")
+    p.box:SetSize(170, 30)
+    p.box:SetPoint("TOP", p.sub, "BOTTOM", 0, -6)
+    CR.Backdrop(p.box, 0, 0, 0, 0.35)
+    p.rows = {}
+    for i = 1, 6 do
+      local row = ReagentRow(p.box, 20, "GameFontHighlightSmall")
+      row:SetSize(150, 24)
+      row:SetPoint("TOPLEFT", 8, -5 - (i - 1) * 24)
+      p.rows[i] = row
+    end
+    return p
   end
+  local nextFrame = Preview("Up next", 40)
+  nextFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 324, -64)
+  local afterFrame = Preview("After that", 32)
+  afterFrame:SetPoint("TOPLEFT", nextFrame, "TOPRIGHT", 0, 0)
 
   -- Craft controls (bottom)
   local controls = CreateFrame("Frame", nil, panel, "BackdropTemplate")
@@ -452,7 +459,7 @@ function CR.CreateCraftPanel(parent)
     routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
 
     if #steps == 0 then
-      main:Hide(); nextFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
+      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
         and (profName .. " has nothing to craft - see the Plan tab for where to go.")
@@ -509,22 +516,22 @@ function CR.CreateCraftPanel(parent)
         .. (cost > 0 and ("  ·  " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""))
     end
 
-    -- Up next
-    if nst then
-      local nr = nst.recipe
-      nextFrame:Show()
-      nextIcon.recipe, nextIcon.crafts = nr, nst.crafts
-      nextIcon.icon:SetTexture(nr.item > 0 and GetItemIcon(nr.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
-      nextIcon:SetBackdropBorderColor(QualityRGB(nr.q))
-      nextName:SetText(nr.name)
-      nextName:SetTextColor(QualityRGB(nr.q))
-      local nlabel = Describe(nst)
-      nextSub:SetText(string.format("%s  ·  %s%dx", nlabel, nst.estimated and "~" or "", nst.crafts))
-      FillReagents(nextBox, nextRows, nr, 1)
-      nextBox:SetHeight(12 + #nr.reagents * 26)
-    else
-      nextFrame:Hide()
+    -- Up next / After that
+    local function FillPreview(p, ps)
+      if not ps then p:Hide() return end
+      local pr = ps.recipe
+      p:Show()
+      p.iconBtn.recipe, p.iconBtn.crafts = pr, ps.crafts
+      p.iconBtn.icon:SetTexture(pr.item > 0 and GetItemIcon(pr.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+      p.iconBtn:SetBackdropBorderColor(QualityRGB(pr.q))
+      p.name:SetText(pr.name)
+      p.name:SetTextColor(QualityRGB(pr.q))
+      p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts))
+      FillReagents(p.box, p.rows, pr, 1)
+      p.box:SetHeight(10 + #pr.reagents * 24)
     end
+    FillPreview(nextFrame, nst)
+    FillPreview(afterFrame, steps[3 + panel.viewOffset])
 
     -- Controls
     local open = CR.TradeSkillOpenFor(rprof.name)

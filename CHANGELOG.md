@@ -10,6 +10,7 @@
   - **Profession:** a small switcher on the tab for the professions you have.
 - Follows the whole route even past your goal, including extra crafts and your target recipes.
 - The profession window opens by itself when you go to the Craft tab or switch profession there. If you close it, it stays closed until you come back to the tab. The Open button remains as a fallback.
+- "Up next" and "After that" previews sit side by side, so you can see the next two crafts. The window is now at least 1010 wide to fit them.
 - A compact **Route** column down the right lists the upcoming steps: crafts, extra crafts, targets, training and instructions. The current craft is lightly tinted and the one you're viewing is highlighted. Click any craft to view it.
 - Under the reagents, a line shows what the whole step still needs beyond your bags and what buying it would cost.
 
