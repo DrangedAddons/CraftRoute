@@ -309,7 +309,7 @@ local function CreateWindow()
     end)
     lookDD:SetPoint("LEFT", lookLabel, "RIGHT", 6, 0)
     lookDD:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")  -- beside it, so it never covers the open menu
       GameTooltip:SetText("CraftRoute look")
       GameTooltip:AddLine("Match one of EllesmereUI's styles, or follow whichever one EllesmereUI is using. "
         .. "Pick \"CraftRoute default\" to go back to the original look at any time.", 1, 1, 1, true)
