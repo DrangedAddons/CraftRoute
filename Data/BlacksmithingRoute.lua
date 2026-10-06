@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Blacksmithing guide
--- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, Oct 2026).
+-- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 6 Oct 2026).
 -- Reagents per craft come from the recipe database; only skill ranges + craft counts live here.
 -- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -74,21 +74,21 @@ CR.RegisterRoute("Blacksmithing", {
       note = "If 1 Silver Bar costs less than 10 Copper Bars" },
     { from = 80,  to = 95,  spell = 2668, crafts = 15 },
     { from = 95,  to = 100, spell = 2672, crafts = 5, note = "Use the Coarse Grinding Stones from 50" },
-    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Make all 20 - for the bracers at 165" },
+    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep them, you might need them later" },
     { from = 112, to = 125, spell = 2672, crafts = 13 },
-    { from = 125, to = 150, spell = 9985, crafts = 25,
-      note = "Strong Flux from the Blacksmithing Supply vendor in any capital" },
+    { from = 125, to = 140, spell = 2742, crafts = 24,
+      note = "Weak Flux (and Strong Flux for the next step) from the Blacksmithing Supply vendor in any "
+        .. "capital - yellow the whole way" },
+    { from = 140, to = 150, spell = 9985, crafts = 10 },
 
     -- Expert
-    { from = 150, to = 165, spell = 3501, crafts = 15,
+    { from = 150, to = 175, spell = 3501, crafts = 30,
       note = "Green Dye from {H:Tamar (Orgrimmar), Millie Gregorian (Undercity) or Mahu (Thunder Bluff)}"
-        .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)}" },
-    { from = 165, to = 175, spell = 7223, crafts = 10,
-      note = "{A:Keep 6 if you plan on Armorsmithing}" },
+        .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)} - yellow at 165" },
     { from = 175, to = 185, spell = 9920, crafts = 40, when = { e175 = "stones" },
       note = "Make all 40 - for the helms at 200" },
     { from = 175, to = 185, spell = 7223, crafts = 10, when = { e175 = "bracers" },
-      note = "Only if you stop at 200 and Solid Stone is expensive" },
+      note = "Only if you stop at 200 and Solid Stone is expensive - uses the Heavy Grinding Stones from 100" },
     { from = 185, to = 200, spell = 9928, crafts = 15, when = { e185 = "gauntlet" } },
     { from = 185, to = 200, spell = 9926, crafts = 15, when = { e185 = "shoulder" },
       note = "Use if Mageweave Cloth is hard to get" },

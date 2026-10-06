@@ -1,5 +1,20 @@
 # CraftRoute changelog
 
+## 0.9.0
+- Routes updated to match the wow-professions.com Forever guides as of 6 Oct 2026. The guide author reworked several of them:
+  - **Leatherworking**: rewritten to the new guide.
+    - 1-30: Light Leather from scraps, or Light Armor Kits from bought Light Leather.
+    - 30-55: Cured Light Hide (keep 24 for later).
+    - Journeyman is now one route: Embossed Gloves → Medium Leather → Cured Medium Hide → Fine Leather Belts → Light Leather Pants → Dark Leather Belts → Heavy Leather.
+    - Expert: Cured Heavy Hide or without Heavy Hide to 175, then Guardian Gloves 175-195 and Nightscape Headband 195-210.
+    - Nightscape Pants 210-225, taught only by the Artisan trainers.
+  - **Blacksmithing**: Bronze Shortswords 125-140, then Bronze Warhammers 140-150. Green Iron Bracers now cover 150-175.
+  - **Tailoring**: Woolen Capes now cover 80-95; the Gray Woolen Shirt step is gone.
+  - **Alchemy**: Mana Potions 165-195, then Nature Protection Potions 195-230. The 195-215 choice is gone.
+  - **Enchanting**: Lesser Wizard Oil for 201-220, replacing Bracer - Strength.
+  - Engineering, First Aid, Cooking, Fishing and Fishing + Cooking haven't changed.
+- With no prices loaded, totals match each guide's updated shopping list.
+
 ## 0.8.2
 - Steps you're partway through now scale by recipe difficulty, not just the skill points left. The last yellow points of a step take more crafts than its first orange ones. Example: Leatherworking at 30 on the bought-Light-Leather path now plans 21 Light Armor Kits for 30-45, not 18.
 - A "choose ONE" block is hidden once every option you have left comes down to the same thing. Example: at Leatherworking 30+, both 1-45 paths are just "Light Armor Kits until 45".

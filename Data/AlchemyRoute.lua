@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Alchemy guide
--- (https://www.wow-professions.com/forever/alchemy-leveling-guide, beta data, Oct 2026).
+-- (https://www.wow-professions.com/forever/alchemy-leveling-guide, beta data, as of 6 Oct 2026).
 -- 225-300 is the guide's untested Classic route with the healing potions removed (they moved
 -- to First Aid in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -36,10 +36,6 @@ CR.RegisterRoute("Alchemy", {
       { key = "fireoil", label = "Fire Oil, then Elixir of Fire Power" },
       { key = "mana", label = "Lesser Mana Potions (if Firefin Snapper is scarce)" },
     }},
-    { key = "a195", label = "195-215", options = {
-      { key = "defense", label = "Elixir of Defense" },
-      { key = "nature", label = "Nature Protection Potion (no Goldthorn)" },
-    }},
     { key = "a275", label = "275-290", options = {
       { key = "supmana", label = "Superior Mana Potion" },
       { key = "grdefense", label = "Elixir of Greater Defense" },
@@ -63,14 +59,11 @@ CR.RegisterRoute("Alchemy", {
     { from = 150, to = 165, spell = 7845,    crafts = 15, when = { a130 = "fireoil" } },
     { from = 130, to = 150, spell = 3173,    crafts = 20, when = { a130 = "mana" } },
     { from = 150, to = 165, spell = 3173,    crafts = 22, when = { a130 = "mana" } },
-    { from = 165, to = 180, spell = 3452,    crafts = 15 },
-    { from = 180, to = 195, spell = 3450,    crafts = 15 },
-    { from = 195, to = 215, spell = 11450,   crafts = 20, when = { a195 = "defense" } },
-    { from = 195, to = 215, spell = 7259,    crafts = 20, when = { a195 = "nature" },
-      note = "Recipe (bind on pickup): Bronk / Logannas (Feralas), Glyx Brewright (Stranglethorn), Alchemist "
-        .. "Pestlezugg (Tanaris) - yellow from 210" },
-    { from = 215, to = 225, spell = 11448,   crafts = 11, note = "Yellow for the last 5 points" },
-    { from = 225, to = 230, spell = 11448,   crafts = 6,  note = "Untested in Forever (Classic route)" },
+    { from = 165, to = 195, spell = 3452,    crafts = 36, note = "Yellow at 180" },
+    { from = 195, to = 225, spell = 7259,    crafts = 36,
+      note = "Recipe (bind on pickup - buy it on this character): Bronk / Logannas (Feralas), Glyx Brewright "
+        .. "(Stranglethorn), Alchemist Pestlezugg (Tanaris) - yellow at 210" },
+    { from = 225, to = 230, spell = 7259,    crafts = 12, note = "Untested in Forever (Classic route) - yellow" },
     { from = 230, to = 265, spell = 11460,   crafts = 45, note = "Yellow from 245" },
     { from = 265, to = 275, spell = 17553,   crafts = 10,
       note = "Recipe from {H:Algernon, Undercity}{A:Ulthir, Darnassus}" },

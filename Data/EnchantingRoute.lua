@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Enchanting guide
--- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, Oct 2026).
+-- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 6 Oct 2026).
 -- 225-300 is the guide's untested Classic route (Enchanting ranges barely changed in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
@@ -59,7 +59,7 @@ CR.RegisterRoute("Enchanting", {
       note = "Silver Rod is made by Blacksmiths - buy it on the AH" },
     { from = 110, to = 130, spell = 7793,  crafts = 20, when = { e70 = "essence" },
       note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Leo Sarn (Silverpine)}"
-        .. "{A:Tilli Thistlefuzz (Ironforge)}" },
+        .. "{A:Tilli Thistlefuzz (Ironforge)} - buy Formula: Lesser Wizard Oil there too, for 200" },
     { from = 130, to = 150, spell = 7793,  crafts = 32, when = { e70 = "essence" }, note = "Yellow the whole way" },
     -- 70-150: Strange Dust path
     { from = 70,  to = 100, spell = 7457,  crafts = 30, when = { e70 = "dust" } },
@@ -76,7 +76,10 @@ CR.RegisterRoute("Enchanting", {
     { from = 165, to = 185, spell = 13637, crafts = 22, note = "Yellow from 180" },
     { from = 185, to = 200, spell = 13661, crafts = 15 },
     { from = 200, to = 201, spell = 13702, crafts = 1 },
-    { from = 201, to = 220, spell = 13661, crafts = 35, note = "Yellow the whole way" },
+    { from = 201, to = 220, spell = 25126, crafts = 25,
+      note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Thaddeus Webb (Undercity)}"
+        .. "{A:Vaean (Darnassus), Tilli Thistlefuzz (Ironforge) or Jessara Cordell (Stormwind)}. Stranglethorn "
+        .. "Seed from Reagent vendors, Leaded Vial from Alchemy Supply - yellow at 210" },
     { from = 220, to = 225, spell = 13746, crafts = 5 },
 
     -- Artisan (untested Classic route)
