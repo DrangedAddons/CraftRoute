@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.11.0
+- Guide alternatives are now shown as what you'd craft instead of material sources. For example: "A: 20x Cured Heavy Hide, 16x Hillman's Leather Gloves, 10x Barbaric Shoulders, 10x Guardian Gloves" or "B: 21x Hillman's Leather Gloves, 15x Barbaric Leggings, 10x Barbaric Harness".
+  - The guide's name for each path and its cost sit in a small grey line underneath.
+  - Switch options and the Materials panel shows how the requirements change.
+  - Hover an option for its full craft list and what it needs.
+- Options with nothing to craft, such as fishing spots, still show the place and what you catch there.
+
 ## 0.10.0
 - With EllesmereUI installed, a "Look:" picker in the title bar matches CraftRoute to one of EllesmereUI's styles:
   - **EllesmereUI Style:** flat dark panel, thin border, your EllesmereUI accent colour (headings and the active tab's underline) and EllesmereUI's font.

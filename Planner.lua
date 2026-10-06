@@ -431,12 +431,14 @@ local function ForkEvents(route, rprof, profName, cur, goal)
         if FactionOK(o) then
           n = n + 1
           -- Net materials for this option; items it makes for itself cancel out.
-          local net, cost, unpriced, catch = {}, 0, false, {}
+          -- crafts: what this option has you make (shown as the option itself, in route order)
+          local net, cost, unpriced, catch, crafts = {}, 0, false, {}, {}
           for i, st in ipairs(route.steps) do
             if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) then
               local e = ClipStep(route, rprof, st, i, profName, cur, goal)
               if e and e.kind == "craft" then
                 local r = rprof.recipes[e.spell]
+                table.insert(crafts, { recipe = r, n = e.crafts, estimated = e.estimated })
                 for _, rg in ipairs(r.reagents) do net[rg[1]] = (net[rg[1]] or 0) + rg[2] * e.crafts end
                 if r.item > 0 then net[r.item] = (net[r.item] or 0) - e.crafts * r.makes end
               elseif e then
@@ -458,7 +460,7 @@ local function ForkEvents(route, rprof, profName, cur, goal)
           table.insert(out, { kind = "option", from = lo, to = hi, sort = base + n * 0.01, skill = skillName,
             choice = c.key, option = o.key, label = CR.FactionText(o.label), letter = string.char(64 + n),
             routeID = route.id, selected = picked == o.key, mats = mats, cost = cost, unpriced = unpriced,
-            catch = catch })
+            catch = catch, crafts = crafts })
         end
       end
     end

@@ -406,25 +406,29 @@ local function StepRowText(st, profName, route)
            CR.ColorText((route and route.sequential and (st.text .. " - ") or "Guide alternatives - ")
              .. "choose ONE:", CR.AccentHex())
   elseif st.kind == "option" then
-    -- Returns the option name as the row text, plus a detail line (materials / catch + cost)
-    -- shown underneath. The radio marker and Choose button are drawn by the row itself.
-    local parts = {}
-    for i = 1, math.min(3, #st.mats) do
-      table.insert(parts, st.mats[i].n .. " " .. CR.ItemName(st.mats[i].id))
-    end
-    -- Gathering options say what you'll catch there instead of what you buy.
-    if st.catch and #st.catch > 0 then
-      wipe(parts)
-      for i = 1, math.min(3, #st.catch) do
-        local c = st.catch[i]
-        table.insert(parts, (c.n and (c.n .. " ") or "") .. CR.ItemName(c.id):gsub("^Raw ", ""))
+    -- An option is shown as what you'd craft ("20x Cured Heavy Hide, 16x Hillman's Leather
+    -- Gloves, ..."), so the choice is between tangible crafts; the Materials panel shows what each
+    -- needs as you switch. Underneath: the guide's name for the path and its cost.
+    -- Options with nothing to craft (fishing spots) keep their name and what you catch there.
+    local cost = st.cost > 0 and (" · " .. CR.FormatMoney(st.cost) .. (st.unpriced and "+" or "")) or ""
+    local dim = st.selected and nil or "d8c690"
+    if st.crafts and #st.crafts > 0 then
+      local parts = {}
+      for _, c in ipairs(st.crafts) do
+        local name = dim and CR.ColorText(c.recipe.name, dim) or CR.ColorText(c.recipe.name, QualityHex(c.recipe.q))
+        table.insert(parts, (c.estimated and "~" or "") .. c.n .. "x " .. name)
       end
-      parts[1] = "catches " .. parts[1]
+      local label = CR.ColorText(st.letter .. ": ", st.selected and "ffffff" or "d8c690") .. table.concat(parts, ", ")
+      return "", label, nil, nil, CR.ColorText(st.label, "888888") .. cost
     end
-    local cost = st.cost > 0 and ("  " .. CR.FormatMoney(st.cost) .. (st.unpriced and "+" or "")) or ""
+    local parts = {}
+    for i = 1, math.min(3, #(st.catch or {})) do
+      local c = st.catch[i]
+      table.insert(parts, (c.n and (c.n .. " ") or "") .. CR.ItemName(c.id):gsub("^Raw ", ""))
+    end
+    if #parts > 0 then parts[1] = "catches " .. parts[1] end
     local label = CR.ColorText(st.letter .. ": " .. st.label, st.selected and "ffffff" or "d8c690")
-    local detail = CR.ColorText(table.concat(parts, ", ") .. (#st.mats > 3 and ", ..." or ""), "999999") .. cost
-    return "", label, nil, nil, detail
+    return "", label, nil, nil, CR.ColorText(table.concat(parts, ", "), "999999") .. cost
   end
   local r = st.recipe or CR.professions[profName].recipes[st.spell]
   local name = CR.ColorText(r.name, QualityHex(r.q))
@@ -624,6 +628,17 @@ function CR.CreatePlanPanel(parent)
         GameTooltip:SetText(st.letter .. ": " .. st.label .. string.format("  (%d-%d)", st.from, st.to))
         GameTooltip:AddLine(st.selected and "Selected - this is what the materials and cost count."
           or "Click Choose to use this one instead.", 0.6, 0.8, 1)
+        if st.crafts and #st.crafts > 0 then
+          GameTooltip:AddLine("You'll craft:", 1, 0.82, 0)
+          for _, c in ipairs(st.crafts) do
+            local qr, qg, qb = 1, 1, 1
+            local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[c.recipe.q]
+            if qc then qr, qg, qb = qc.r, qc.g, qc.b end
+            GameTooltip:AddDoubleLine("  " .. c.recipe.name, (c.estimated and "~" or "") .. c.n .. "x",
+              qr, qg, qb, 1, 1, 1)
+          end
+        end
+        if #st.mats > 0 then GameTooltip:AddLine("Needs:", 1, 0.82, 0) end
         for _, m in ipairs(st.mats) do
           local have = CR.HaveCount(m.id)
           GameTooltip:AddDoubleLine("  " .. CR.ItemName(m.id), string.format("%d/%d", math.min(have, m.n), m.n),
