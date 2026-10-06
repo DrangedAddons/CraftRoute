@@ -1,6 +1,6 @@
 # CraftRoute changelog
 
-## 0.12.0 (in testing on the `crafting-tab` branch)
+## 0.12.0
 - New **Craft** tab, now the first tab. It shows what to craft right now, and the window reopens on whichever tab you used last.
   - **Top:** a profession switcher, the skill bar ("Leatherworking 141/225"), and under it a step progress bar for the current guide step. For example, "Step 140-155 · 14 points to go · ~16 crafts left". It fills as you skill up.
   - **Recipe row:** the recipe to craft now (big icon, name, and how many points each craft gives), with "Up next" and "After that" beside it at a smaller scale. Their reagent boxes are level.
