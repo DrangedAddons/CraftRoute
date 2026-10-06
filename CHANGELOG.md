@@ -16,7 +16,8 @@
 - **Skill-up colour band** under the recipe name: the recipe's orange, yellow, green and grey ranges with a marker at your skill, plus the breakpoints written underneath.
 - **Layout:** the current recipe, "Up next" and "After that" sit in a row, with their reagent boxes level. Under them, centred: the step bar, the milestones card, then the status and Create controls. The craft area recentres when you resize. The window is at least 1010 x 620.
 - **Next milestones card**: your next training (rank, book or quest, with a level warning), your next target recipe (points to go and equip level), and your current rank's cap. The Create controls moved under the main recipe to make room.
-- Under the reagents, a line shows what the whole step still needs beyond your bags and what buying it would cost.
+- **Reagent colours:** green when it's in your bags and ready to craft; yellow when you have enough counting your bank, mailbox or alts, with how many are there ("· 40 in bank/alts"); red when you don't have enough anywhere. Hover a reagent to see exactly where it is.
+- Under the reagents, a "Fetch from bank/alts" line in yellow, then what you still need to buy. Then a line shows what the whole step still needs beyond your bags and what buying it would cost.
 
 ## 0.11.0
 - Guide alternatives are now shown as what you'd craft instead of material sources. For example: "A: 20x Cured Heavy Hide, 16x Hillman's Leather Gloves, 10x Barbaric Shoulders, 10x Guardian Gloves" or "B: 21x Hillman's Leather Gloves, 15x Barbaric Leggings, 10x Barbaric Harness".

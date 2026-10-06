@@ -97,6 +97,9 @@ local function IconButton(parent, size)
       CR.RecipeTooltip(GameTooltip, self.recipe, self.crafts)
     elseif self.itemID then
       GameTooltip:SetItemByID(self.itemID)
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
+      CR.AddLocationLines(GameTooltip, self.itemID)
     end
     GameTooltip:Show()
   end)
@@ -117,18 +120,36 @@ local function ReagentRow(parent, iconSize, font)
   return row
 end
 
+-- How many of an item are in your bags (craftable now) and how many are elsewhere: your bank,
+-- mailbox, or alts (via Syndicator) - you have them, they're just not on hand.
+function CR.BagsAndElsewhere(itemID)
+  local bags = GetItemCount(itemID, false) or 0
+  local _, total = CR.GetLocations(itemID)
+  return bags, math.max(0, (total or 0) - bags)
+end
+
+-- Green: in your bags, ready to craft. Yellow: enough counting your bank / mail / alts.
+-- Red: not enough anywhere.
+function CR.ReagentColor(bags, elsewhere, need)
+  if bags >= need then return "40ff40" end
+  if bags + elsewhere >= need then return "ffd100" end
+  return "ff6060"
+end
+
 local function FillReagents(box, rows, r, perCraft)
   for i, row in ipairs(rows) do
     local rg = r and r.reagents[i]
     if rg then
-      local have = GetItemCount(rg[1], false) or 0
+      local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
       local need = rg[2] * perCraft
       row.btn.itemID = rg[1]
       row.btn.icon:SetTexture(GetItemIcon(rg[1]))
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
-      local color = have >= need and "40ff40" or "ff6060"
-      row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
+      local color = CR.ReagentColor(bags, elsewhere, need)
+      local extra = (bags < need and elsewhere > 0)
+        and CR.ColorText(string.format(" · %d in bank/alts", elsewhere), "aaaaaa") or ""
+      row.text:SetText(CR.ColorText(string.format("%d/%d", bags, need), color) .. "  " .. CR.ItemName(rg[1]) .. extra)
       row:Show()
     else
       row:Hide()
@@ -645,22 +666,36 @@ function CR.CreateCraftPanel(parent)
     if st.crafts > 1 then totalNote:SetText(string.format("per craft  ·  x%d for this step", st.crafts))
     else totalNote:SetText("") end
 
-    -- the whole step against your bags: what's short and what buying it would cost
-    local short, cost, unpriced = {}, 0, false
+    -- the whole step: what to fetch from the bank / alts, and what's truly missing (with cost)
+    local fetch, short, cost, unpriced = {}, {}, 0, false
     for _, rg in ipairs(r.reagents) do
-      local missing = rg[2] * st.crafts - (GetItemCount(rg[1], false) or 0)
-      if missing > 0 then
-        table.insert(short, missing .. " " .. CR.ItemName(rg[1]))
-        local price = CR.GetUnitPrice(rg[1])
-        if price then cost = cost + price * missing else unpriced = true end
+      local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+      local need = rg[2] * st.crafts
+      if bags < need then
+        local fromElsewhere = math.min(elsewhere, need - bags)
+        if fromElsewhere > 0 then table.insert(fetch, fromElsewhere .. " " .. CR.ItemName(rg[1])) end
+        local missing = need - bags - fromElsewhere
+        if missing > 0 then
+          table.insert(short, missing .. " " .. CR.ItemName(rg[1]))
+          local price = CR.GetUnitPrice(rg[1])
+          if price then cost = cost + price * missing else unpriced = true end
+        end
       end
     end
-    if #short == 0 then
-      stepNeed:SetText(CR.ColorText(string.format("You have everything for all %d.", st.crafts), "40ff40"))
-    else
-      stepNeed:SetText(string.format("For all %d you still need: %s", st.crafts, table.concat(short, ", "))
+    local lines = {}
+    if #fetch > 0 then
+      table.insert(lines, CR.ColorText("Fetch from bank/alts: " .. table.concat(fetch, ", "), "ffd100"))
+    end
+    if #short > 0 then
+      table.insert(lines, string.format("For all %d you still need: %s", st.crafts, table.concat(short, ", "))
         .. (cost > 0 and ("  ·  " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""))
     end
+    if #lines == 0 then
+      lines[1] = CR.ColorText(string.format("Everything for all %d is in your bags.", st.crafts), "40ff40")
+    elseif #short == 0 then
+      table.insert(lines, CR.ColorText(string.format("You have everything for all %d.", st.crafts), "40ff40"))
+    end
+    stepNeed:SetText(table.concat(lines, "\n"))
 
     -- Up next / After that
     local function FillPreview(p, ps)
