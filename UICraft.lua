@@ -149,6 +149,72 @@ local function ReagentRow(parent, iconSize, font)
   return row
 end
 
+-- A scrolling area inside a reagent box: rows go on `content`; Fit() caps the visible height
+-- and shows a slim scroll bar (mouse wheel or drag) when they don't all fit.
+local function ScrollArea(box, left, top, width)
+  local sf = CreateFrame("ScrollFrame", nil, box)
+  sf:SetPoint("TOPLEFT", left, top)
+  sf:SetSize(width, 40)
+  local content = CreateFrame("Frame", nil, sf)
+  content:SetSize(width, 40)
+  sf:SetScrollChild(content)
+  local track = CreateFrame("Frame", nil, box, "BackdropTemplate")
+  track:SetWidth(5)
+  track:SetPoint("TOPRIGHT", box, "TOPRIGHT", -3, top)
+  track:SetPoint("BOTTOM", sf, "BOTTOM", 0, 0)
+  CR.Backdrop(track, 0.1, 0.1, 0.1, 0.8)
+  track.crOwnBorder = true
+  local thumb = track:CreateTexture(nil, "OVERLAY")
+  thumb:SetColorTexture(0.6, 0.6, 0.6, 0.9)
+  thumb:SetWidth(5)
+  sf.contentH, sf.visibleH = 40, 40
+  local function MaxScroll() return math.max(0, sf.contentH - sf.visibleH) end
+  function sf:UpdateThumb()
+    local max = MaxScroll()
+    track:SetShown(max > 0)
+    if max <= 0 then return end
+    local th = self.visibleH
+    local h = math.max(12, th * self.visibleH / self.contentH)
+    thumb:SetHeight(h)
+    thumb:ClearAllPoints()
+    thumb:SetPoint("TOP", track, "TOP", 0, -(th - h) * (self:GetVerticalScroll() / max))
+  end
+  function sf:ScrollTo(v)
+    self:SetVerticalScroll(math.max(0, math.min(MaxScroll(), v)))
+    self:UpdateThumb()
+  end
+  -- contentH: everything; maxH: the most to show. Returns the height shown.
+  function sf:Fit(contentH, maxH)
+    self.contentH = contentH
+    self.visibleH = math.max(1, math.min(contentH, maxH))
+    content:SetHeight(contentH)
+    self:SetHeight(self.visibleH)
+    self:ScrollTo(self:GetVerticalScroll() or 0)
+    return self.visibleH
+  end
+  sf:EnableMouseWheel(true)
+  sf:SetScript("OnMouseWheel", function(self, delta) self:ScrollTo((self:GetVerticalScroll() or 0) - delta * 30) end)
+  local function FromCursor()
+    local _, y = GetCursorPosition()
+    y = y / track:GetEffectiveScale()
+    local frac = (track:GetTop() - y) / track:GetHeight()
+    sf:ScrollTo(frac * MaxScroll())
+  end
+  track:EnableMouse(true)
+  track:SetScript("OnMouseDown", function(self) FromCursor() self:SetScript("OnUpdate", FromCursor) end)
+  track:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
+  track:Hide()
+  return sf, content
+end
+
+-- How tall a reagent box may be: down to just above the cast bar (keeping `reserve` free for
+-- the text under it), at least `minH`. Before layout has happened, `fallback`.
+local function RoomBelow(box, floorFrame, reserve, minH, fallback)
+  local top, bottom = box:GetTop(), floorFrame:GetTop()
+  if type(top) ~= "number" or type(bottom) ~= "number" or top <= bottom then return fallback end
+  return math.max(minH, top - bottom - reserve)
+end
+
 -- How many of an item are in your bags (craftable now) and how many are elsewhere: your bank,
 -- mailbox, or alts (via Syndicator) - you have them, they're just not on hand.
 function CR.BagsAndElsewhere(itemID)
@@ -459,11 +525,12 @@ function CR.CreateCraftPanel(parent)
   -- "Crafts ready: 1/16" - how many of this step your bags can make right now
   local readyText = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   readyText:SetPoint("TOPRIGHT", -12, -8)
+  local reagentScroll, reagentContent = ScrollArea(reagentBox, 0, -24, 292)
   local reagentRows = {}
-  for i = 1, 6 do
-    local row = ReagentRow(reagentBox, 36, "GameFontHighlight")
+  for i = 1, 8 do
+    local row = ReagentRow(reagentContent, 36, "GameFontHighlight")
     row:SetSize(276, 40)
-    row:SetPoint("TOPLEFT", 12, -24 - (i - 1) * 40)
+    row:SetPoint("TOPLEFT", 12, -(i - 1) * 40)
     reagentRows[i] = row
   end
   local totalNote = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -472,7 +539,7 @@ function CR.CreateCraftPanel(parent)
   -- Inline component maker: click a reagent you can make yourself (Medium Leather from Light
   -- Leather, Bolts of Cloth, Handfuls of Bolts, essences...) and its line opens up to show what
   -- it's made from, with a Make button that starts crafting it straight away.
-  local expand = CreateFrame("Frame", nil, reagentBox, "BackdropTemplate")
+  local expand = CreateFrame("Frame", nil, reagentContent, "BackdropTemplate")
   expand:SetWidth(264)
   CR.Backdrop(expand, 0, 0, 0, 0.5)
   expand:Hide()
@@ -686,11 +753,12 @@ function CR.CreateCraftPanel(parent)
     p.label:SetPoint("BOTTOM", p.iconBtn, "TOP", 0, 6)
     p.label:SetText(title)
     CR.ThemeRegisterAccentText(p.label)
+    p.scroll, p.content = ScrollArea(p.box, 0, -6, 172)
     p.rows = {}
-    for i = 1, 6 do
-      local row = ReagentRow(p.box, 26, "GameFontHighlightSmall")
-      row:SetSize(166, 30)
-      row:SetPoint("TOPLEFT", 8, -6 - (i - 1) * 30)
+    for i = 1, 8 do
+      local row = ReagentRow(p.content, 26, "GameFontHighlightSmall")
+      row:SetSize(162, 30)
+      row:SetPoint("TOPLEFT", 8, -(i - 1) * 30)
       p.rows[i] = row
     end
     return p
@@ -1082,7 +1150,7 @@ function CR.CreateCraftPanel(parent)
         panel.expanded = panel.expanded ~= id and id or nil
         panel:Refresh()
       end })
-    local y, extra = -24, 0
+    local y, extra = 0, 0
     expand:Hide()
     for i, row in ipairs(reagentRows) do
       row:ClearAllPoints()
@@ -1116,7 +1184,10 @@ function CR.CreateCraftPanel(parent)
     elseif readyNow > 0 then readyN, readyColor = readyNow, "ffd100"
     elseif anywhere > 0 then readyN, readyColor = anywhere, "ffd100" end
     readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyN, st.crafts), st.crafts), readyColor))
-    reagentBox:SetHeight(32 + #r.reagents * 40 + extra)
+    -- cap the box at the room above the cast bar; scroll the rest
+    if panel.lastSpell ~= r.spell then reagentScroll:ScrollTo(0) end
+    local shown = reagentScroll:Fit(#r.reagents * 40 + extra, RoomBelow(reagentBox, cast, 32 + 44, 120, 200))
+    reagentBox:SetHeight(32 + shown)
     if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
 
@@ -1165,7 +1236,9 @@ function CR.CreateCraftPanel(parent)
       p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts)
         .. (structure and ("\n" .. structure) or ""))
       FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
-      p.box:SetHeight(12 + #pr.reagents * 30)
+      if p.lastSpell ~= pr.spell then p.scroll:ScrollTo(0) end
+      p.lastSpell = pr.spell
+      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, cast, 12 + 16, 90, 150)))
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
