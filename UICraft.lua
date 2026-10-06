@@ -666,9 +666,9 @@ function CR.CreateCraftPanel(parent)
     FillBand(r, cur)
 
     profDD:Sync()
-    FillReagents(reagentBox, reagentRows, r, 1)
+    FillReagents(reagentBox, reagentRows, r, st.crafts)   -- totals for the whole step
     reagentBox:SetHeight(32 + #r.reagents * 40)
-    if st.crafts > 1 then totalNote:SetText(string.format("per craft  ·  x%d for this step", st.crafts))
+    if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
 
     -- the whole step: what to fetch from the bank / alts, and what's truly missing (with cost)
@@ -713,7 +713,7 @@ function CR.CreateCraftPanel(parent)
       p.name:SetText(pr.name)
       p.name:SetTextColor(QualityRGB(pr.q))
       p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts))
-      FillReagents(p.box, p.rows, pr, 1)
+      FillReagents(p.box, p.rows, pr, ps.crafts)
       p.box:SetHeight(12 + #pr.reagents * 30)
     end
     FillPreview(nextFrame, nst)
