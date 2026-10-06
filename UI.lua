@@ -346,6 +346,8 @@ function CR.ShowWindow(tab)
   end
   frame:Show()
   CR.RefreshWindow()
+  -- the Craft tab opens the profession window itself (this runs from a click or /cr)
+  if tab == "craft" and frame.panels.craft.AutoOpen then frame.panels.craft:AutoOpen() end
 end
 
 function CR.ToggleWindow()

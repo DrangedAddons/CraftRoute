@@ -144,10 +144,13 @@ function CR.CreateCraftPanel(parent)
   local db = function() return CraftRouteCharDB end
   panel.viewOffset = 0   -- browsing ahead with the arrows; 0 = the current craft
 
+  -- Layout: the craft area on the left (fixed width), the compact route down the right.
+  local LEFT_W, ROUTE_W = 520, 290
+
   -- Skill bar
   local bar = CreateFrame("StatusBar", nil, panel, "BackdropTemplate")
-  bar:SetSize(560, 20)
-  bar:SetPoint("TOP", 0, -8)
+  bar:SetSize(LEFT_W - 150, 20)
+  bar:SetPoint("TOPLEFT", 146, -8)
   bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   bar:SetMinMaxValues(0, 1)
   CR.Backdrop(bar, 0, 0, 0, 0.6)
@@ -163,7 +166,11 @@ function CR.CreateCraftPanel(parent)
     end
     return opts
   end, function() return db().profession end,
-  function(v) db().profession = v; db().profPicked = true; panel.viewOffset = 0; CR.NotifyChanged() end)
+  function(v)
+    db().profession = v; db().profPicked = true; panel.viewOffset = 0
+    panel:AutoOpen(true)
+    CR.NotifyChanged()
+  end)
   profDD:SetPoint("TOPLEFT", 4, -8)
 
   local stepLine = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -196,7 +203,7 @@ function CR.CreateCraftPanel(parent)
   -- Main recipe (left-centre)
   local main = CreateFrame("Frame", nil, panel)
   main:SetSize(320, 300)
-  main:SetPoint("TOP", panel, "TOP", -120, -64)
+  main:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -64)
   local bigIcon = IconButton(main, 64)
   bigIcon:SetPoint("TOP", 0, 0)
   prevBtn:SetPoint("RIGHT", bigIcon, "LEFT", -24, 0)
@@ -224,10 +231,16 @@ function CR.CreateCraftPanel(parent)
   local totalNote = reagentBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   totalNote:SetPoint("BOTTOMRIGHT", -10, 6)
 
-  -- Up next (right)
+  -- What the whole step needs that your bags don't have yet, and what buying it costs.
+  local stepNeed = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  stepNeed:SetPoint("TOP", reagentBox, "BOTTOM", 0, -8)
+  stepNeed:SetWidth(300)
+  stepNeed:SetJustifyH("CENTER")
+
+  -- Up next (middle)
   local nextFrame = CreateFrame("Frame", nil, panel)
-  nextFrame:SetSize(200, 260)
-  nextFrame:SetPoint("TOP", panel, "TOP", 250, -110)
+  nextFrame:SetSize(190, 260)
+  nextFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 326, -110)
   local nextLabel = nextFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   nextLabel:SetPoint("TOP", 0, 0)
   nextLabel:SetText("Up next")
@@ -254,7 +267,7 @@ function CR.CreateCraftPanel(parent)
   -- Craft controls (bottom)
   local controls = CreateFrame("Frame", nil, panel, "BackdropTemplate")
   controls:SetSize(470, 44)
-  controls:SetPoint("BOTTOM", panel, "BOTTOM", -120, 6)
+  controls:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", (LEFT_W - 470) / 2, 6)
   CR.Backdrop(controls, 0, 0, 0, 0.45)
   local createAll = CreateFrame("Button", nil, controls, "UIPanelButtonTemplate")
   createAll:SetSize(130, 26)
@@ -298,8 +311,95 @@ function CR.CreateCraftPanel(parent)
   status:SetWidth(470)
 
   local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-  empty:SetPoint("CENTER", 0, 20)
-  empty:SetWidth(600)
+  empty:SetPoint("TOPLEFT", 20, -160)
+  empty:SetWidth(LEFT_W - 40)
+
+  -- Compact route (right): the upcoming steps, current one highlighted. Click a craft to view it.
+  local routeTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  routeTitle:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -ROUTE_W + 50, -10)
+  routeTitle:SetText("Route")
+  CR.ThemeRegisterAccentText(routeTitle)
+  local routeGoal = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  routeGoal:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -12)
+  local routeList = CR.CreateList("CraftRouteCraftRouteList", panel, ROUTE_W, 400, function(row)
+    row.range = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.range:SetPoint("LEFT", 2, 0)
+    row.range:SetWidth(52)
+    row.range:SetJustifyH("LEFT")
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(14, 14)
+    row.icon:SetPoint("LEFT", 56, 0)
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+    row.text:SetPoint("RIGHT", -2, 0)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
+    row.mark = row:CreateTexture(nil, "BACKGROUND")
+    row.mark:SetAllPoints()
+    row.mark:SetColorTexture(1, 1, 1, 1)
+    row.mark:Hide()
+    row:SetScript("OnClick", function(self)
+      if self.craftIndex then
+        panel.viewOffset = self.craftIndex - 1
+        panel:Refresh()
+      end
+    end)
+    row:SetScript("OnEnter", function(self)
+      local st = self.step
+      if not st then return end
+      GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+      if st.recipe then
+        CR.RecipeTooltip(GameTooltip, st.recipe, st.crafts)
+        GameTooltip:AddLine("Click to view it in the craft panel", 0.6, 0.8, 1)
+      else
+        GameTooltip:SetText(st.text or "", 1, 1, 1, 1, true)
+      end
+      GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", GameTooltip_Hide)
+  end, function(row, line)
+    local st = line.step
+    row.step, row.craftIndex = st, line.craftIndex
+    row.range:SetText(st.from and st.to and st.to > st.from and string.format("%d-%d", st.from, st.to)
+      or (st.from and st.from > 0 and tostring(st.from) or ""))
+    if st.recipe then
+      row.icon:SetTexture(st.recipe.item > 0 and GetItemIcon(st.recipe.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+      row.icon:Show()
+      local name = CR.ColorText(st.recipe.name, CR.QualityHex(st.recipe.q))
+      local prefix = st.kind == "extra" and CR.ColorText("+ ", "aaaaaa") or (st.kind == "target" and CR.ColorText("Target: ", "33ccff") or "")
+      row.text:SetText(prefix .. (st.estimated and "~" or "") .. st.crafts .. "x " .. name)
+    else
+      row.icon:SetTexture(st.kind == "train" and "Interface\\Icons\\INV_Misc_Book_09" or "Interface\\Icons\\Trade_Fishing")
+      row.icon:Show()
+      row.text:SetText(CR.ColorText(st.text or "", st.kind == "train" and "ffd100" or "cccccc"))
+    end
+    -- the craft on view gets an accent tint; the current one a fainter one
+    local r, g, b = CR.AccentColor()
+    if line.craftIndex and line.craftIndex == panel.viewOffset + 1 then
+      row.mark:SetVertexColor(r, g, b, 0.25); row.mark:Show()
+    elseif line.craftIndex == 1 then
+      row.mark:SetVertexColor(r, g, b, 0.1); row.mark:Show()
+    else
+      row.mark:Hide()
+    end
+  end)
+  routeList:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, -28)
+  routeList:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 6)
+
+  -- Open the profession window by itself (on a click or /cr - the game may block it otherwise).
+  -- Once per visit: if you close it yourself, it stays closed until you come back to the tab.
+  function panel:AutoOpen(force)
+    local profName = db().profession
+    local route = CR.Route(profName)
+    local craftProf = route and route.recipeProf or profName
+    local _, _, detected = CR.GetSkill(craftProf)
+    if not detected or InCombatLockdown() or CR.TradeSkillOpenFor(craftProf) then return end
+    if not CR.professions[craftProf] or not next(CR.professions[craftProf].recipes) then return end
+    if self.autoOpened == craftProf and not force then return end
+    self.autoOpened = craftProf
+    pcall(CR.OpenTradeSkill, craftProf)
+  end
+  panel:SetScript("OnHide", function(self) self.autoOpened = nil end)
 
   -- Craft-able steps of the route (current first), following the full route past the goal.
   local function CraftSteps(entry)
@@ -331,6 +431,26 @@ function CR.CreateCraftPanel(parent)
       or (profName .. " (not learned)"))
 
     local steps = entry and CraftSteps(entry) or {}
+
+    -- compact route: everything ahead except the "choose ONE" blocks (the chosen path's steps show)
+    local lines, craftIndex = {}, 0
+    for _, s in ipairs(entry and entry.full.steps or {}) do
+      if s.kind ~= "fork" and s.kind ~= "option" then
+        local isCraft = CRAFT_KINDS[s.kind] and s.recipe
+        if isCraft then craftIndex = craftIndex + 1 end
+        table.insert(lines, { step = s, craftIndex = isCraft and craftIndex or nil })
+      end
+    end
+    routeList.data = lines
+    -- keep the viewed craft in sight
+    local viewLine
+    for i, l in ipairs(lines) do if l.craftIndex == panel.viewOffset + 1 then viewLine = i end end
+    if viewLine and (viewLine <= routeList.offset or viewLine > routeList.offset + 20) then
+      routeList.offset = math.max(0, viewLine - 3)
+    end
+    routeList:Refresh()
+    routeGoal:SetText(entry and string.format("to %d (%s)", entry.full.goal, entry.route and entry.route.label or "") or "")
+
     if #steps == 0 then
       main:Hide(); nextFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
@@ -372,6 +492,23 @@ function CR.CreateCraftPanel(parent)
     if st.crafts > 1 then totalNote:SetText(string.format("per craft  ·  x%d for this step", st.crafts))
     else totalNote:SetText("") end
 
+    -- the whole step against your bags: what's short and what buying it would cost
+    local short, cost, unpriced = {}, 0, false
+    for _, rg in ipairs(r.reagents) do
+      local missing = rg[2] * st.crafts - (GetItemCount(rg[1], false) or 0)
+      if missing > 0 then
+        table.insert(short, missing .. " " .. CR.ItemName(rg[1]))
+        local price = CR.GetUnitPrice(rg[1])
+        if price then cost = cost + price * missing else unpriced = true end
+      end
+    end
+    if #short == 0 then
+      stepNeed:SetText(CR.ColorText(string.format("You have everything for all %d.", st.crafts), "40ff40"))
+    else
+      stepNeed:SetText(string.format("For all %d you still need: %s", st.crafts, table.concat(short, ", "))
+        .. (cost > 0 and ("  ·  " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""))
+    end
+
     -- Up next
     if nst then
       local nr = nst.recipe
@@ -403,7 +540,7 @@ function CR.CreateCraftPanel(parent)
       status:SetText(CR.ColorText("You haven't learned " .. profName .. " on this character.", "ff9966"))
       openBtn:Disable()
     elseif not open then
-      status:SetText("The game only lets you craft with the profession window open.")
+      status:SetText("The profession window is closed - crafting needs it open.")
       openBtn:SetEnabled(not InCombatLockdown())
     elseif learned == false then
       status:SetText(CR.ColorText("You haven't learned " .. r.name .. " yet - " .. CR.FactionText(r.pattern or r.src), "ff9966"))

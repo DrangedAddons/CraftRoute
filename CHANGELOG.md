@@ -9,6 +9,9 @@
   - **Bottom:** Create All [N], a count box with arrows, and Create, which becomes Stop while crafting several. The game only allows crafting with the profession window open, so until it is, an "Open <profession>" button appears instead.
   - **Profession:** a small switcher on the tab for the professions you have.
 - Follows the whole route even past your goal, including extra crafts and your target recipes.
+- The profession window opens by itself when you go to the Craft tab or switch profession there. If you close it, it stays closed until you come back to the tab. The Open button remains as a fallback.
+- A compact **Route** column down the right lists the upcoming steps: crafts, extra crafts, targets, training and instructions. The current craft is lightly tinted and the one you're viewing is highlighted. Click any craft to view it.
+- Under the reagents, a line shows what the whole step still needs beyond your bags and what buying it would cost.
 
 ## 0.11.0
 - Guide alternatives are now shown as what you'd craft instead of material sources. For example: "A: 20x Cured Heavy Hide, 16x Hillman's Leather Gloves, 10x Barbaric Shoulders, 10x Guardian Gloves" or "B: 21x Hillman's Leather Gloves, 15x Barbaric Leggings, 10x Barbaric Harness".
