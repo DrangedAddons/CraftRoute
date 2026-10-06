@@ -1,0 +1,49 @@
+# Builds the addon zip and publishes a GitHub Release when a version tag (v*) is pushed.
+# Ordinary pushes to main do nothing - only a deliberately pushed tag cuts a release
+# (and the release is what the Discord announcement picks up).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the .toc version
+        run: |
+          TOC_VERSION=$(grep -m1 '^## Version:' CraftRoute.toc | sed 's/^## Version:[[:space:]]*//' | tr -d '\r')
+          if [ "v${TOC_VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} doesn't match CraftRoute.toc version ${TOC_VERSION}" >&2
+            exit 1
+          fi
+
+      - name: Build zip
+        run: |
+          mkdir -p build/CraftRoute
+          rsync -a --exclude='.git*' --exclude='.github' --exclude='tools' --exclude='build' ./ build/CraftRoute/
+          cd build && zip -qr "../CraftRoute-${GITHUB_REF_NAME}.zip" CraftRoute
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="## ${VERSION}" '
+            $0 == v { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md | tr -d '\r' > notes.md
+          if [ ! -s notes.md ]; then echo "CraftRoute ${GITHUB_REF_NAME}" > notes.md; fi
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "CraftRoute-${GITHUB_REF_NAME}.zip" \
+            --title "CraftRoute ${GITHUB_REF_NAME}" --notes-file notes.md
