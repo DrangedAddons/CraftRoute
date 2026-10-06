@@ -158,8 +158,8 @@ function CR.BagsAndElsewhere(itemID)
 end
 
 -- Colour for "have/need": green = enough in your bags; yellow = enough counting the bank /
--- mail / alts; red = not enough anywhere. Previews judge the whole step; the current recipe
--- judges one craft (can you make any at all?), while the count still shows the step total.
+-- mail / alts; red = not enough anywhere. The Craft tab judges one craft (can you make any at
+-- all?) for the current recipe and the previews alike; the count still shows the step total.
 function CR.ReagentColor(bags, elsewhere, need)
   if bags >= need then return "40ff40" end
   if bags + elsewhere >= need then return "ffd100" end
@@ -1071,7 +1071,7 @@ function CR.CreateCraftPanel(parent)
       local structure = CR.StructureText(pr)
       p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts)
         .. (structure and ("\n" .. structure) or ""))
-      FillReagents(p.box, p.rows, pr, ps.crafts)
+      FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
       p.box:SetHeight(12 + #pr.reagents * 30)
     end
     FillPreview(nextFrame, nst)
