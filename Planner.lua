@@ -109,6 +109,15 @@ function CR.Smelter(itemID)
 end
 
 -- Expected crafts to go from skill lo to hi with one recipe (stops when it turns grey).
+-- Expected crafts (unrounded) over [lo, hi); points past grey count as one tough craft each.
+local function CraftWeight(r, lo, hi)
+  local n = 0
+  for sk = lo, hi - 1 do
+    n = n + min(CraftsPerPoint(r, sk), 4)
+  end
+  return n
+end
+
 local function EstimateCrafts(r, lo, hi)
   local n = 0
   for sk = lo, hi - 1 do
@@ -116,6 +125,14 @@ local function EstimateCrafts(r, lo, hi)
     n = n + CraftsPerPoint(r, sk)
   end
   return math.max(1, ceil(n - 0.01))
+end
+
+-- A guide step's craft count scaled to the part you still have to do. Weighted by difficulty:
+-- the last yellow points of a step take more crafts than its first orange ones.
+local function ScaleCrafts(r, guideCrafts, from, to, lo, hi)
+  local full = CraftWeight(r, from, to)
+  if full <= 0 then return ceil(guideCrafts * (hi - lo) / (to - from) - 0.01) end
+  return math.max(1, ceil(guideCrafts * CraftWeight(r, lo, hi) / full - 0.01))
 end
 
 -- Selected targets that aren't owned yet: { {recipe, qty, owned} }
@@ -314,7 +331,8 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     if not r then return nil end
     out.spell = st.spell
     if st.crafts then
-      out.crafts = ceil(st.crafts * frac - 0.01)
+      out.crafts = (lo == st.from and hi == st.to) and st.crafts
+        or ScaleCrafts(r, st.crafts, st.from, st.to, lo, hi)
     else
       out.crafts, out.estimated = EstimateCrafts(r, lo, hi), true
     end
@@ -383,6 +401,25 @@ local function ForkEvents(route, rprof, profName, cur, goal)
           skillName = skillName or e.skill
         end
       end
+    end
+    -- Once you're past the part where the options differ (e.g. both leatherworking 1-45 paths end
+    -- in Light Armor Kits from 30), the choice no longer matters - don't show it.
+    if lo then
+      local sigs, distinct = {}, 0
+      for _, o in ipairs(c.options) do
+        if FactionOK(o) then
+          local parts = {}
+          for i, st in ipairs(route.steps) do
+            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st)
+                and ClipStep(route, rprof, st, i, profName, cur, goal) then
+              table.insert(parts, st.spell and ("s" .. st.spell) or ("g" .. tostring(st.text)))
+            end
+          end
+          local sig = table.concat(parts, ",")
+          if not sigs[sig] then sigs[sig] = true; distinct = distinct + 1 end
+        end
+      end
+      if distinct < 2 then lo = nil end
     end
     if lo then
       local picked = RouteChoice(route, c.key)
