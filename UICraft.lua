@@ -124,9 +124,9 @@ local function BagItem(bag, slot)
   end
 end
 
--- Gear you could put this enchant on: what you're wearing, and soulbound items in your bags
--- (never the bank or alts, and never unbound items - enchanting those would bind them).
--- Bag items and unenchanted ones first, so your worn gear is the last resort.
+-- Gear you could put this enchant on: what you're wearing and what's in your bags (never the
+-- bank or alts). Bag items and unenchanted ones first, so your worn gear is the last resort.
+-- Unbound items are fine; enchanting one binds it, and the game asks you about that itself.
 function CR.EnchantCandidates(fits)
   local list = {}
   if not fits then return list end
@@ -140,8 +140,8 @@ function CR.EnchantCandidates(fits)
   for bag = 0, NUM_BAG_SLOTS or 4 do
     for slot = 1, NumBagSlots(bag) do
       local id, link, bound = BagItem(bag, slot)
-      if id and bound and fits[EquipLoc(id) or ""] then
-        table.insert(list, { bag = bag, slot = slot, itemID = id, link = link, enchanted = HasEnchant(link) })
+      if id and fits[EquipLoc(id) or ""] then
+        table.insert(list, { bag = bag, slot = slot, itemID = id, link = link, enchanted = HasEnchant(link), unbound = bound == false })
       end
     end
   end
@@ -1011,6 +1011,9 @@ function CR.CreateCraftPanel(parent)
       if self.cand.enchanted then
         GameTooltip:AddLine("Already enchanted - it will be replaced without asking.", 1, 0.4, 0.4, true)
       end
+      if self.cand.unbound then
+        GameTooltip:AddLine("Not soulbound yet - enchanting it binds it to you (the game asks first).", 1, 0.82, 0, true)
+      end
       GameTooltip:AddLine("Click to make it the target.", 0.2, 1, 0.2)
       GameTooltip:Show()
     end)
@@ -1036,8 +1039,8 @@ function CR.CreateCraftPanel(parent)
     end
     for i = n + 1, #flyout.buttons do flyout.buttons[i]:Hide() end
     if n == 0 then
-      flyEmpty:SetText(string.format("No %s you're wearing or soulbound %s in your bags.",
-        (ench.kind or "item"):lower(), (ench.kind or "item"):lower()))
+      flyEmpty:SetText(string.format("No %s you're wearing or in your bags.",
+        (ench.kind or "item"):lower()))
       flyEmpty:Show()
       flyout:SetWidth(flyEmpty:GetStringWidth() + 20)
     else
@@ -1065,7 +1068,7 @@ function CR.CreateCraftPanel(parent)
     else
       GameTooltip:SetText("Enchant target")
       GameTooltip:AddLine("Pick something to enchant from the list beside this slot: gear you're wearing, "
-        .. "or soulbound gear in your bags that this enchant fits.", 1, 1, 1, true)
+        .. "or gear in your bags that this enchant fits.", 1, 1, 1, true)
     end
     GameTooltip:Show()
   end)
