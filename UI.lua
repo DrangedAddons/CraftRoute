@@ -277,13 +277,14 @@ local function CreateWindow()
     frame.tabs[key] = b
     CR.ThemeRegisterButton(b)
   end
-  AddTab("plan", "Plan", 130)
-  AddTab("recipes", "Recipes", 234)
+  AddTab("craft", "Craft", 130)
+  AddTab("plan", "Plan", 234)
+  AddTab("recipes", "Recipes", 338)
 
   -- Look picker: only when EllesmereUI is installed, to match its four styles.
   if CR.HasEllesmere() then
     local lookLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    lookLabel:SetPoint("TOPLEFT", 352, -19)
+    lookLabel:SetPoint("TOPLEFT", 456, -19)
     lookLabel:SetText("Look:")
     CR.ThemeRegisterAccentText(lookLabel)
     local lookDD = CR.CreateDropdown(frame, 170, function()
@@ -322,6 +323,7 @@ local function CreateWindow()
 
   frame.panels.plan = CR.CreatePlanPanel(frame)
   frame.panels.recipes = CR.CreateRecipesPanel(frame)
+  frame.panels.craft = CR.CreateCraftPanel(frame)
   for _, p in pairs(frame.panels) do
     p:SetPoint("TOPLEFT", 14, -42)
     p:SetPoint("BOTTOMRIGHT", -14, 12)
@@ -332,7 +334,10 @@ end
 
 function CR.ShowWindow(tab)
   if not frame then CreateWindow() end
-  tab = tab or frame.current or "plan"
+  -- the last tab used is remembered, so the window reopens where you left it (e.g. on Craft)
+  tab = tab or frame.current or CraftRouteDB.lastTab or "craft"
+  if not frame.panels[tab] then tab = "craft" end
+  CraftRouteDB.lastTab = tab
   frame.current = tab
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
   for key, b in pairs(frame.tabs) do

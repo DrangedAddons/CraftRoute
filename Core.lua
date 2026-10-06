@@ -167,9 +167,10 @@ function CR.ScanSkills()
   if GetProfessions and GetProfessionInfo then
     -- Retail-style API (WoW Forever)
     for _, index in pairs({ GetProfessions() }) do
-      local name, _, rank, maxRank = GetProfessionInfo(index)
+      local name, icon, rank, maxRank, _, _, skillLine = GetProfessionInfo(index)
       if name and CR.professions[name] then
-        found[name] = { rank = rank, maxRank = maxRank }
+        -- skillLine opens the profession window (C_TradeSkillUI.OpenTradeSkill) for the Craft tab
+        found[name] = { rank = rank, maxRank = maxRank, skillLine = skillLine, icon = icon }
       end
     end
   elseif C_SkillInfo and C_SkillInfo.GetNumSkillLines then

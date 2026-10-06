@@ -1,5 +1,15 @@
 # CraftRoute changelog
 
+## 0.12.0 (in testing on the `crafting-tab` branch)
+- New **Craft** tab, now the first tab. The window remembers the last tab you used.
+  - **Top:** a skill bar ("Leatherworking 141/225") and the current step, e.g. "Step 141-155 · 16 to make".
+  - **Centre:** the recipe to craft now. It shows a big icon in its quality colour, its name, and how many skill points each craft gives at your skill. Below that are its reagents, showing what's in your bags against what one craft needs.
+  - **Right:** an "Up next" preview of the following recipe and its reagents.
+  - **Browse:** ‹ › arrows look ahead through the route without losing your place.
+  - **Bottom:** Create All [N], a count box with arrows, and Create, which becomes Stop while crafting several. The game only allows crafting with the profession window open, so until it is, an "Open <profession>" button appears instead.
+  - **Profession:** a small switcher on the tab for the professions you have.
+- Follows the whole route even past your goal, including extra crafts and your target recipes.
+
 ## 0.11.0
 - Guide alternatives are now shown as what you'd craft instead of material sources. For example: "A: 20x Cured Heavy Hide, 16x Hillman's Leather Gloves, 10x Barbaric Shoulders, 10x Guardian Gloves" or "B: 21x Hillman's Leather Gloves, 15x Barbaric Leggings, 10x Barbaric Harness".
   - The guide's name for each path and its cost sit in a small grey line underneath.
