@@ -3,6 +3,7 @@ local _, CR = ...
 local GetItemInfo, GetItemCount, GetItemIcon, IsEquippedItem = CR.GetItemInfo, CR.GetItemCount, CR.GetItemIcon, CR.IsEquippedItem
 
 local ROW_H = 18
+local OPTION_BUTTON_W = 84   -- the "Choose" button on alternative rows
 local frame
 
 ---------------------------------------------------------------------------
@@ -361,9 +362,10 @@ local function StepRowText(st, profName, route)
   if st.kind == "fork" then
     return RangeText(st, route),
            CR.ColorText((route and route.sequential and (st.text .. " - ") or "Guide alternatives - ")
-             .. "do ONE of these (click to choose):", "ffd100")
+             .. "choose ONE:", "ffd100")
   elseif st.kind == "option" then
-    local mark = st.selected and CR.ColorText("[x] ", "40ff40") or CR.ColorText("[  ] ", "888888")
+    -- Returns the option name as the row text, plus a detail line (materials / catch + cost)
+    -- shown underneath. The radio marker and Choose button are drawn by the row itself.
     local parts = {}
     for i = 1, math.min(3, #st.mats) do
       table.insert(parts, st.mats[i].n .. " " .. CR.ItemName(st.mats[i].id))
@@ -378,9 +380,9 @@ local function StepRowText(st, profName, route)
       parts[1] = "catches " .. parts[1]
     end
     local cost = st.cost > 0 and ("  " .. CR.FormatMoney(st.cost) .. (st.unpriced and "+" or "")) or ""
-    local label = CR.ColorText(st.letter .. ": " .. st.label, st.selected and "ffffff" or "999999")
-    return "", (st.letter == "A" and "  " or CR.ColorText("or ", "ffd100")) .. mark .. label
-      .. CR.ColorText("  " .. table.concat(parts, ", ") .. (#st.mats > 3 and "..." or ""), "888888") .. cost
+    local label = CR.ColorText(st.letter .. ": " .. st.label, st.selected and "ffffff" or "d8c690")
+    local detail = CR.ColorText(table.concat(parts, ", ") .. (#st.mats > 3 and ", ..." or ""), "999999") .. cost
+    return "", label, nil, nil, detail
   end
   local r = st.recipe or CR.professions[profName].recipes[st.spell]
   local name = CR.ColorText(r.name, QualityHex(r.q))
@@ -510,6 +512,49 @@ function CR.CreatePlanPanel(parent)
     row.text:SetPoint("RIGHT", -2, 0)
     row.text:SetJustifyH("LEFT")
     row.text:SetWordWrap(false)
+
+    -- Alternative ("choose ONE") rows: a tinted panel with an accent bar and a Choose button.
+    row.optBg = row:CreateTexture(nil, "BACKGROUND")
+    row.optBg:SetPoint("TOPLEFT", 74, 0)
+    row.optBg:SetPoint("BOTTOMRIGHT", 0, 0)
+    row.optBg:SetColorTexture(1, 1, 1, 1)
+    row.optBg:Hide()
+    row.optBar = row:CreateTexture(nil, "BORDER")
+    row.optBar:SetPoint("TOPLEFT", 74, 0)
+    row.optBar:SetPoint("BOTTOMLEFT", 74, 0)
+    row.optBar:SetWidth(3)
+    row.optBar:SetColorTexture(1, 1, 1, 1)
+    row.optBar:Hide()
+    row.optTop = row:CreateTexture(nil, "BORDER")   -- divider between neighbouring options
+    row.optTop:SetPoint("TOPLEFT", 74, 0)
+    row.optTop:SetPoint("TOPRIGHT", 0, 0)
+    row.optTop:SetHeight(1)
+    row.optTop:SetColorTexture(0, 0, 0, 0.9)
+    row.optTop:Hide()
+    local function Choose()
+      local st = row.step
+      if st and st.kind == "option" and not st.selected then
+        if PlaySound and SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON then
+          PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        end
+        CR.ProfTable("choices", st.routeID)[st.choice] = st.option
+        CR.NotifyChanged()
+      end
+    end
+    row.optBtn = CreateFrame("Button", nil, row, "BackdropTemplate")
+    row.optBtn:SetSize(OPTION_BUTTON_W, 16)
+    row.optBtn:SetPoint("RIGHT", -2, 0)
+    Backdrop(row.optBtn, 0.25, 0.2, 0.05, 0.9)
+    row.optBtn.label = row.optBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.optBtn.label:SetPoint("CENTER")
+    local btnHl = row.optBtn:CreateTexture(nil, "HIGHLIGHT")
+    btnHl:SetAllPoints()
+    btnHl:SetColorTexture(1, 0.85, 0.3, 0.2)
+    row.optBtn:SetScript("OnClick", Choose)
+    row.optBtn:SetScript("OnEnter", function() row:GetScript("OnEnter")(row) end)
+    row.optBtn:SetScript("OnLeave", GameTooltip_Hide)
+    row.optBtn:Hide()
+
     row:SetScript("OnEnter", function(self)
       local st = self.step
       if not st then return end
@@ -533,8 +578,8 @@ function CR.CreatePlanPanel(parent)
       elseif st.kind == "option" then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(st.letter .. ": " .. st.label .. string.format("  (%d-%d)", st.from, st.to))
-        GameTooltip:AddLine(st.selected and "Chosen - counted in materials and cost."
-          or "Click to use this path instead.", 0.6, 0.8, 1)
+        GameTooltip:AddLine(st.selected and "Selected - this is what the materials and cost count."
+          or "Click Choose to use this one instead.", 0.6, 0.8, 1)
         for _, m in ipairs(st.mats) do
           local have = CR.HaveCount(m.id)
           GameTooltip:AddDoubleLine("  " .. CR.ItemName(m.id), string.format("%d/%d", math.min(have, m.n), m.n),
@@ -551,20 +596,50 @@ function CR.CreatePlanPanel(parent)
       end
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
-    row:SetScript("OnClick", function(self)
-      local st = self.step
-      if st and st.kind == "option" and not st.selected then
-        CR.ProfTable("choices", st.routeID)[st.choice] = st.option
-        CR.NotifyChanged()
-      end
-    end)
+    row:SetScript("OnClick", Choose)  -- clicking anywhere on an option's panel chooses it too
   end, function(row, line)
-    -- line = { step, range, text, cont } - long instructions span several lines
+    -- line = { step, range, text, cont, option, button } - long text spans several lines
     local st = line.step
     row.step = st
     row.range:SetText(line.range or "")
     row.text:SetText(line.text)
-    if line.cont then
+    row.icon:SetTexCoord(0, 1, 0, 1)
+
+    -- Alternative rows: green panel when chosen, dark gold when not; button on the first line.
+    if line.option then
+      local sel = st.selected
+      row.optBg:SetVertexColor(sel and 0.15 or 0.4, sel and 0.45 or 0.3, sel and 0.15 or 0.05, sel and 0.35 or 0.22)
+      row.optBar:SetVertexColor(sel and 0.25 or 0.9, sel and 1 or 0.7, sel and 0.25 or 0.15, 1)
+      row.optBg:Show()
+      row.optBar:Show()
+      row.optTop:SetShown(line.button)
+    else
+      row.optBg:Hide()
+      row.optBar:Hide()
+      row.optTop:Hide()
+    end
+    row.text:ClearAllPoints()
+    row.text:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+    if line.button then
+      local sel = st.selected
+      row.optBtn.label:SetText(sel and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Selected" or "Choose")
+      row.optBtn.label:SetTextColor(sel and 0.4 or 1, sel and 1 or 0.82, sel and 0.4 or 0)
+      row.optBtn:SetBackdropColor(sel and 0.08 or 0.3, sel and 0.25 or 0.22, sel and 0.08 or 0.03, 0.95)
+      row.optBtn:SetBackdropBorderColor(sel and 0.3 or 0.9, sel and 0.8 or 0.7, sel and 0.3 or 0.15, 1)
+      row.optBtn:SetEnabled(not sel)
+      row.optBtn:Show()
+      row.text:SetPoint("RIGHT", row.optBtn, "LEFT", -4, 0)
+    else
+      row.optBtn:Hide()
+      row.text:SetPoint("RIGHT", -2, 0)
+    end
+
+    if line.option and line.button then
+      -- radio marker: UI-RadioButton holds unchecked (left quarter) and checked (second quarter)
+      row.icon:SetTexture("Interface\\Buttons\\UI-RadioButton")
+      if st.selected then row.icon:SetTexCoord(0.25, 0.5, 0, 1) else row.icon:SetTexCoord(0, 0.25, 0, 1) end
+      row.icon:Show()
+    elseif line.cont then
       row.icon:Hide()
     elseif st.recipe and st.recipe.item > 0 then
       row.icon:SetTexture(GetItemIcon(st.recipe.item))
@@ -623,10 +698,20 @@ function CR.CreatePlanPanel(parent)
     local out = {}
     local width = WrapWidth()
     for _, st in ipairs(plan.steps) do
-      local range, text, plain, color = StepRowText(st, plan.prof, route)
+      local range, text, plain, color, detail = StepRowText(st, plan.prof, route)
       if plain then text = CR.ColorText(plain, color) end
-      for i, l in ipairs(Wrap(text, width)) do
-        table.insert(out, { step = st, range = i == 1 and range or nil, text = l, cont = i > 1 })
+      if st.kind == "option" then
+        -- Option name beside its Choose button, details on the lines below, all on one tinted panel.
+        for i, l in ipairs(Wrap(text, width - OPTION_BUTTON_W - 8)) do
+          table.insert(out, { step = st, text = l, cont = i > 1, option = true, button = i == 1 })
+        end
+        for _, l in ipairs(Wrap(detail, width)) do
+          table.insert(out, { step = st, text = l, cont = true, option = true })
+        end
+      else
+        for i, l in ipairs(Wrap(text, width)) do
+          table.insert(out, { step = st, range = i == 1 and range or nil, text = l, cont = i > 1 })
+        end
       end
       if st.catchInfo then
         for _, l in ipairs(Wrap(CR.ColorText(st.catchInfo, "4fc3f7"), width)) do

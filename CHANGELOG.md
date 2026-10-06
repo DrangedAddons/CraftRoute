@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 0.8.1
+- Guide alternatives are much easier to read:
+  - Each option sits on its own tinted panel: green when chosen, dark gold when not, with a matching accent bar on the left and a divider between options.
+  - A radio marker sits next to the option name.
+  - A "Choose" button on the right turns into "✓ Selected" for the option in use. You can click the button or anywhere on the option.
+  - The materials and cost summary now sits on its own line(s) under the option name.
+- The heading reads "Guide alternatives - choose ONE:".
+
 ## 0.8.0
 - Smelting: if this character has Mining, bars a plan needs can now come from ore you already have.
   - It uses the bars you have first, then smelts only as many as your ore covers (bags, bank, mail, and alts if that option is on). Whatever's still short is listed to buy as bars.
