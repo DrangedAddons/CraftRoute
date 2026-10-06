@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # all tags, to find the previous release for the notes
 
       - name: Check the tag matches the .toc version
         run: |
@@ -30,14 +32,20 @@ jobs:
           rsync -a --exclude='.git*' --exclude='.github' --exclude='tools' --exclude='build' ./ build/CraftRoute/
           cd build && zip -qr "../CraftRoute-${GITHUB_REF_NAME}.zip" CraftRoute
 
+      # Every CHANGELOG section since the previous release, so versions that were never tagged on
+      # their own still get announced. Each older version gets its own sub-heading.
       - name: Release notes from CHANGELOG.md
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          awk -v v="## ${VERSION}" '
+          PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          PREV="${PREV#v}"
+          echo "Notes from ${VERSION} back to (not including) ${PREV:-the start}"
+          tr -d '\r' < CHANGELOG.md | awk -v v="## ${VERSION}" -v p="## ${PREV}" '
             $0 == v { found = 1; next }
-            found && /^## / { exit }
+            found && p != "## " && $0 == p { exit }
+            found && /^## / { if (p == "## ") exit; sub(/^## /, "### "); print; next }
             found { print }
-          ' CHANGELOG.md | tr -d '\r' > notes.md
+          ' > notes.md
           if [ ! -s notes.md ]; then echo "CraftRoute ${GITHUB_REF_NAME}" > notes.md; fi
           cat notes.md
 
