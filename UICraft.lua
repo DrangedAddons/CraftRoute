@@ -71,6 +71,131 @@ local function IsRepeating()
 end
 
 ---------------------------------------------------------------------------
+-- Enchanting: a target item for "Enchant <slot> - ..." recipes, so you can enchant the same
+-- item over and over while levelling.
+---------------------------------------------------------------------------
+-- Which kinds of gear each enchant goes on (by the part of its name before " - ").
+local WEAPONS = { INVTYPE_WEAPON = true, INVTYPE_WEAPONMAINHAND = true, INVTYPE_WEAPONOFFHAND = true, INVTYPE_2HWEAPON = true }
+local ENCHANT_SLOTS = {
+  ["2H Weapon"] = { INVTYPE_2HWEAPON = true },
+  ["Weapon"]    = WEAPONS,
+  ["Bracer"]    = { INVTYPE_WRIST = true },
+  ["Boots"]     = { INVTYPE_FEET = true },
+  ["Gloves"]    = { INVTYPE_HAND = true },
+  ["Chest"]     = { INVTYPE_CHEST = true, INVTYPE_ROBE = true },
+  ["Cloak"]     = { INVTYPE_CLOAK = true },
+  ["Shield"]    = { INVTYPE_SHIELD = true },
+  ["Off-Hand"]  = { INVTYPE_HOLDABLE = true },
+  ["Necklace"]  = { INVTYPE_NECK = true },
+}
+-- The gear kinds this recipe enchants (nil if it isn't an item enchant), and its slot word.
+function CR.EnchantSlotFor(r)
+  local kind = r and r.name:match("^Enchant (.-) %- ")
+  return kind and ENCHANT_SLOTS[kind], kind
+end
+
+local function EquipLoc(itemID)
+  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if not f or not itemID then return nil end
+  return select(4, f(itemID))
+end
+
+local function HasEnchant(link)
+  local e = link and link:match("item:%-?%d+:(%-?%d*)")
+  return (tonumber(e) or 0) > 0
+end
+
+local function NumBagSlots(bag)
+  if C_Container and C_Container.GetContainerNumSlots then return C_Container.GetContainerNumSlots(bag) or 0 end
+  return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
+end
+
+-- itemID, link, bound? of a bag slot
+local function BagItem(bag, slot)
+  if C_Container and C_Container.GetContainerItemInfo then
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if not info then return nil end
+    local bound = info.isBound
+    if bound == nil and C_Item and C_Item.IsBound and ItemLocation then
+      local ok, b = pcall(C_Item.IsBound, ItemLocation:CreateFromBagAndSlot(bag, slot))
+      bound = ok and b or false
+    end
+    return info.itemID, info.hyperlink or (C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(bag, slot)), bound
+  end
+end
+
+-- Gear you could put this enchant on: what you're wearing, and soulbound items in your bags
+-- (never the bank or alts, and never unbound items - enchanting those would bind them).
+-- Bag items and unenchanted ones first, so your worn gear is the last resort.
+function CR.EnchantCandidates(fits)
+  local list = {}
+  if not fits then return list end
+  for slot = 1, 19 do
+    local id = GetInventoryItemID and GetInventoryItemID("player", slot)
+    if id and fits[EquipLoc(id) or ""] then
+      local link = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+      table.insert(list, { equipSlot = slot, itemID = id, link = link, enchanted = HasEnchant(link) })
+    end
+  end
+  for bag = 0, NUM_BAG_SLOTS or 4 do
+    for slot = 1, NumBagSlots(bag) do
+      local id, link, bound = BagItem(bag, slot)
+      if id and bound and fits[EquipLoc(id) or ""] then
+        table.insert(list, { bag = bag, slot = slot, itemID = id, link = link, enchanted = HasEnchant(link) })
+      end
+    end
+  end
+  table.sort(list, function(a, b)
+    if (a.equipSlot ~= nil) ~= (b.equipSlot ~= nil) then return a.equipSlot == nil end
+    if a.enchanted ~= b.enchanted then return not a.enchanted end
+    return (a.bag or 0) * 100 + (a.slot or a.equipSlot) < (b.bag or 0) * 100 + (b.slot or b.equipSlot)
+  end)
+  return list
+end
+
+-- Is the target still where we left it? If it moved, find it again by item.
+local function ResolveTarget(t, fits)
+  if not t then return nil end
+  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+    if c.itemID == t.itemID and c.equipSlot == t.equipSlot and c.bag == t.bag and c.slot == t.slot then return c end
+  end
+  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+    if c.itemID == t.itemID then return c end
+  end
+end
+
+-- Cast the enchant on the target. The game's "replace the existing enchant?" question is
+-- answered for you (see REPLACE_ENCHANT below), so clicking again keeps enchanting.
+local function EnchantTarget(r, t)
+  if InCombatLockdown() then CR.Print("Can't enchant in combat.") return end
+  CR.enchantArmedUntil = GetTime() + 6
+  local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
+    or ItemLocation:CreateFromBagAndSlot(t.bag, t.slot))
+  local cast = false
+  if TS.CraftEnchant and loc then cast = pcall(TS.CraftEnchant, r.spell, 1, nil, loc) end
+  if not cast then Craft(r, 1) end
+  -- Classic-style: the enchant waits for a target - hand it the item.
+  if SpellIsTargeting and SpellIsTargeting() then
+    if t.equipSlot then
+      PickupInventoryItem(t.equipSlot)
+    elseif C_Container and C_Container.PickupContainerItem then
+      C_Container.PickupContainerItem(t.bag, t.slot)
+    elseif PickupContainerItem then
+      PickupContainerItem(t.bag, t.slot)
+    end
+    if CursorHasItem and CursorHasItem() then ClearCursor() end   -- never leave it on the cursor
+  end
+end
+
+function CR.AutoReplaceEnchant()
+  if CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil and ReplaceEnchant then
+    ReplaceEnchant()
+    C_Timer.After(0, function() if StaticPopup_Hide then StaticPopup_Hide("REPLACE_ENCHANT") end end)
+    return true
+  end
+end
+
+---------------------------------------------------------------------------
 -- Widgets
 ---------------------------------------------------------------------------
 local function QualityRGB(q)
@@ -832,6 +957,149 @@ function CR.CreateCraftPanel(parent)
   cast.text = cast:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   cast.text:SetPoint("CENTER")
 
+  -- Enchanting target (bottom centre, above the cast bar): only for "Enchant <slot> - ..."
+  -- recipes. Hover to pick from matching gear you're wearing or carrying; click to enchant it.
+  local ench = {}   -- target = { equipSlot | bag, slot, itemID }; fits / kind of the current enchant
+  panel.crEnch = ench
+  local enchantArea = CreateFrame("Frame", nil, panel)
+  enchantArea:SetSize(480, 64)
+  enchantArea:SetPoint("BOTTOM", cast, "TOP", -12, 14)
+  enchantArea:Hide()
+  local eSlot = CreateFrame("Button", nil, enchantArea, "BackdropTemplate")
+  eSlot:SetSize(56, 56)
+  eSlot:SetPoint("CENTER", -40, 0)
+  eSlot:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+  eSlot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  eSlot.icon = eSlot:CreateTexture(nil, "ARTWORK")
+  eSlot.icon:SetPoint("TOPLEFT", 2, -2)
+  eSlot.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+  eSlot.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+  local eHl = eSlot:CreateTexture(nil, "HIGHLIGHT")
+  eHl:SetAllPoints(eSlot.icon)
+  eHl:SetColorTexture(1, 1, 1, 0.15)
+  local eLabel = enchantArea:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  eLabel:SetPoint("BOTTOMRIGHT", eSlot, "LEFT", -10, 2)
+  eLabel:SetJustifyH("RIGHT")
+  eLabel:SetText("Enchant target")
+  CR.ThemeRegisterAccentText(eLabel)
+  local eName = enchantArea:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  eName:SetPoint("TOPRIGHT", eSlot, "LEFT", -10, -2)
+  eName:SetWidth(170)
+  eName:SetJustifyH("RIGHT")
+  eName:SetWordWrap(false)
+
+  -- the pick list, to the right of the slot while you hover
+  local flyout = CreateFrame("Frame", nil, enchantArea, "BackdropTemplate")
+  flyout:SetPoint("LEFT", eSlot, "RIGHT", 6, 0)
+  flyout:SetHeight(52)
+  CR.Backdrop(flyout, 0.04, 0.04, 0.06, 0.95)
+  flyout:SetFrameLevel(eSlot:GetFrameLevel() + 5)
+  flyout:Hide()
+  local flyEmpty = flyout:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  flyEmpty:SetPoint("LEFT", 10, 0)
+  flyout.buttons = {}
+  local function FlyButton(i)
+    local b = flyout.buttons[i]
+    if b then return b end
+    b = IconButton(flyout, 42)
+    b:SetPoint("LEFT", 5 + (i - 1) * 46, 0)
+    b:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      if self.cand.link then GameTooltip:SetHyperlink(self.cand.link) else GameTooltip:SetItemByID(self.cand.itemID) end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine(self.cand.equipSlot and "You're wearing this" or "In your bags", 0.8, 0.8, 0.8)
+      if self.cand.enchanted then
+        GameTooltip:AddLine("Already enchanted - it will be replaced without asking.", 1, 0.4, 0.4, true)
+      end
+      GameTooltip:AddLine("Click to make it the target.", 0.2, 1, 0.2)
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnClick", function(self)
+      local c = self.cand
+      ench.target = { equipSlot = c.equipSlot, bag = c.bag, slot = c.slot, itemID = c.itemID }
+      flyout:Hide()
+      GameTooltip_Hide()
+      panel:Refresh()
+    end)
+    flyout.buttons[i] = b
+    return b
+  end
+  local function ShowFlyout()
+    local list = CR.EnchantCandidates(ench.fits)
+    local n = math.min(#list, 10)
+    for i = 1, n do
+      local b, c = FlyButton(i), list[i]
+      b.cand = c
+      b.icon:SetTexture(GetItemIcon(c.itemID))
+      b:SetBackdropBorderColor(QualityRGB(select(3, GetItemInfo(c.itemID)) or 1))
+      b:Show()
+    end
+    for i = n + 1, #flyout.buttons do flyout.buttons[i]:Hide() end
+    if n == 0 then
+      flyEmpty:SetText(string.format("No %s you're wearing or soulbound %s in your bags.",
+        (ench.kind or "item"):lower(), (ench.kind or "item"):lower()))
+      flyEmpty:Show()
+      flyout:SetWidth(flyEmpty:GetStringWidth() + 20)
+    else
+      flyEmpty:Hide()
+      flyout:SetWidth(10 + n * 46)
+    end
+    flyout:Show()
+  end
+  -- hide once the mouse has left both the slot and the list
+  flyout:SetScript("OnUpdate", function(self)
+    if not (MouseIsOver(self) or MouseIsOver(eSlot)) then self:Hide() end
+  end)
+  eSlot:SetScript("OnEnter", function(self)
+    ShowFlyout()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    local t = ench.target
+    if t then
+      local link = t.equipSlot and GetInventoryItemLink("player", t.equipSlot)
+        or (C_Container and C_Container.GetContainerItemLink and C_Container.GetContainerItemLink(t.bag, t.slot))
+      if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(t.itemID) end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine("Left-click: enchant it with " .. (panel.current and panel.current.name or "this enchant"), 0.2, 1, 0.2, true)
+      GameTooltip:AddLine("Its current enchant is replaced without asking.", 1, 0.4, 0.4, true)
+      GameTooltip:AddLine("Right-click: clear the target", 0.8, 0.8, 0.8)
+    else
+      GameTooltip:SetText("Enchant target")
+      GameTooltip:AddLine("Pick something to enchant from the list beside this slot: gear you're wearing, "
+        .. "or soulbound gear in your bags that this enchant fits.", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+  end)
+  eSlot:SetScript("OnLeave", GameTooltip_Hide)
+  eSlot:SetScript("OnClick", function(self, button)
+    if button == "RightButton" then ench.target = nil panel:Refresh() return end
+    local r, t = panel.current, ench.target
+    if not t then ShowFlyout() return end
+    if r and not self.blocked then EnchantTarget(r, t) end
+  end)
+
+  -- Called from Refresh. fits: the gear kinds this recipe enchants (nil = not an enchant).
+  function panel:UpdateEnchant(r, fits, kind, canCraft)
+    ench.fits, ench.kind = fits, kind
+    enchantArea:SetShown(fits and true or false)
+    if not fits then flyout:Hide() return end
+    local t = ResolveTarget(ench.target, fits)
+    ench.target = t and { equipSlot = t.equipSlot, bag = t.bag, slot = t.slot, itemID = t.itemID } or nil
+    if t then
+      eSlot.icon:SetTexture(GetItemIcon(t.itemID))
+      eSlot.icon:SetDesaturated(not canCraft)
+      eSlot:SetBackdropBorderColor(QualityRGB(select(3, GetItemInfo(t.itemID)) or 1))
+      eName:SetText(CR.ItemName(t.itemID) .. (t.equipSlot and CR.ColorText(" (worn)", "aaaaaa") or ""))
+    else
+      eSlot.icon:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
+      eSlot.icon:SetDesaturated(false)
+      eSlot:SetBackdropBorderColor(0.4, 0.4, 0.4)
+      eName:SetText(CR.ColorText("Hover to choose a " .. kind:lower(), "aaaaaa"))
+    end
+    eSlot.blocked = not canCraft
+    if flyout:IsShown() then ShowFlyout() end
+    return t
+  end
+
   local function CastIdle()
     cast:SetScript("OnUpdate", nil)
     cast.casting = nil
@@ -1088,7 +1356,7 @@ function CR.CreateCraftPanel(parent)
     costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
     if #steps == 0 then
-      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
+      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); enchantArea:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
@@ -1104,6 +1372,9 @@ function CR.CreateCraftPanel(parent)
     local st = steps[1 + panel.viewOffset]
     local nst = steps[2 + panel.viewOffset]
     local r = st.recipe
+    local enchantFits, enchantKind = CR.EnchantSlotFor(r)
+    -- the reagent boxes stop above the enchant target when it's showing, else above the cast bar
+    local floor = enchantFits and enchantArea or cast
     prevBtn:SetShown(true); nextBtn:SetShown(true)
     prevBtn:SetEnabled(panel.viewOffset > 0)
     nextBtn:SetEnabled(nst ~= nil)
@@ -1186,7 +1457,7 @@ function CR.CreateCraftPanel(parent)
     readyText:SetText("Crafts ready: " .. CR.ColorText(string.format("%d/%d", math.min(readyN, st.crafts), st.crafts), readyColor))
     -- cap the box at the room above the cast bar; scroll the rest
     if panel.lastSpell ~= r.spell then reagentScroll:ScrollTo(0) end
-    local shown = reagentScroll:Fit(#r.reagents * 40 + extra, RoomBelow(reagentBox, cast, 32 + 44, 120, 200))
+    local shown = reagentScroll:Fit(#r.reagents * 40 + extra, RoomBelow(reagentBox, floor, 32 + 44, 120, 200))
     reagentBox:SetHeight(32 + shown)
     if st.crafts > 1 then totalNote:SetText(string.format("for all %d crafts", st.crafts))
     else totalNote:SetText("") end
@@ -1238,7 +1509,7 @@ function CR.CreateCraftPanel(parent)
       FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
       if p.lastSpell ~= pr.spell then p.scroll:ScrollTo(0) end
       p.lastSpell = pr.spell
-      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, cast, 12 + 16, 90, 150)))
+      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, floor, 12 + 16, 90, 150)))
     end
     FillPreview(nextFrame, nst)
     FillPreview(afterFrame, steps[3 + panel.viewOffset])
@@ -1266,11 +1537,21 @@ function CR.CreateCraftPanel(parent)
     else
       status:SetText(string.format("You can make %d now.", available))
     end
+    local target = panel:UpdateEnchant(r, enchantFits, enchantKind, craftable and (available or 0) > 0)
+    if enchantFits and open and learned ~= false and (available or 0) > 0 then
+      status:SetText(target and string.format("Click the target (or Enchant) for each cast - %d possible now.", available)
+        or CR.ColorText("Hover the enchant target slot to pick what to enchant.", "ffd100"))
+    end
     createAll:SetText(string.format("Create All [%d]", available or 0))
     createAll:SetEnabled(craftable and (available or 0) > 0)
     if IsRepeating() then
       create:SetText("Stop")
       create:Enable()
+    elseif enchantFits then
+      -- one cast per click, onto the target
+      create:SetText("Enchant")
+      create:SetEnabled(craftable and (available or 0) > 0 and target ~= nil)
+      createAll:Disable()
     else
       create:SetText("Create")
       create:SetEnabled(craftable and (available or 0) > 0)
@@ -1294,6 +1575,10 @@ function CR.CreateCraftPanel(parent)
   create:SetScript("OnClick", function()
     if IsRepeating() and TS.StopRecipeRepeat then TS.StopRecipeRepeat() return end
     local r = panel.current
+    if r and CR.EnchantSlotFor(r) then
+      if ench.target then EnchantTarget(r, ench.target) end
+      return
+    end
     if r then Craft(r, math.max(1, countBox:GetNumber() or 1)) end
   end)
   openBtn:SetScript("OnClick", function()
@@ -1311,13 +1596,15 @@ for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_
                      "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_SUCCEEDED",
                      "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
                      "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-                     "MERCHANT_SHOW", "MERCHANT_CLOSED", "MERCHANT_UPDATE" }) do
+                     "MERCHANT_SHOW", "MERCHANT_CLOSED", "MERCHANT_UPDATE",
+                     "REPLACE_ENCHANT", "PLAYER_EQUIPMENT_CHANGED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
     pcall(ev.RegisterEvent, ev, e)
   end
 end
 ev:SetScript("OnEvent", function(_, event, unit)
   if (event:find("^UNIT_") and unit ~= "player") then return end
+  if event == "REPLACE_ENCHANT" then CR.AutoReplaceEnchant() return end
   if event:find("^MERCHANT_") then
     if event == "MERCHANT_SHOW" then merchantOpen = true elseif event == "MERCHANT_CLOSED" then merchantOpen = false end
     ScanMerchant()
