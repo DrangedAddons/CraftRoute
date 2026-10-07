@@ -616,7 +616,9 @@ local function FillReagents(box, rows, r, crafts, opts)
       row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
       local id = rg[1]
       local open = opts.expanded == id
-      local canMake = opts.onMake and (bags < need or open) and CR.ComponentMaker(opts.prof, id)
+      local short = bags < (opts.needMult and rg[2] * opts.needMult or need)
+      local canMake = opts.onMake and (short or open) and not (opts.exclude and opts.exclude[id])
+        and CR.ComponentMaker(opts.prof, id)
       row.onMake = canMake and function() opts.onMake(id) end or nil
       row.expanded = open
       row.make:SetText(open and "-" or "+")
@@ -825,35 +827,61 @@ function CR.CreateCraftPanel(parent)
 
   -- Inline component maker: click a reagent you can make yourself (Medium Leather from Light
   -- Leather, Bolts of Cloth, Handfuls of Bolts, essences...) and its line opens up to show what
-  -- it's made from, with a Make button that starts crafting it straight away.
-  local expand = CreateFrame("Frame", nil, reagentContent, "BackdropTemplate")
-  expand:SetWidth(264)
-  CR.Backdrop(expand, 0, 0, 0, 0.5)
-  expand:Hide()
-  expand.rows = {}
-  for i = 1, 4 do
-    local row = ReagentRow(expand, 28, "GameFontHighlightSmall")
-    row:SetSize(172, 32)
-    row:SetPoint("TOPLEFT", 8, -4 - (i - 1) * 32)
-    expand.rows[i] = row
+  -- it's made from, with a Make button that starts crafting it straight away. A component in
+  -- there that you can make too has its own +, so the chain opens as deep as it goes (Rugged
+  -- Leather <- Thick <- Heavy <- Medium <- Light <- scraps), one section per level, each a step
+  -- further in.
+  local MAX_LEVELS, LEVEL_INDENT = 8, 8
+  local expands = {}
+  local function NewExpand(level)
+    local ex = CreateFrame("Frame", nil, reagentContent, "BackdropTemplate")
+    ex:SetWidth(264 - (level - 1) * LEVEL_INDENT)
+    CR.Backdrop(ex, 0, 0, 0, 0.5)
+    ex:Hide()
+    ex.title = ex:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    ex.title:SetPoint("TOPLEFT", 8, -5)
+    ex.title:SetPoint("RIGHT", -8, 0)
+    ex.title:SetJustifyH("LEFT")
+    ex.title:SetWordWrap(false)
+    CR.ThemeRegisterAccentText(ex.title)
+    ex.rows = {}
+    for i = 1, 4 do
+      local row = ReagentRow(ex, 28, "GameFontHighlightSmall")
+      row:SetSize(ex:GetWidth() - 92, 32)
+      row:SetPoint("TOPLEFT", 8, -18 - (i - 1) * 32)
+      ex.rows[i] = row
+    end
+    ex.info = ex:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    ex.info:SetPoint("BOTTOMLEFT", 8, 6)
+    ex.info:SetPoint("RIGHT", -8, 0)
+    ex.info:SetJustifyH("LEFT")
+    ex.make = CreateFrame("Button", nil, ex, "UIPanelButtonTemplate")
+    ex.make:SetSize(76, 22)
+    ex.make:SetPoint("TOPRIGHT", -8, -23)
+    CR.ThemeRegisterButton(ex.make)
+    ex.make:SetScript("OnClick", function(self)
+      if self.openProf then CR.OpenTradeSkill(self.openProf)
+      elseif self.recipe and (self.count or 0) > 0 then Craft(self.recipe, self.count) end
+    end)
+    -- essences: the secure cover that uses the item when you click Split / Combine
+    SecureEnchantButton(ex.make, function() return ex.convertMacro or "" end, {
+      plain = true,
+      wanted = function() return ex:IsVisible() and ex.convertMacro ~= nil end,
+    })
+    return ex
   end
-  expand.info = expand:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  expand.info:SetPoint("BOTTOMLEFT", 8, 6)
-  expand.info:SetPoint("RIGHT", -8, 0)
-  expand.info:SetJustifyH("LEFT")
-  expand.make = CreateFrame("Button", nil, expand, "UIPanelButtonTemplate")
-  expand.make:SetSize(76, 22)
-  expand.make:SetPoint("TOPRIGHT", -8, -9)
-  CR.ThemeRegisterButton(expand.make)
-  expand.make:SetScript("OnClick", function(self)
-    if self.openProf then CR.OpenTradeSkill(self.openProf)
-    elseif self.recipe and (self.count or 0) > 0 then Craft(self.recipe, self.count) end
-  end)
-  -- essences: the secure cover that uses the item when you click Split / Combine
-  SecureEnchantButton(expand.make, function() return expand.convertMacro or "" end, {
-    plain = true,
-    wanted = function() return expand:IsVisible() and expand.convertMacro ~= nil end,
-  })
+  for level = 1, MAX_LEVELS do expands[level] = NewExpand(level) end
+
+  -- The open chain: path[1] is the opened reagent, path[2] the component opened inside it...
+  panel.expandPath = {}
+  -- Open (or close) `id` at `level`; anything opened below that level closes.
+  local function ToggleExpand(level, id)
+    local path = panel.expandPath
+    local wasOpen = path[level] == id
+    for i = #path, level, -1 do path[i] = nil end
+    if not wasOpen then path[level] = id end
+    panel:Refresh()
+  end
 
   -- Buy popup, opened from a reagent's Buy button while a vendor is open: buy one, the amount
   -- this step still needs in your bags, or any amount.
@@ -964,8 +992,10 @@ function CR.CreateCraftPanel(parent)
     end
   end
 
-  -- Fills the open line for itemID (the step needs `need` of it); returns its height.
-  local function FillExpand(prof, itemID, need)
+  -- Fills the section for itemID at `level` (the level above needs `need` of it); returns its
+  -- height (0 if it can't be made), how many crafts / uses cover the shortfall, and the recipe.
+  local function FillExpand(level, prof, itemID, need)
+    local ex = expands[level]
     local how = CR.ComponentMaker(prof, itemID)
     if not how then return 0 end
     local bags, elsewhere = CR.BagsAndElsewhere(itemID)
@@ -976,11 +1006,19 @@ function CR.CreateCraftPanel(parent)
     local shortText = missing > 0 and CR.ColorText(missing .. " short", "ff6060")
       or (shortBags > 0 and CR.ColorText(shortBags .. " not on you", "ffd100"))
       or CR.ColorText("enough", "40ff40")
-    -- the components, as have / per craft
-    FillReagents(expand, expand.rows, how.recipe or { reagents = { { how.convert.use, how.convert.uses } } }, 1, { perCraft = true })
-    local m, info = expand.make, nil
+    ex.title:SetText(string.format("%s %s from:", how.recipe and "Make" or (how.convert.uses > 1 and "Combine" or "Split"),
+      CR.ItemName(itemID)))
+    -- the components, as have / per craft; ones you can make yourself open the next level
+    local exclude = {}
+    for i = 1, level do exclude[panel.expandPath[i]] = true end   -- never loop (essences go both ways)
+    FillReagents(ex, ex.rows, how.recipe or { reagents = { { how.convert.use, how.convert.uses } } }, 1, {
+      perCraft = true, prof = prof, needMult = math.max(1, toMake), exclude = exclude,
+      expanded = panel.expandPath[level + 1],
+      onMake = level < MAX_LEVELS and function(id) ToggleExpand(level + 1, id) end or nil,
+    })
+    local m, info = ex.make, nil
     m.recipe, m.count, m.openProf = nil, nil, nil
-    expand.convertMacro = nil
+    ex.convertMacro = nil
     if how.recipe then
       local r = how.recipe
       local learned, available = RecipeState(prof, r)
@@ -1013,16 +1051,16 @@ function CR.CreateCraftPanel(parent)
       m:Show()
       m:SetText(c.uses > 1 and "Combine" or "Split")
       m:SetEnabled(can > 0 and not InCombatLockdown())
-      expand.convertMacro = can > 0 and ("/use item:" .. c.use) or nil
+      ex.convertMacro = can > 0 and ("/use item:" .. c.use) or nil
       info = string.format("%s  ·  can do %s now  ·  %s",
         c.uses > 1 and string.format("Each click: %d into 1", c.uses) or string.format("Each click: 1 into %d", c.makes),
         CR.ColorText(tostring(can), can > 0 and "40ff40" or "ff6060"), shortText)
     end
-    expand.info:SetText(info)
+    ex.info:SetText(info)
     local nRows = how.recipe and #how.recipe.reagents or 1
-    local h = 8 + nRows * 32 + 16
-    expand:SetHeight(h)
-    return h
+    local h = 18 + nRows * 32 + 18
+    ex:SetHeight(h)
+    return h, toMake, how.recipe or { reagents = { { how.convert.use, how.convert.uses } } }
   end
 
   -- What the whole step needs that your bags don't have yet, and what buying it costs.
@@ -1603,27 +1641,41 @@ function CR.CreateCraftPanel(parent)
 
     profDD:Sync()
     -- counts are totals for the whole step; colours say whether you can make any at all
-    if panel.lastSpell ~= r.spell then panel.expanded = nil end
-    FillReagents(reagentBox, reagentRows, r, st.crafts, { perCraft = true, prof = rprof, expanded = panel.expanded,
+    local path = panel.expandPath
+    if panel.lastSpell ~= r.spell then wipe(path) end
+    FillReagents(reagentBox, reagentRows, r, st.crafts, { perCraft = true, prof = rprof, expanded = path[1],
       onBuy = OpenBuy,
-      onMake = function(id)
-        panel.expanded = panel.expanded ~= id and id or nil
-        panel:Refresh()
-      end })
+      onMake = function(id) ToggleExpand(1, id) end })
     local y, extra = 0, 0
-    expand:Hide()
+    for _, ex in ipairs(expands) do ex:Hide() end
     for i, row in ipairs(reagentRows) do
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", 12, y)
       y = y - 40
       local rg = r.reagents[i]
-      if rg and rg[1] == panel.expanded then
-        local h = FillExpand(rprof, rg[1], rg[2] * st.crafts)
-        if h > 0 then
-          expand:ClearAllPoints()
-          expand:SetPoint("TOPLEFT", 24, y + 2)
-          expand:Show()
-          y, extra = y - h - 4, h + 4
+      if rg and rg[1] == path[1] then
+        -- the open chain, one section per level under this reagent, each a step further in
+        local need, parent = rg[2] * st.crafts, nil
+        for level = 1, #path do
+          if level > 1 then
+            -- how many of this component the level above needs for its crafts
+            need = nil
+            for _, prg in ipairs(parent.recipe.reagents) do
+              if prg[1] == path[level] then need = prg[2] * math.max(1, parent.toMake) end
+            end
+          end
+          local h, toMake, recipe = 0, 0, nil
+          if need then h, toMake, recipe = FillExpand(level, rprof, path[level], need) end
+          if h == 0 then   -- no longer makeable / not part of the level above: close from here
+            for j = #path, level, -1 do path[j] = nil end
+            break
+          end
+          local ex = expands[level]
+          ex:ClearAllPoints()
+          ex:SetPoint("TOPLEFT", 24 + (level - 1) * LEVEL_INDENT, y + 2)
+          ex:Show()
+          y, extra = y - h - 4, extra + h + 4
+          parent = { recipe = recipe, toMake = toMake }
         end
       end
     end
