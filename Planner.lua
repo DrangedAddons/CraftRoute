@@ -545,7 +545,8 @@ function CR.BuildPlan(profName, cur, goal)
     end
   end
 
-  -- Smelting: with Mining learned, bars you're short of can come from ore you already have.
+  -- Smelting: with Mining learned, bars you're short of can come from ore you already have
+  -- (counted in the materials only - smelting isn't added to the route).
   -- How many of `recipe` can be made from what's in bags/bank (and smeltable from ore)?
   local function Smeltable(recipe, depth)
     local n = math.huge
@@ -588,8 +589,9 @@ function CR.BuildPlan(profName, cur, goal)
       if n > 0 then
         local got = min(short, n * smelter.makes)
         crafted[id] = (crafted[id] or 0) + got
-        table.insert(plan.steps, { kind = "extra", from = skillAt, spell = smelter.spell, crafts = n,
-                                   recipe = smelter, smelt = true, text = "from your ore - for " .. label })
+        -- Not a route step: the guide doesn't send you smelting, it just needs the bars. The ore
+        -- still counts towards them in the materials, and the Craft tab offers "Smelt" on the
+        -- bar itself when you're short.
         local smeltLabel = smelter.name .. " (" .. label .. ")"
         for _, rg in ipairs(smelter.reagents) do
           local amount = rg[2] * n

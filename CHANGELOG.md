@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.16.1
+
+- Route: smelting is no longer added as its own step ("+ 10x Smelt Copper"). The guides don't send you smelting; they just need the bars. The route shows the items to craft, your ore still counts towards the bars in the materials, and you smelt from the bar's + on the Craft tab when you're short. (The Craft tab also stops saying you haven't learned Smelt Copper - it was treating it as a Blacksmithing recipe.)
+
 ## 0.16.0
 
 - Craft tab: bars are components too if you have Mining. A bar you're short of (Copper, Bronze, Iron...) gets a + that opens "Smelt Copper Bar from:" with the ore, how many you're short, and a Smelt N button - like making Medium Leather from Light. It chains too (Bronze Bar opens to Copper and Tin Bars, which open to their ore). Smelting needs the Mining (Smelting) window open rather than Blacksmithing's, so the section offers to open it; switch back to Blacksmithing for the craft itself. Characters without Mining don't get the option.
