@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.16.0
+
+- Craft tab: bars are components too if you have Mining. A bar you're short of (Copper, Bronze, Iron...) gets a + that opens "Smelt Copper Bar from:" with the ore, how many you're short, and a Smelt N button - like making Medium Leather from Light. It chains too (Bronze Bar opens to Copper and Tin Bars, which open to their ore). Smelting needs the Mining (Smelting) window open rather than Blacksmithing's, so the section offers to open it; switch back to Blacksmithing for the craft itself. Characters without Mining don't get the option.
+
 ## 0.15.0
 
 - Craft tab: component chains open all the way down. Inside an opened reagent, any component you can make yourself has its own +, opening the next level a step further in - e.g. Medium Leather, then the Light Leather it's made from, then the Ruined Leather Scraps for that (up to 8 levels: enough for Forceful Rugged Armor Kit <- Rugged Armor Kit <- Rugged <- Thick <- Heavy <- Medium <- Light <- scraps). Each level says what it's making, what's needed to cover the shortfall above it after what you have, and has its own Make button (work bottom-up; the game needs a click per batch). Each section is titled ("Make Light Leather from:").

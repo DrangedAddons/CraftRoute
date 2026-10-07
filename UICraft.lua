@@ -18,6 +18,7 @@ function CR.TradeSkillOpenFor(profName)
   if TS.GetBaseProfessionInfo and TS.IsTradeSkillReady then
     local info = TS.GetBaseProfessionInfo()
     local name = info and (info.professionName or info.parentProfessionName)
+    if profName == "Mining" and name == "Smelting" then name = "Mining" end   -- the smelting window
     return name == profName and TS.IsTradeSkillReady() and true or false
   end
   if GetTradeSkillLine then return GetTradeSkillLine() == profName end
@@ -534,6 +535,12 @@ end
 function CR.ComponentMaker(prof, itemID)
   local spell = prof and prof.byItem[itemID]
   if spell and prof.recipes[spell] then return { recipe = prof.recipes[spell] } end
+  -- bars: smelt them yourself if this character has Mining (a Mining recipe, so how.prof says so)
+  local mining = CR.professions.Mining
+  local smelt = mining and mining.byItem[itemID] and mining.recipes[mining.byItem[itemID]]
+  if smelt and smelt.cat == "Smelted Bars" and select(3, CR.GetSkill("Mining")) then
+    return { recipe = smelt, prof = mining }
+  end
   if CONVERSIONS[itemID] then return { convert = CONVERSIONS[itemID] } end
 end
 
@@ -998,6 +1005,7 @@ function CR.CreateCraftPanel(parent)
     local ex = expands[level]
     local how = CR.ComponentMaker(prof, itemID)
     if not how then return 0 end
+    prof = how.prof or prof   -- smelting is Mining's, whatever the recipe above is
     local bags, elsewhere = CR.BagsAndElsewhere(itemID)
     local missing = math.max(0, need - bags - elsewhere)   -- not anywhere: has to be made
     local shortBags = math.max(0, need - bags)              -- not on you
@@ -1006,8 +1014,8 @@ function CR.CreateCraftPanel(parent)
     local shortText = missing > 0 and CR.ColorText(missing .. " short", "ff6060")
       or (shortBags > 0 and CR.ColorText(shortBags .. " not on you", "ffd100"))
       or CR.ColorText("enough", "40ff40")
-    ex.title:SetText(string.format("%s %s from:", how.recipe and "Make" or (how.convert.uses > 1 and "Combine" or "Split"),
-      CR.ItemName(itemID)))
+    ex.title:SetText(string.format("%s %s from:",
+      how.prof and "Smelt" or how.recipe and "Make" or (how.convert.uses > 1 and "Combine" or "Split"), CR.ItemName(itemID)))
     -- the components, as have / per craft; ones you can make yourself open the next level
     local exclude = {}
     for i = 1, level do exclude[panel.expandPath[i]] = true end   -- never loop (essences go both ways)
@@ -1034,11 +1042,11 @@ function CR.CreateCraftPanel(parent)
         m:SetText("Open")
         m:SetEnabled(not InCombatLockdown())
         m.openProf = prof.name
-        info = "Open " .. prof.name .. " to craft  ·  " .. shortText
+        info = (how.prof and "Open Mining (Smelting) to smelt" or ("Open " .. prof.name .. " to craft")) .. "  ·  " .. shortText
       else
         local n = math.min(toMake, available)
         m.recipe, m.count = r, n
-        if n > 0 then m:SetText("Make " .. n) end
+        if n > 0 then m:SetText((how.prof and "Smelt " or "Make ") .. n) end
         m:SetEnabled(n > 0 and not IsRepeating())
         info = string.format("Can make %s now  ·  %s", CR.ColorText(tostring(available), available > 0 and "40ff40" or "ff6060"), shortText)
         if r.makes > 1 then info = info .. "  ·  " .. r.makes .. " per craft" end
