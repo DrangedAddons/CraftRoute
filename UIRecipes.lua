@@ -206,7 +206,7 @@ function CR.CreateRecipesPanel(parent)
     row.check:SetChecked(qty ~= nil)
     local skill = CR.GetSkill()
     local known = CR.ProfTable("known")[r.spell]
-    row.icon:SetTexture(r.item > 0 and GetItemIcon(r.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    row.icon:SetTexture(CR.RecipeIcon(r))
     local name = CR.ColorText(r.name, CR.QualityHex(r.q))
     if qty and qty > 1 then name = name .. CR.ColorText(" x" .. qty, "33ccff") end
     if r.stats then name = name .. CR.ColorText("  " .. r.stats, "999999") end

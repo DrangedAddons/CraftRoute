@@ -783,8 +783,8 @@ function CR.CreatePlanPanel(parent)
       row.icon:Show()
     elseif line.cont then
       row.icon:Hide()
-    elseif st.recipe and st.recipe.item > 0 then
-      row.icon:SetTexture(GetItemIcon(st.recipe.item))
+    elseif st.recipe then
+      row.icon:SetTexture(CR.RecipeIcon(st.recipe))
       row.icon:Show()
     elseif st.kind == "train" or (st.kind == "guide" and st.train) then
       row.icon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")

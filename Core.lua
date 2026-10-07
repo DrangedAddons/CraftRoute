@@ -162,6 +162,22 @@ SlashCmdList.CRAFTROUTE = function(msg)
   end
 end
 
+-- A recipe's icon: the item it makes, or for enchants (which make no item) the spell's own
+-- icon, as the spellbook / profession window shows it.
+local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
+function CR.RecipeIcon(r)
+  if not r then return QUESTION end
+  if r.item and r.item > 0 then return CR.GetItemIcon(r.item) or QUESTION end
+  local icon
+  if C_Spell and C_Spell.GetSpellTexture then icon = C_Spell.GetSpellTexture(r.spell) end
+  if not icon and GetSpellTexture then icon = GetSpellTexture(r.spell) end
+  if not icon and C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo then
+    local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, r.spell)
+    icon = ok and info and info.icon or nil
+  end
+  return icon or QUESTION
+end
+
 function CR.Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffCraftRoute|r: " .. tostring(msg))
 end

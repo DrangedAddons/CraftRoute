@@ -1384,7 +1384,7 @@ function CR.CreateCraftPanel(parent)
     row.range:SetText(st.from and st.to and st.to > st.from and string.format("%d-%d", st.from, st.to)
       or (st.from and st.from > 0 and tostring(st.from) or ""))
     if st.recipe then
-      row.icon:SetTexture(st.recipe.item > 0 and GetItemIcon(st.recipe.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+      row.icon:SetTexture(CR.RecipeIcon(st.recipe))
       row.icon:Show()
       local name = CR.ColorText(st.recipe.name, CR.QualityHex(st.recipe.q))
       local prefix = st.kind == "extra" and CR.ColorText("+ ", "aaaaaa") or (st.kind == "target" and CR.ColorText("Target: ", "33ccff") or "")
@@ -1564,7 +1564,7 @@ function CR.CreateCraftPanel(parent)
     stepLine:SetText(progress .. (panel.viewOffset > 0 and CR.ColorText("  ·  looking ahead", "aaaaaa") or ""))
 
     bigIcon.recipe, bigIcon.crafts = r, st.crafts
-    bigIcon.icon:SetTexture(r.item > 0 and GetItemIcon(r.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    bigIcon.icon:SetTexture(CR.RecipeIcon(r))
     bigIcon:SetBackdropBorderColor(QualityRGB(r.q))
     name:SetText(r.name)
     name:SetTextColor(QualityRGB(r.q))
@@ -1659,7 +1659,7 @@ function CR.CreateCraftPanel(parent)
       local pr = ps.recipe
       p:Show()
       p.iconBtn.recipe, p.iconBtn.crafts = pr, ps.crafts
-      p.iconBtn.icon:SetTexture(pr.item > 0 and GetItemIcon(pr.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
+      p.iconBtn.icon:SetTexture(CR.RecipeIcon(pr))
       p.iconBtn:SetBackdropBorderColor(QualityRGB(pr.q))
       p.name:SetText(pr.name)
       p.name:SetTextColor(QualityRGB(pr.q))

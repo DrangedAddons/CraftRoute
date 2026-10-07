@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Enchants (and other recipes that make no item) show their spell icon, as in the profession window, instead of a question mark - on the Craft tab, route lists and the recipe picker.
 - Enchant target: Forever calls the replace prompt REPLACE_TRADESKILL_ENCHANT, which CraftRoute was skipping (it only knew Classic's REPLACE_ENCHANT); it's now recognised and answered.
 - Enchant target: the replace-enchant prompt should now actually be answered. A mouse click reaches the secure cover twice (down and up) and the /click was being put on the half the game doesn't run. Now whichever half runs carries it, and a prompt that pops up while the button is still held is answered on release, in the same click.
 - Fixed: the window came up blank (0.13.3). The game won't let a secure button be anchored to an addon frame, so building the Craft tab failed; the enchant covers are now placed by screen position and follow the window.
