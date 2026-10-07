@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.17.1
+
+Routes updated to the wow-professions.com guides as of 8 Oct 2026:
+- Leatherworking: Cured Heavy Hide path makes 20 Hillman's Leather Gloves at 140-155 (was 16). Without Heavy Hide: 30 Hillman's Leather Gloves for 130-155, 17 Barbaric Leggings for 155-170 and 5 Barbaric Harness for 170-175 (was 21 for 130-150, 15 for 150-165, 10 for 165-175).
+- Enchanting: 151-165 is now 16 Minor Mana Oil (Soul Dust, Maple Seed, Leaded Vial) instead of Enchant Bracer - Lesser Strength; buy Formula: Minor Mana Oil with the 2H Weapon formula at 110. 165-185 notes the guide's beta tip to keep making Boots - Lesser Agility until 200 while Vision Dust is expensive.
+- Notes: the "turns yellow at..." remarks the guides dropped are gone from the step notes too (Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking, Tailoring, First Aid).
+- Totals checked against the guides' shopping lists. Cooking, Fishing and Fishing + Cooking hadn't changed.
+- tools/guides.txt lists the guides and tools/check_guides.py checks them all for changes.
+
 ## 0.17.0
 
 - Craft tab: components can come from any crafting profession your character has, not just the current one. A blacksmith with Leatherworking gets a + on Thick Leather for Heavy Mithril Boots ("Make Thick Leather (Leatherworking) from:"), chaining down to Heavy / Medium / Light; an engineer with Tailoring makes their Bolts of Cloth; an enchanter with Blacksmithing makes their rods; a tailor with Alchemy makes their dyes; Enchanted Leather, Sulfuric Acid, Sandpaper, Iron Buckles and so on likewise. Mining only ever offers smelting bars. The current profession's own recipe is used first; with several, one you have the skill for. Professions you haven't learned are never offered. Crafting it needs that profession's window open - the section's Open button switches to it.

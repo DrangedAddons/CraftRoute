@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Blacksmithing guide
--- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 6 Oct 2026).
+-- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 8 Oct 2026).
 -- Reagents per craft come from the recipe database; only skill ranges + craft counts live here.
 -- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -63,7 +63,7 @@ CR.RegisterRoute("Blacksmithing", {
         .. "need it.{H: Undead: nobody near Angus Hammerhand sells one, buy it from Walter Mason in Deathknell "
         .. "or Abigail Shiel in Brill.}{A: Night Elves: the closest trainer is Delfrum Flintbeard in Auberdine, "
         .. "Darkshore.}" },
-    { from = 1,   to = 25,  spell = 2660, crafts = 30, note = "Yellow from 15" },
+    { from = 1,   to = 25,  spell = 2660, crafts = 30 },
     { from = 25,  to = 50,  spell = 3320, crafts = 30, note = "Keep 26 - for the gauntlets and Silver Rods" },
     { from = 50,  to = 67,  spell = 3326, crafts = 36, note = "Make all 36 - for the bracers at 95" },
     { from = 67,  to = 75,  spell = 3323, crafts = 8 },
@@ -78,7 +78,7 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 112, to = 125, spell = 2672, crafts = 13 },
     { from = 125, to = 140, spell = 2742, crafts = 24,
       note = "Weak Flux (and Strong Flux for the next step) from the Blacksmithing Supply vendor in any "
-        .. "capital - yellow the whole way" },
+        .. "capital" },
     { from = 140, to = 150, spell = 9985, crafts = 10 },
 
     -- Expert

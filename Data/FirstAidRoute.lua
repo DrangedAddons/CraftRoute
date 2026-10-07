@@ -61,6 +61,6 @@ CR.RegisterRoute("First Aid", {
     { from = 240, to = 260, spell = 10841,   crafts = 30, note = "The Triage doctor teaches it at 240" },
     { from = 260, to = 275, spell = 18629,   crafts = 20, note = "The Triage doctor teaches it at 260" },
     { from = 275, to = 300, spell = 1244436, crafts = 30,
-      note = "Manual: Major Healing Potion is a drop - orange until 290" },
+      note = "Manual: Major Healing Potion is a drop" },
   },
 })

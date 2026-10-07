@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Enchanting guide
--- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 6 Oct 2026).
+-- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 8 Oct 2026).
 -- 225-300 is the guide's untested Classic route (Enchanting ranges barely changed in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
@@ -53,41 +53,46 @@ CR.RegisterRoute("Enchanting", {
       note = "Or disenchant green items for dust" },
 
     -- 70-150: Lesser Magic Essence path
-    { from = 70,  to = 100, spell = 7426,  crafts = 33, when = { e70 = "essence" }, note = "Yellow from 90" },
-    { from = 100, to = 109, spell = 7426,  crafts = 18, when = { e70 = "essence" }, note = "Yellow the whole way" },
+    { from = 70,  to = 100, spell = 7426,  crafts = 33, when = { e70 = "essence" } },
+    { from = 100, to = 109, spell = 7426,  crafts = 18, when = { e70 = "essence" } },
     { from = 109, to = 110, spell = 7795,  crafts = 1,  when = { e70 = "essence" },
       note = "Silver Rod is made by Blacksmiths - buy it on the AH" },
     { from = 110, to = 130, spell = 7793,  crafts = 20, when = { e70 = "essence" },
       note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Leo Sarn (Silverpine)}"
-        .. "{A:Tilli Thistlefuzz (Ironforge)} - buy Formula: Lesser Wizard Oil there too, for 200" },
-    { from = 130, to = 150, spell = 7793,  crafts = 32, when = { e70 = "essence" }, note = "Yellow the whole way" },
+        .. "{A:Tilli Thistlefuzz (Ironforge)} - buy Formula: Minor Mana Oil and Formula: Lesser Wizard Oil there too, "
+        .. "for 150 and 200" },
+    { from = 130, to = 150, spell = 7793,  crafts = 32, when = { e70 = "essence" } },
     -- 70-150: Strange Dust path
     { from = 70,  to = 100, spell = 7457,  crafts = 30, when = { e70 = "dust" } },
     { from = 100, to = 109, spell = 7771,  crafts = 9,  when = { e70 = "dust" } },
     { from = 109, to = 110, spell = 7795,  crafts = 1,  when = { e70 = "dust" },
       note = "Silver Rod is made by Blacksmiths - buy it on the AH" },
-    { from = 110, to = 130, spell = 7771,  crafts = 32, when = { e70 = "dust" }, note = "Yellow the whole way" },
+    { from = 110, to = 130, spell = 7771,  crafts = 32, when = { e70 = "dust" } },
     { from = 130, to = 150, spell = 7863,  crafts = 20, when = { e70 = "dust" } },
 
     -- Expert
     { from = 150, to = 151, spell = 13628, crafts = 1 },
-    { from = 151, to = 165, spell = 13536, crafts = 14,
-      note = "Formula from {H:Kulwia, Stonetalon Mountains}{A:Dalria, Ashenvale}" },
-    { from = 165, to = 185, spell = 13637, crafts = 22, note = "Yellow from 180" },
+    { from = 151, to = 165, spell = 25125, crafts = 16,
+      note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Thaddeus Webb (Undercity)}"
+        .. "{A:Vaean (Darnassus), Tilli Thistlefuzz (Ironforge) or Jessara Cordell (Stormwind)} - buy Formula: "
+        .. "Lesser Wizard Oil there too, for 200. Maple Seed from Reagent vendors, Leaded Vial from Alchemy Supply" },
+    { from = 165, to = 185, spell = 13637, crafts = 22,
+      note = "Beta: Vision Dust is expensive with the level cap and Soul Dust isn't, so keep making these until 200 "
+        .. "(around 22 more)" },
     { from = 185, to = 200, spell = 13661, crafts = 15 },
     { from = 200, to = 201, spell = 13702, crafts = 1 },
     { from = 201, to = 220, spell = 25126, crafts = 25,
       note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Thaddeus Webb (Undercity)}"
         .. "{A:Vaean (Darnassus), Tilli Thistlefuzz (Ironforge) or Jessara Cordell (Stormwind)}. Stranglethorn "
-        .. "Seed from Reagent vendors, Leaded Vial from Alchemy Supply - yellow at 210" },
+        .. "Seed from Reagent vendors, Leaded Vial from Alchemy Supply" },
     { from = 220, to = 225, spell = 13746, crafts = 5 },
 
     -- Artisan (untested Classic route)
     { from = 225, to = 230, spell = 13815, crafts = 5,  note = "Untested in Forever (Classic route)" },
     { from = 230, to = 235, spell = 13836, crafts = 5 },
-    { from = 235, to = 250, spell = 13858, crafts = 20, note = "Yellow from 240" },
+    { from = 235, to = 250, spell = 13858, crafts = 20 },
     { from = 250, to = 265, spell = 25127, crafts = 20,
-      note = "Formula from Kania (Silithus inn, upstairs) - yellow from 260" },
+      note = "Formula from Kania (Silithus inn, upstairs)" },
     { from = 265, to = 294, spell = 20017, crafts = 32,
       note = "Formula (bind on pickup) from {H:Daniel Bartlett, Undercity}{A:Mythrin'dir, Darnassus}" },
     { from = 294, to = 295, spell = 20051, crafts = 1,

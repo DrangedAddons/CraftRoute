@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Tailoring guide
--- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 6 Oct 2026).
+-- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 8 Oct 2026).
 -- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
 -- Bolts are Tailoring recipes, so any bolts you're short of are added as extra crafts.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -43,11 +43,11 @@ CR.RegisterRoute("Tailoring", {
 
   steps = {
     { from = 1,   to = 30,  spell = 2963,  crafts = 30, note = "Keep the bolts for the belts" },
-    { from = 30,  to = 55,  spell = 8776,  crafts = 28, note = "Yellow from 50" },
+    { from = 30,  to = 55,  spell = 8776,  crafts = 28 },
     { from = 55,  to = 80,  spell = 2964,  crafts = 45,
       note = "Learn Journeyman first - you can pass 75. Make all 45, you need them" },
     { from = 80,  to = 95,  spell = 2402,  crafts = 22,
-      note = "Yellow the whole way. If the bolts already took you past 80, make capes until 95" },
+      note = "If the bolts already took you past 80, make capes until 95" },
     { from = 95,  to = 100, spell = 3848,  crafts = 5 },
     { from = 100, to = 120, spell = 3839,  crafts = 40, when = { j100 = "silk" },
       note = "Keep the bolts - you need 176 by 190" },
@@ -61,6 +61,6 @@ CR.RegisterRoute("Tailoring", {
     { from = 150, to = 170, spell = 8791,  crafts = 20 },
     { from = 170, to = 190, spell = 8799,  crafts = 24, note = "Yellow from 180" },
     { from = 190, to = 215, spell = 12053, crafts = 38, note = "Yellow from 195, green from 210" },
-    { from = 215, to = 225, spell = 12065, crafts = 26, note = "Green from 220" },
+    { from = 215, to = 225, spell = 12065, crafts = 26 },
   },
 })

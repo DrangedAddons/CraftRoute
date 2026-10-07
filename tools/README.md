@@ -16,3 +16,10 @@ python build_recipes.py sources/endgametools_leatherworking.html "<AddOns>/Train
 Every profession is built the same way: Leatherworking, Blacksmithing, Tailoring, Alchemy, Enchanting, Engineering, Cooking and First Aid. Use the profession name as shown in-game, e.g. `"First Aid"`; the TrainerSpells file name drops the space. The script fills a few gaps in the sources itself through its `OVERRIDES` table, such as Mithril Headed Trout's item ID.
 
 The routes (`Data/<Profession>Route.lua`) are entered by hand from the wow-professions.com Forever guides, `https://www.wow-professions.com/forever/<prof>-leveling-guide`. As of Oct 2026, Leatherworking, Blacksmithing and Tailoring stop at 225, and most 225-300 sections are the guides' untested Classic routes.
+
+## Guide updates
+
+The routes in `Data/*Route.lua` follow the wow-professions.com Forever guides listed in
+`guides.txt` (add a line there to track another guide). `python tools/check_guides.py` fetches
+them all and shows what changed since the last snapshot (`tools/guides/`, gitignored);
+`--save` makes the current versions the new snapshot once the routes are updated.

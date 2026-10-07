@@ -1,0 +1,14 @@
+# The wow-professions.com WoW Forever guides CraftRoute's routes follow.
+# check_guides.py reads this list. Add a line to track another guide:
+#   <short name>  <url>  <route file(s) it feeds, comma separated>
+alchemy              https://www.wow-professions.com/forever/alchemy-leveling-guide              AlchemyRoute.lua
+blacksmithing        https://www.wow-professions.com/forever/blacksmithing-leveling-guide        BlacksmithingRoute.lua
+enchanting           https://www.wow-professions.com/forever/enchanting-leveling-guide           EnchantingRoute.lua
+engineering          https://www.wow-professions.com/forever/engineering-leveling-guide          EngineeringRoute.lua
+leatherworking       https://www.wow-professions.com/forever/leatherworking-leveling-guide       LeatherworkingRoute.lua
+tailoring            https://www.wow-professions.com/forever/tailoring-leveling-guide            TailoringRoute.lua
+first-aid            https://www.wow-professions.com/forever/first-aid-leveling-guide            FirstAidRoute.lua
+fishing-and-cooking  https://www.wow-professions.com/forever/fishing-and-cooking-leveling-guide  FishingCookingRoute.lua
+cooking              https://www.wow-professions.com/forever/cooking-leveling-guide              CookingRoute.lua
+fishing              https://www.wow-professions.com/forever/fishing-leveling-guide              FishingRoute.lua
+# Mining: no Forever guide yet - Mining stays TBD until one exists.
