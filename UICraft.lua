@@ -183,7 +183,9 @@ end
 local function IsReplaceDialog(d)
   local which = d.which
   if type(which) == "string" then
-    return which:find("REPLACE_ENCHANT") and not which:find("TRADE") and true or false
+    -- REPLACE_ENCHANT (Classic) or REPLACE_TRADESKILL_ENCHANT (Forever); never TRADE_REPLACE_ENCHANT,
+    -- which is about an item in the trade window
+    return which:find("^REPLACE_") and which:find("ENCHANT$") and true or false
   end
   local text = DialogText(d)   -- no "which": recognise it by its wording
   return REPLACE_PREFIX and REPLACE_PREFIX ~= "" and text and text:find(REPLACE_PREFIX, 1, true) == 1 or false
