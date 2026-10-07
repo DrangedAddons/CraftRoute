@@ -1,13 +1,16 @@
 # CraftRoute changelog
 
-## 0.13.0
+## 0.13.1
 
 - The window shows the addon version (e.g. v0.13.0) in the top right, beside the close button.
+- Enchant target: the "replace the existing enchant?" question is answered Yes by pressing the dialog's own Accept button (falling back to answering it directly), whether the client raises it by event or as a dialog. Only for a cast you just started from the Craft tab - one answer per click; binding questions are never answered for you.
+
+## 0.13.0
+
 - Craft tab: make components right from the reagent box. A reagent you're short of and can make yourself gets a small + (or click its line): the line opens up underneath to show what it's made from (e.g. 23/4 Light Leather under Medium Leather) and a "Make 5" button that starts crafting it straight away. Nothing else moves off screen. Works for Medium/Heavy/Thick Leather, Bolts of Cloth, Handfuls of Bolts and other same-profession parts; for enchanting essences it tells you to right-click them in your bags to combine or split.
 - Craft tab, Enchanting: an "Enchant target" slot above the cast bar for item enchants (Enchant Bracer / Boots / Gloves / Chest / Cloak / Shield / Weapon / 2H Weapon / Off-Hand / Necklace - ...). Hover it to pick from gear the enchant fits: what you're wearing or what's in your bags (never the bank or alts). Unbound items are included; enchanting one binds it, and the game still asks you about that. Bag items and unenchanted ones are listed first. Click the slot (or Enchant) to cast it on the target; the game's "replace the existing enchant?" question is answered for you, so each click is one enchant until the step is done. Right-click clears the target.
 - Fixed: hovering the enchant target slot spammed Lua errors and the pick list wouldn't close (Forever has no MouseIsOver).
 - Enchant target: the pick list stays open while you move over to it and along it; it closes about half a second after the mouse leaves both.
-- Enchant target: the "replace the existing enchant?" question is answered Yes by pressing the dialog's own Accept button (falling back to answering it directly), whether the client raises it by event or as a dialog. Only for a cast you just started from the Craft tab - one answer per click; binding questions are never answered for you.
 - Craft tab: reagent boxes no longer spill over the rest of the tab. The current recipe's and the previews' boxes stop just above the cast bar (following the window size) and scroll - mouse wheel or drag the slim bar - when a recipe has more reagents than fit. They also show up to 8 reagents now (some recipes need 7 or 8; only 6 showed before).
 - Craft tab follows your goal: it used to run the route on to 300 whatever goal you'd picked; now it stops where the Plan tab does. A Goal dropdown next to "Route" is the same setting as the Plan tab's, so changing either changes both (with the custom skill box when "Custom skill" is picked). Reaching the goal says so and points you at the dropdown.
 - Craft tab: "Show unlearned" tickbox under the profession picker, the same setting as the Plan tab's "Show professions I haven't learned". Unlearned professions are greyed out in the list.
