@@ -333,6 +333,13 @@ local function CreateWindow()
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
 
+  -- version, from the .toc, beside the close button
+  local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+  local version = getMeta and getMeta("CraftRoute", "Version")
+  local versionText = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  versionText:SetPoint("RIGHT", close, "LEFT", -6, 0)
+  versionText:SetText(version and ("v" .. version) or "")
+
   frame.panels = {}
   frame.tabs = {}
   local function AddTab(key, label, x)
