@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.13.3
+
+- Enchant target: the "replace the existing enchant?" prompt is answered the way the classic enchanting macro does it, with a /click on the prompt's Yes button. The game ignored the addon pressing it directly. The target slot and the Enchant button are covered by secure buttons that do the /click as part of your click: if the prompt appears straight away, the same click answers it; if it appears a moment later, your next click answers it instead of casting again. The covers are hidden in combat.
+- /cr popup lists any dialogs that are showing, to help track down a prompt that isn't being answered.
+
 ## 0.13.2
 
 - Enchant target: the "replace the existing enchant?" prompt is now answered inside your click, which is the only time the game accepts the answer (0.13.1 answered it a frame later, so the prompt stayed up). If the game asks a moment after the cast instead, the status line says "Click Enchant (or the target) to replace the enchant" and your next click confirms it rather than casting again. Enchanting outside CraftRoute still asks as normal; binding prompts are never answered for you.

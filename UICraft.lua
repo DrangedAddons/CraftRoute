@@ -165,12 +165,13 @@ local function ResolveTarget(t, fits)
 end
 
 -- "Replace the existing enchant?" - answered Yes for you, for casts you start from the Craft tab.
--- The game only takes that answer during a real click (code running later, on a timer, is
--- ignored - which is why the prompt kept showing). So it's answered inside your click:
---   * if the question comes straight back while the enchant is being cast, it's accepted there
---     and then (the dialog is pressed the moment it opens, still inside your click);
---   * if it arrives a moment later, your next click on the target or Enchant accepts it instead
---     of casting again - the status line says so.
+-- The game ignores an addon pressing the dialog's Yes button, even during your click: only a
+-- real click or a macro /click counts. So the target slot and the Enchant button are covered by
+-- secure buttons (see SecureEnchantButton) that run "/click StaticPopupNButton1" as part of your
+-- click, exactly like the classic enchanting macro:
+--   * if the question comes straight back while the enchant is cast, that same click answers it;
+--   * if it arrives a moment later, your next click answers it instead of casting again (the
+--     status line says so).
 -- Binding questions (enchanting an unbound item) are never answered for you.
 local REPLACE_PREFIX = type(REPLACE_ENCHANT) == "string" and REPLACE_ENCHANT:match("^(.-)%%s") or nil
 
@@ -188,64 +189,35 @@ local function IsReplaceDialog(d)
   return REPLACE_PREFIX and REPLACE_PREFIX ~= "" and text and text:find(REPLACE_PREFIX, 1, true) == 1 or false
 end
 
--- The replace-enchant dialog, if one is up.
+-- The replace-enchant dialog if one is up, and the name of its Yes button (for /click).
 function CR.VisibleReplacePopup()
   for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
     local d = _G["StaticPopup" .. i]
-    if d and d:IsShown() and IsReplaceDialog(d) then return d end
+    if d and d:IsShown() and IsReplaceDialog(d) then
+      local b = (d.GetButton1 and d:GetButton1()) or d.button1 or (d.ButtonContainer and d.ButtonContainer.Button1)
+      local name = (b and b.GetName and b:GetName()) or ("StaticPopup" .. i .. "Button1")
+      return d, name
+    end
   end
 end
 
-local function PressAccept(d)
-  local b = (d.GetButton1 and d:GetButton1()) or d.button1
-    or (d.ButtonContainer and d.ButtonContainer.Button1)
-    or (d.GetName and d:GetName() and _G[d:GetName() .. "Button1"])
-  if b and b.Click then b:Click() return true end
-  if StaticPopup_OnClick then StaticPopup_OnClick(d, 1) return true end
-end
-
-local function Armed() return CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil end
-
--- Accept the replace question now, if it's up and the cast came from here. True if it was.
-local function AcceptReplaceNow()
-  if not Armed() then return false end
-  local d = CR.VisibleReplacePopup()
-  if d and PressAccept(d) then
-    CR.enchantArmedUntil = nil
-    return true
+-- /cr popup: what dialogs are up (for working out a prompt that isn't being answered).
+function CR.DebugPopups()
+  local any
+  for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
+    local d = _G["StaticPopup" .. i]
+    if d and d:IsShown() then
+      any = true
+      CR.Print(string.format("StaticPopup%d: which=%s replace=%s text=%s", i, tostring(d.which),
+        tostring(IsReplaceDialog(d)), tostring(DialogText(d))))
+    end
   end
-  return false
-end
-
--- From your click on the target / Enchant: if a replace question from one of our casts is still
--- waiting, answer it (that's what this click is for) rather than casting again.
-function CR.AcceptPendingReplace()
-  if not CR.enchantPendingUntil or GetTime() > CR.enchantPendingUntil then return false end
-  local d = CR.VisibleReplacePopup()
-  if d and PressAccept(d) then
-    CR.enchantPendingUntil, CR.enchantArmedUntil = nil, nil
-    return true
-  end
-  return false
-end
-
--- The dialog opening: pressed straight away, while still inside your click if it came from it.
-if hooksecurefunc and StaticPopup_Show then
-  hooksecurefunc("StaticPopup_Show", function() AcceptReplaceNow() end)
-end
-
--- REPLACE_ENCHANT event: try now (inside your click if it's immediate); refresh the tab so the
--- status line can ask for the confirming click if the dialog is still up.
-function CR.AutoReplaceEnchant()
-  if AcceptReplaceNow() then return true end
-  if C_Timer then C_Timer.After(0, function() CR.NotifyChanged() end) end
+  if not any then CR.Print("No dialogs are showing.") end
 end
 
 -- Cast the enchant on the target (one cast per click).
 local function EnchantTarget(r, t)
   if InCombatLockdown() then CR.Print("Can't enchant in combat.") return end
-  if CR.AcceptPendingReplace() then return end   -- this click confirms the last cast
-  CR.enchantArmedUntil = GetTime() + 6
   CR.enchantPendingUntil = GetTime() + 60
   local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
     or ItemLocation:CreateFromBagAndSlot(t.bag, t.slot))
@@ -263,7 +235,71 @@ local function EnchantTarget(r, t)
     end
     if CursorHasItem and CursorHasItem() then ClearCursor() end   -- never leave it on the cursor
   end
-  AcceptReplaceNow()   -- if the question is already up, answer it inside this click
+end
+
+-- One click on the target / Enchant. Returns the macro the secure button then runs: a /click
+-- on the replace dialog's Yes button when there's one to answer, else nothing.
+local function EnchantClick(r, t, canCast)
+  local _, yes = CR.VisibleReplacePopup()
+  local ours = CR.enchantPendingUntil and GetTime() < CR.enchantPendingUntil
+  if yes and ours then   -- the last cast is waiting on the question: this click answers it
+    CR.enchantPendingUntil = nil
+    return "/click " .. yes
+  end
+  if not (r and t and canCast) then return "" end
+  EnchantTarget(r, t)
+  _, yes = CR.VisibleReplacePopup()   -- asked straight away? answer it in this same click
+  if yes then
+    CR.enchantPendingUntil = nil
+    return "/click " .. yes
+  end
+  return ""
+end
+
+-- A secure button laid over `target` (the slot, the Enchant button) - only secure code may answer
+-- the dialog. It sits on UIParent so CraftRoute's window can still close in combat; it's hidden
+-- whenever it isn't wanted, and always when combat starts. onClick(button) returns the macro.
+local secureButtons = {}
+local function SecureEnchantButton(target, onClick)
+  local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+  b:SetAllPoints(target)
+  b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetAttribute("type", "macro")
+  b:SetAttribute("macrotext", "")
+  b:Hide()
+  b:SetScript("PreClick", function(self, button, down)
+    if InCombatLockdown() then return end
+    -- the secure action runs on key down or up depending on this setting; act once, on that one
+    local useDown = GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") or false
+    if (down and true or false) ~= (useDown and true or false) then
+      self:SetAttribute("macrotext", "")
+      return
+    end
+    self:SetAttribute("macrotext", onClick(button) or "")
+  end)
+  b:SetScript("OnEnter", function() local f = target:GetScript("OnEnter") if f then f(target) end end)
+  b:SetScript("OnLeave", function() local f = target:GetScript("OnLeave") if f then f(target) end end)
+  b.target = target
+  table.insert(secureButtons, b)
+  return b
+end
+
+-- Show each secure button only while its target is visible and enchanting is on (out of combat).
+local function SyncSecureButtons(enchanting)
+  if InCombatLockdown() or CR.inCombat then return end
+  for _, b in ipairs(secureButtons) do
+    local show = enchanting and b.target:IsVisible() and b.target:IsEnabled() ~= false
+    if show then
+      b:SetFrameStrata(b.target:GetFrameStrata())
+      b:SetFrameLevel(b.target:GetFrameLevel() + 5)
+    end
+    b:SetShown(show and true or false)
+  end
+end
+
+function CR.HideSecureEnchantButtons()
+  if InCombatLockdown() then return end
+  for _, b in ipairs(secureButtons) do b:Hide() end
 end
 
 ---------------------------------------------------------------------------
@@ -1154,10 +1190,13 @@ function CR.CreateCraftPanel(parent)
   eSlot:SetScript("OnLeave", GameTooltip_Hide)
   eSlot:SetScript("OnClick", function(self, button)
     if button == "RightButton" then ench.target = nil panel:Refresh() return end
-    local r, t = panel.current, ench.target
-    if not t then ShowFlyout() return end
-    if CR.AcceptPendingReplace() then return end
-    if r and not self.blocked then EnchantTarget(r, t) end
+    if not ench.target then ShowFlyout() end
+  end)
+  -- the secure cover that actually enchants (and answers the replace question)
+  SecureEnchantButton(eSlot, function(button)
+    if button == "RightButton" then ench.target = nil panel:Refresh() return "" end
+    if not ench.target then ShowFlyout() return "" end
+    return EnchantClick(panel.current, ench.target, not eSlot.blocked)
   end)
 
   -- Called from Refresh. fits: the gear kinds this recipe enchants (nil = not an enchant).
@@ -1373,7 +1412,7 @@ function CR.CreateCraftPanel(parent)
     self.autoOpened = craftProf
     pcall(CR.OpenTradeSkill, craftProf)
   end
-  panel:SetScript("OnHide", function(self) self.autoOpened = nil; buyPop:Hide() end)
+  panel:SetScript("OnHide", function(self) self.autoOpened = nil; buyPop:Hide(); CR.HideSecureEnchantButtons() end)
 
   -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
   local function CraftSteps(entry)
@@ -1439,7 +1478,7 @@ function CR.CreateCraftPanel(parent)
     costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
     if #steps == 0 then
-      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); enchantArea:Hide(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
+      main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); enchantArea:Hide(); CR.HideSecureEnchantButtons(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
       empty:SetText(route and route.noAutoFill and not next(rprof.recipes)
@@ -1648,6 +1687,7 @@ function CR.CreateCraftPanel(parent)
     panel.currentCrafts = st.crafts
     panel.current = r
     panel.UpdateBuyPop()
+    SyncSecureButtons(enchantFits and true or false)
   end
 
   createAll:SetScript("OnClick", function()
@@ -1659,12 +1699,11 @@ function CR.CreateCraftPanel(parent)
   create:SetScript("OnClick", function()
     if IsRepeating() and TS.StopRecipeRepeat then TS.StopRecipeRepeat() return end
     local r = panel.current
-    if r and CR.EnchantSlotFor(r) then
-      if CR.AcceptPendingReplace() then return end
-      if ench.target then EnchantTarget(r, ench.target) end
-      return
-    end
+    if r and CR.EnchantSlotFor(r) then return end   -- enchants go through the secure cover below
     if r then Craft(r, math.max(1, countBox:GetNumber() or 1)) end
+  end)
+  SecureEnchantButton(create, function()
+    return EnchantClick(panel.current, ench.target, true)
   end)
   openBtn:SetScript("OnClick", function()
     local route = CR.Route(db().profession)
@@ -1689,7 +1728,13 @@ for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_
 end
 ev:SetScript("OnEvent", function(_, event, unit)
   if (event:find("^UNIT_") and unit ~= "player") then return end
-  if event == "REPLACE_ENCHANT" then CR.AutoReplaceEnchant() return end
+  -- combat: hide the secure covers now (the last moment they can be), keep them hidden until it ends
+  if event == "PLAYER_REGEN_DISABLED" then CR.HideSecureEnchantButtons(); CR.inCombat = true end
+  if event == "PLAYER_REGEN_ENABLED" then CR.inCombat = false end
+  if event == "REPLACE_ENCHANT" then
+    if C_Timer then C_Timer.After(0, CR.NotifyChanged) end   -- status line: "click to replace"
+    return
+  end
   if event:find("^MERCHANT_") then
     if event == "MERCHANT_SHOW" then merchantOpen = true elseif event == "MERCHANT_CLOSED" then merchantOpen = false end
     ScanMerchant()

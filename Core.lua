@@ -144,6 +144,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     CR.ProfTable("manualSkill").value = tonumber(skill)
     CR.Print("Manual skill set to " .. skill .. " (only used while the profession isn't learned).")
     CR.NotifyChanged()
+  elseif msg == "popup" then
+    CR.DebugPopups()
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
   elseif msg == "help" then
