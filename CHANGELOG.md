@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.13.2
+
+- Enchant target: the "replace the existing enchant?" prompt is now answered inside your click, which is the only time the game accepts the answer (0.13.1 answered it a frame later, so the prompt stayed up). If the game asks a moment after the cast instead, the status line says "Click Enchant (or the target) to replace the enchant" and your next click confirms it rather than casting again. Enchanting outside CraftRoute still asks as normal; binding prompts are never answered for you.
+
 ## 0.13.1
 
 - The window shows the addon version (e.g. v0.13.0) in the top right, beside the close button.

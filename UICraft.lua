@@ -164,11 +164,89 @@ local function ResolveTarget(t, fits)
   end
 end
 
--- Cast the enchant on the target. The game's "replace the existing enchant?" question is
--- answered for you (see REPLACE_ENCHANT below), so clicking again keeps enchanting.
+-- "Replace the existing enchant?" - answered Yes for you, for casts you start from the Craft tab.
+-- The game only takes that answer during a real click (code running later, on a timer, is
+-- ignored - which is why the prompt kept showing). So it's answered inside your click:
+--   * if the question comes straight back while the enchant is being cast, it's accepted there
+--     and then (the dialog is pressed the moment it opens, still inside your click);
+--   * if it arrives a moment later, your next click on the target or Enchant accepts it instead
+--     of casting again - the status line says so.
+-- Binding questions (enchanting an unbound item) are never answered for you.
+local REPLACE_PREFIX = type(REPLACE_ENCHANT) == "string" and REPLACE_ENCHANT:match("^(.-)%%s") or nil
+
+local function DialogText(d)
+  local fs = d.text or d.Text or (d.GetName and d:GetName() and _G[d:GetName() .. "Text"])
+  return fs and fs.GetText and fs:GetText() or nil
+end
+
+local function IsReplaceDialog(d)
+  local which = d.which
+  if type(which) == "string" then
+    return which:find("REPLACE_ENCHANT") and not which:find("TRADE") and true or false
+  end
+  local text = DialogText(d)   -- no "which": recognise it by its wording
+  return REPLACE_PREFIX and REPLACE_PREFIX ~= "" and text and text:find(REPLACE_PREFIX, 1, true) == 1 or false
+end
+
+-- The replace-enchant dialog, if one is up.
+function CR.VisibleReplacePopup()
+  for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
+    local d = _G["StaticPopup" .. i]
+    if d and d:IsShown() and IsReplaceDialog(d) then return d end
+  end
+end
+
+local function PressAccept(d)
+  local b = (d.GetButton1 and d:GetButton1()) or d.button1
+    or (d.ButtonContainer and d.ButtonContainer.Button1)
+    or (d.GetName and d:GetName() and _G[d:GetName() .. "Button1"])
+  if b and b.Click then b:Click() return true end
+  if StaticPopup_OnClick then StaticPopup_OnClick(d, 1) return true end
+end
+
+local function Armed() return CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil end
+
+-- Accept the replace question now, if it's up and the cast came from here. True if it was.
+local function AcceptReplaceNow()
+  if not Armed() then return false end
+  local d = CR.VisibleReplacePopup()
+  if d and PressAccept(d) then
+    CR.enchantArmedUntil = nil
+    return true
+  end
+  return false
+end
+
+-- From your click on the target / Enchant: if a replace question from one of our casts is still
+-- waiting, answer it (that's what this click is for) rather than casting again.
+function CR.AcceptPendingReplace()
+  if not CR.enchantPendingUntil or GetTime() > CR.enchantPendingUntil then return false end
+  local d = CR.VisibleReplacePopup()
+  if d and PressAccept(d) then
+    CR.enchantPendingUntil, CR.enchantArmedUntil = nil, nil
+    return true
+  end
+  return false
+end
+
+-- The dialog opening: pressed straight away, while still inside your click if it came from it.
+if hooksecurefunc and StaticPopup_Show then
+  hooksecurefunc("StaticPopup_Show", function() AcceptReplaceNow() end)
+end
+
+-- REPLACE_ENCHANT event: try now (inside your click if it's immediate); refresh the tab so the
+-- status line can ask for the confirming click if the dialog is still up.
+function CR.AutoReplaceEnchant()
+  if AcceptReplaceNow() then return true end
+  if C_Timer then C_Timer.After(0, function() CR.NotifyChanged() end) end
+end
+
+-- Cast the enchant on the target (one cast per click).
 local function EnchantTarget(r, t)
   if InCombatLockdown() then CR.Print("Can't enchant in combat.") return end
+  if CR.AcceptPendingReplace() then return end   -- this click confirms the last cast
   CR.enchantArmedUntil = GetTime() + 6
+  CR.enchantPendingUntil = GetTime() + 60
   local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
     or ItemLocation:CreateFromBagAndSlot(t.bag, t.slot))
   local cast = false
@@ -185,53 +263,7 @@ local function EnchantTarget(r, t)
     end
     if CursorHasItem and CursorHasItem() then ClearCursor() end   -- never leave it on the cursor
   end
-end
-
--- "Replace the existing enchant?" - answered Yes for you, but only for a cast you just started
--- from the Craft tab (armed for a few seconds per click, one answer per cast). It presses the
--- dialog's own Accept button, so the game does exactly what it does when you click it; if the
--- client asks without showing a dialog, ReplaceEnchant() answers directly. Binding questions
--- (enchanting an unbound item) are never answered for you.
-local function IsReplacePopup(which)
-  return type(which) == "string" and which:find("REPLACE_ENCHANT") and not which:find("TRADE") and true or false
-end
-
-local function VisibleReplacePopup()
-  for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
-    local d = _G["StaticPopup" .. i]
-    if d and d:IsShown() and IsReplacePopup(d.which) then return d end
-  end
-end
-
-local function PressAccept(d)
-  local b = (d.GetButton1 and d:GetButton1()) or d.button1
-    or (d.ButtonContainer and d.ButtonContainer.Button1)
-  if b and b.Click then b:Click() return true end
-  if StaticPopup_OnClick then StaticPopup_OnClick(d, 1) return true end
-end
-
-local function Armed() return CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil end
-
-function CR.AutoReplaceEnchant()
-  if not Armed() then return end
-  -- let the game put its dialog up first, then answer it
-  C_Timer.After(0, function()
-    if not Armed() then return end
-    local d = VisibleReplacePopup()
-    CR.enchantArmedUntil = nil
-    if not (d and PressAccept(d)) and ReplaceEnchant then
-      ReplaceEnchant()
-      if StaticPopup_Hide then StaticPopup_Hide("REPLACE_ENCHANT") end
-    end
-  end)
-  return true
-end
-
--- Some clients raise the question as a dialog without the REPLACE_ENCHANT event.
-if hooksecurefunc and StaticPopup_Show then
-  hooksecurefunc("StaticPopup_Show", function(which)
-    if IsReplacePopup(which) then CR.AutoReplaceEnchant() end
-  end)
+  AcceptReplaceNow()   -- if the question is already up, answer it inside this click
 end
 
 ---------------------------------------------------------------------------
@@ -1124,6 +1156,7 @@ function CR.CreateCraftPanel(parent)
     if button == "RightButton" then ench.target = nil panel:Refresh() return end
     local r, t = panel.current, ench.target
     if not t then ShowFlyout() return end
+    if CR.AcceptPendingReplace() then return end
     if r and not self.blocked then EnchantTarget(r, t) end
   end)
 
@@ -1589,7 +1622,8 @@ function CR.CreateCraftPanel(parent)
     end
     local target = panel:UpdateEnchant(r, enchantFits, enchantKind, craftable and (available or 0) > 0)
     if enchantFits and open and learned ~= false and (available or 0) > 0 then
-      status:SetText(target and string.format("Click the target (or Enchant) for each cast - %d possible now.", available)
+      status:SetText(CR.VisibleReplacePopup() and CR.ColorText("Click Enchant (or the target) to replace the enchant.", "ffd100")
+        or target and string.format("Click the target (or Enchant) for each cast - %d possible now.", available)
         or CR.ColorText("Hover the enchant target slot to pick what to enchant.", "ffd100"))
     end
     createAll:SetText(string.format("Create All [%d]", available or 0))
@@ -1600,7 +1634,7 @@ function CR.CreateCraftPanel(parent)
     elseif enchantFits then
       -- one cast per click, onto the target
       create:SetText("Enchant")
-      create:SetEnabled(craftable and (available or 0) > 0 and target ~= nil)
+      create:SetEnabled((craftable and (available or 0) > 0 and target ~= nil) or CR.VisibleReplacePopup() ~= nil)
       createAll:Disable()
     else
       create:SetText("Create")
@@ -1626,6 +1660,7 @@ function CR.CreateCraftPanel(parent)
     if IsRepeating() and TS.StopRecipeRepeat then TS.StopRecipeRepeat() return end
     local r = panel.current
     if r and CR.EnchantSlotFor(r) then
+      if CR.AcceptPendingReplace() then return end
       if ench.target then EnchantTarget(r, ench.target) end
       return
     end
