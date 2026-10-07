@@ -259,10 +259,35 @@ end
 -- A secure button laid over `target` (the slot, the Enchant button) - only secure code may answer
 -- the dialog. It sits on UIParent so CraftRoute's window can still close in combat; it's hidden
 -- whenever it isn't wanted, and always when combat starts. onClick(button) returns the macro.
+-- The game won't let a secure button be anchored to an addon's frame, so it's placed by screen
+-- position instead (anchored to UIParent) and kept lined up as the window moves or resizes.
 local secureButtons = {}
+
+-- Put b exactly over target. False if target has no position yet.
+local function PlaceOver(b, target)
+  local l, btm, w, h = target:GetLeft(), target:GetBottom(), target:GetWidth(), target:GetHeight()
+  if not (l and btm and w and h) then return false end
+  local scale = target:GetEffectiveScale() / UIParent:GetEffectiveScale()
+  local x, y = l * scale, btm * scale
+  if b.placed ~= x .. "," .. y .. "," .. w * scale .. "," .. h * scale then
+    b:ClearAllPoints()
+    b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+    b:SetSize(w * scale, h * scale)
+    b.placed = x .. "," .. y .. "," .. w * scale .. "," .. h * scale
+  end
+  return true
+end
+
 local function SecureEnchantButton(target, onClick)
   local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
-  b:SetAllPoints(target)
+  b:SetSize(1, 1)
+  b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+  -- follow the target while shown (window dragged / resized); never touched in combat
+  b:SetScript("OnUpdate", function(self)
+    if InCombatLockdown() then return end
+    if not target:IsVisible() then self:Hide() return end
+    PlaceOver(self, target)
+  end)
   b:RegisterForClicks("AnyUp", "AnyDown")
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "")
@@ -288,7 +313,7 @@ end
 local function SyncSecureButtons(enchanting)
   if InCombatLockdown() or CR.inCombat then return end
   for _, b in ipairs(secureButtons) do
-    local show = enchanting and b.target:IsVisible() and b.target:IsEnabled() ~= false
+    local show = enchanting and b.target:IsVisible() and b.target:IsEnabled() ~= false and PlaceOver(b, b.target)
     if show then
       b:SetFrameStrata(b.target:GetFrameStrata())
       b:SetFrameLevel(b.target:GetFrameLevel() + 5)

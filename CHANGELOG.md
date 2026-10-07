@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## Unreleased
+
+- Fixed: the window came up blank (0.13.3). The game won't let a secure button be anchored to an addon frame, so building the Craft tab failed; the enchant covers are now placed by screen position and follow the window.
+- If a tab fails to build, the others still work, and CraftRoute errors now show in the game's error window (scriptErrors / BugSack) with their stack, not only as a chat line.
+
 ## 0.13.3
 
 - Enchant target: the "replace the existing enchant?" prompt is answered the way the classic enchanting macro does it, with a /click on the prompt's Yes button. The game ignored the addon pressing it directly. The target slot and the Enchant button are covered by secure buttons that do the /click as part of your click: if the prompt appears straight away, the same click answers it; if it appears a moment later, your next click answers it instead of casting again. The covers are hidden in combat.
