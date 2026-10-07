@@ -292,15 +292,26 @@ local function SecureEnchantButton(target, onClick)
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "")
   b:Hide()
+  -- A mouse click reaches this twice (button down, then up), and which of the two runs the
+  -- macro depends on the client. So: the first press of a click does the work (casts) and sets
+  -- the macro; the second press keeps the /click only if the dialog is still up, i.e. the first
+  -- press wasn't the one that ran it. Either way the dialog is answered exactly once.
   b:SetScript("PreClick", function(self, button, down)
     if InCombatLockdown() then return end
-    -- the secure action runs on key down or up depending on this setting; act once, on that one
-    local useDown = GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") or false
-    if (down and true or false) ~= (useDown and true or false) then
-      self:SetAttribute("macrotext", "")
-      return
+    if down or not self.downSeen then
+      self.downSeen = down and true or false
+      self.answer = onClick(button) or ""
+      self:SetAttribute("macrotext", self.answer)
+    else
+      -- up: answer the dialog if it's (still) up - including one that arrived while the button
+      -- was held, from the cast this click just made
+      self.downSeen = false
+      local _, yes = CR.VisibleReplacePopup()
+      local ours = self.answer ~= "" or (CR.enchantPendingUntil and GetTime() < CR.enchantPendingUntil)
+      self:SetAttribute("macrotext", (yes and ours) and ("/click " .. yes) or "")
+      if yes and ours then CR.enchantPendingUntil = nil end
+      self.answer = nil
     end
-    self:SetAttribute("macrotext", onClick(button) or "")
   end)
   b:SetScript("OnEnter", function() local f = target:GetScript("OnEnter") if f then f(target) end end)
   b:SetScript("OnLeave", function() local f = target:GetScript("OnLeave") if f then f(target) end end)
