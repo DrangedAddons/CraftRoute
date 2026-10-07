@@ -187,12 +187,51 @@ local function EnchantTarget(r, t)
   end
 end
 
-function CR.AutoReplaceEnchant()
-  if CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil and ReplaceEnchant then
-    ReplaceEnchant()
-    C_Timer.After(0, function() if StaticPopup_Hide then StaticPopup_Hide("REPLACE_ENCHANT") end end)
-    return true
+-- "Replace the existing enchant?" - answered Yes for you, but only for a cast you just started
+-- from the Craft tab (armed for a few seconds per click, one answer per cast). It presses the
+-- dialog's own Accept button, so the game does exactly what it does when you click it; if the
+-- client asks without showing a dialog, ReplaceEnchant() answers directly. Binding questions
+-- (enchanting an unbound item) are never answered for you.
+local function IsReplacePopup(which)
+  return type(which) == "string" and which:find("REPLACE_ENCHANT") and not which:find("TRADE") and true or false
+end
+
+local function VisibleReplacePopup()
+  for i = 1, (STATICPOPUP_NUMDIALOGS or 4) do
+    local d = _G["StaticPopup" .. i]
+    if d and d:IsShown() and IsReplacePopup(d.which) then return d end
   end
+end
+
+local function PressAccept(d)
+  local b = (d.GetButton1 and d:GetButton1()) or d.button1
+    or (d.ButtonContainer and d.ButtonContainer.Button1)
+  if b and b.Click then b:Click() return true end
+  if StaticPopup_OnClick then StaticPopup_OnClick(d, 1) return true end
+end
+
+local function Armed() return CR.enchantArmedUntil and GetTime() < CR.enchantArmedUntil end
+
+function CR.AutoReplaceEnchant()
+  if not Armed() then return end
+  -- let the game put its dialog up first, then answer it
+  C_Timer.After(0, function()
+    if not Armed() then return end
+    local d = VisibleReplacePopup()
+    CR.enchantArmedUntil = nil
+    if not (d and PressAccept(d)) and ReplaceEnchant then
+      ReplaceEnchant()
+      if StaticPopup_Hide then StaticPopup_Hide("REPLACE_ENCHANT") end
+    end
+  end)
+  return true
+end
+
+-- Some clients raise the question as a dialog without the REPLACE_ENCHANT event.
+if hooksecurefunc and StaticPopup_Show then
+  hooksecurefunc("StaticPopup_Show", function(which)
+    if IsReplacePopup(which) then CR.AutoReplaceEnchant() end
+  end)
 end
 
 ---------------------------------------------------------------------------
