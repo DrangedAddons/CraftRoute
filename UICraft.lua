@@ -281,7 +281,8 @@ local function PlaceOver(b, target)
 end
 
 -- opts.wanted(): show the cover only when this is true (default: while enchanting).
--- opts.plain: the macro is just onClick()'s result, run once per click on the release - for
+-- opts.plain: the macro is just onClick()'s result, run once per click (down or up, as the game
+-- acts) - for
 -- using an item (splitting / combining essences); no replace-dialog handling.
 local function SecureEnchantButton(target, onClick, opts)
   opts = opts or {}
@@ -305,8 +306,11 @@ local function SecureEnchantButton(target, onClick, opts)
   b:SetScript("PreClick", function(self, button, down)
     if InCombatLockdown() then return end
     if opts.plain then
-      -- run once per click, on the release (where Forever runs a mouse click's macro)
-      self:SetAttribute("macrotext", (not down) and (onClick(button) or "") or "")
+      -- run once per click, on the half the game acts on: press-down when "cast on key down"
+      -- (ActionButtonUseKeyDown, on by default) is set, else the release
+      local onDown = GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") or false
+      local act = (down and true or false) == (onDown and true or false)
+      self:SetAttribute("macrotext", act and (onClick(button) or "") or "")
       return
     end
     if down or not self.downSeen then

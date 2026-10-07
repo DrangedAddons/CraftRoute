@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.14.1
+
+- Fixed: Split / Combine for essences did nothing - the item use was put on the release of the click, but the game acts on press-down (the default "cast on key down" setting). It now follows that setting.
+
 ## 0.14.0
 
 - Craft tab: enchanting essences can be split and combined right from the reagent box, like making Medium Leather from Light. Open a short essence's line (+) and click Split (1 greater into 3 lesser) or Combine (3 lesser into 1 greater); each click does one, and the line shows how many you can do now and how many you're short. (A secure button does the item use, as only a real click may use an item.)
