@@ -532,15 +532,37 @@ for _, pair in ipairs({ { 10938, 10939 }, { 10998, 11082 }, { 11134, 11135 },
 end
 
 -- How this profession can make an item: a recipe, or an item-use conversion. nil if it can't.
+-- How this character can make an item, from any profession it has:
+--   1. the current profession's own recipe;
+--   2. another crafting profession this character has learned (a blacksmith with Leatherworking
+--      makes Thick Leather from Heavy; with Mining, smelts bars - only bars, from Mining);
+--   3. enchanting essences, which combine / split by using the item.
+-- how.prof is set when the recipe belongs to another profession (its window has to be open to
+-- craft it). nil if the character can't make it at all.
+local function OtherMaker(itemID, current)
+  local best
+  for name, p in pairs(CR.professions) do
+    local spell = name ~= current and p.byItem[itemID]
+    local r = spell and p.recipes[spell]
+    if r and (name ~= "Mining" or r.cat == "Smelted Bars") then
+      local skill, _, learned = CR.GetSkill(name)
+      if learned then
+        -- prefer one you have the skill for, then the lowest recipe
+        local ok = (skill or 0) >= (r.learn or 1)
+        if not best or (ok and not best.ok) or (ok == best.ok and (r.learn or 1) < (best.recipe.learn or 1)) then
+          best = { recipe = r, prof = p, ok = ok }
+        end
+      end
+    end
+  end
+  return best
+end
+
 function CR.ComponentMaker(prof, itemID)
   local spell = prof and prof.byItem[itemID]
   if spell and prof.recipes[spell] then return { recipe = prof.recipes[spell] } end
-  -- bars: smelt them yourself if this character has Mining (a Mining recipe, so how.prof says so)
-  local mining = CR.professions.Mining
-  local smelt = mining and mining.byItem[itemID] and mining.recipes[mining.byItem[itemID]]
-  if smelt and smelt.cat == "Smelted Bars" and select(3, CR.GetSkill("Mining")) then
-    return { recipe = smelt, prof = mining }
-  end
+  local other = OtherMaker(itemID, prof and prof.name)
+  if other then return { recipe = other.recipe, prof = other.prof } end
   if CONVERSIONS[itemID] then return { convert = CONVERSIONS[itemID] } end
 end
 
@@ -1005,7 +1027,8 @@ function CR.CreateCraftPanel(parent)
     local ex = expands[level]
     local how = CR.ComponentMaker(prof, itemID)
     if not how then return 0 end
-    prof = how.prof or prof   -- smelting is Mining's, whatever the recipe above is
+    prof = how.prof or prof   -- made by another of your professions (Leatherworking, Mining...)
+    local smelting = prof.name == "Mining"
     local bags, elsewhere = CR.BagsAndElsewhere(itemID)
     local missing = math.max(0, need - bags - elsewhere)   -- not anywhere: has to be made
     local shortBags = math.max(0, need - bags)              -- not on you
@@ -1015,7 +1038,8 @@ function CR.CreateCraftPanel(parent)
       or (shortBags > 0 and CR.ColorText(shortBags .. " not on you", "ffd100"))
       or CR.ColorText("enough", "40ff40")
     ex.title:SetText(string.format("%s %s from:",
-      how.prof and "Smelt" or how.recipe and "Make" or (how.convert.uses > 1 and "Combine" or "Split"), CR.ItemName(itemID)))
+      smelting and "Smelt" or how.recipe and "Make" or (how.convert.uses > 1 and "Combine" or "Split"),
+      CR.ItemName(itemID) .. ((how.prof and not smelting) and (" (" .. prof.name .. ")") or "")))
     -- the components, as have / per craft; ones you can make yourself open the next level
     local exclude = {}
     for i = 1, level do exclude[panel.expandPath[i]] = true end   -- never loop (essences go both ways)
@@ -1042,11 +1066,11 @@ function CR.CreateCraftPanel(parent)
         m:SetText("Open")
         m:SetEnabled(not InCombatLockdown())
         m.openProf = prof.name
-        info = (how.prof and "Open Mining (Smelting) to smelt" or ("Open " .. prof.name .. " to craft")) .. "  ·  " .. shortText
+        info = (smelting and "Open Mining (Smelting) to smelt" or ("Open " .. prof.name .. " to craft")) .. "  ·  " .. shortText
       else
         local n = math.min(toMake, available)
         m.recipe, m.count = r, n
-        if n > 0 then m:SetText((how.prof and "Smelt " or "Make ") .. n) end
+        if n > 0 then m:SetText((smelting and "Smelt " or "Make ") .. n) end
         m:SetEnabled(n > 0 and not IsRepeating())
         info = string.format("Can make %s now  ·  %s", CR.ColorText(tostring(available), available > 0 and "40ff40" or "ff6060"), shortText)
         if r.makes > 1 then info = info .. "  ·  " .. r.makes .. " per craft" end

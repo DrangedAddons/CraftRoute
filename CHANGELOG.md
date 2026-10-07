@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.17.0
+
+- Craft tab: components can come from any crafting profession your character has, not just the current one. A blacksmith with Leatherworking gets a + on Thick Leather for Heavy Mithril Boots ("Make Thick Leather (Leatherworking) from:"), chaining down to Heavy / Medium / Light; an engineer with Tailoring makes their Bolts of Cloth; an enchanter with Blacksmithing makes their rods; a tailor with Alchemy makes their dyes; Enchanted Leather, Sulfuric Acid, Sandpaper, Iron Buckles and so on likewise. Mining only ever offers smelting bars. The current profession's own recipe is used first; with several, one you have the skill for. Professions you haven't learned are never offered. Crafting it needs that profession's window open - the section's Open button switches to it.
+
 ## 0.16.1
 
 - Route: smelting is no longer added as its own step ("+ 10x Smelt Copper"). The guides don't send you smelting; they just need the bars. The route shows the items to craft, your ore still counts towards the bars in the materials, and you smelt from the bar's + on the Craft tab when you're short. (The Craft tab also stops saying you haven't learned Smelt Copper - it was treating it as a Blacksmithing recipe.)
