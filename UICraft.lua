@@ -280,7 +280,11 @@ local function PlaceOver(b, target)
   return true
 end
 
-local function SecureEnchantButton(target, onClick)
+-- opts.wanted(): show the cover only when this is true (default: while enchanting).
+-- opts.plain: the macro is just onClick()'s result, run once per click on the release - for
+-- using an item (splitting / combining essences); no replace-dialog handling.
+local function SecureEnchantButton(target, onClick, opts)
+  opts = opts or {}
   local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
   b:SetSize(1, 1)
   b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
@@ -300,6 +304,11 @@ local function SecureEnchantButton(target, onClick)
   -- press wasn't the one that ran it. Either way the dialog is answered exactly once.
   b:SetScript("PreClick", function(self, button, down)
     if InCombatLockdown() then return end
+    if opts.plain then
+      -- run once per click, on the release (where Forever runs a mouse click's macro)
+      self:SetAttribute("macrotext", (not down) and (onClick(button) or "") or "")
+      return
+    end
     if down or not self.downSeen then
       self.downSeen = down and true or false
       self.answer = onClick(button) or ""
@@ -318,15 +327,19 @@ local function SecureEnchantButton(target, onClick)
   b:SetScript("OnEnter", function() local f = target:GetScript("OnEnter") if f then f(target) end end)
   b:SetScript("OnLeave", function() local f = target:GetScript("OnLeave") if f then f(target) end end)
   b.target = target
+  b.wanted = opts.wanted
   table.insert(secureButtons, b)
   return b
 end
 
--- Show each secure button only while its target is visible and enchanting is on (out of combat).
+-- Show each secure button only while its target is visible and it's wanted - by default while
+-- enchanting (out of combat).
 local function SyncSecureButtons(enchanting)
   if InCombatLockdown() or CR.inCombat then return end
   for _, b in ipairs(secureButtons) do
-    local show = enchanting and b.target:IsVisible() and b.target:IsEnabled() ~= false and PlaceOver(b, b.target)
+    local want
+    if b.wanted then want = b.wanted() else want = enchanting end
+    local show = want and b.target:IsVisible() and b.target:IsEnabled() ~= false and PlaceOver(b, b.target)
     if show then
       b:SetFrameStrata(b.target:GetFrameStrata())
       b:SetFrameLevel(b.target:GetFrameLevel() + 5)
@@ -832,6 +845,11 @@ function CR.CreateCraftPanel(parent)
     if self.openProf then CR.OpenTradeSkill(self.openProf)
     elseif self.recipe and (self.count or 0) > 0 then Craft(self.recipe, self.count) end
   end)
+  -- essences: the secure cover that uses the item when you click Split / Combine
+  SecureEnchantButton(expand.make, function() return expand.convertMacro or "" end, {
+    plain = true,
+    wanted = function() return expand:IsVisible() and expand.convertMacro ~= nil end,
+  })
 
   -- Buy popup, opened from a reagent's Buy button while a vendor is open: buy one, the amount
   -- this step still needs in your bags, or any amount.
@@ -958,6 +976,7 @@ function CR.CreateCraftPanel(parent)
     FillReagents(expand, expand.rows, how.recipe or { reagents = { { how.convert.use, how.convert.uses } } }, 1, { perCraft = true })
     local m, info = expand.make, nil
     m.recipe, m.count, m.openProf = nil, nil, nil
+    expand.convertMacro = nil
     if how.recipe then
       local r = how.recipe
       local learned, available = RecipeState(prof, r)
@@ -983,11 +1002,17 @@ function CR.CreateCraftPanel(parent)
         if r.makes > 1 then info = info .. "  ·  " .. r.makes .. " per craft" end
       end
     else
-      -- essences combine / split by right-clicking them in your bags
-      m:Hide()
+      -- essences combine / split by using the item; the secure cover over this button does the
+      -- /use (only a real click may use an item)
       local c = how.convert
-      info = (c.uses > 1 and string.format("Right-click %d %s in your bags to combine them", c.uses, CR.ItemName(c.use))
-        or string.format("Right-click a %s in your bags to split it", CR.ItemName(c.use))) .. "  ·  " .. shortText
+      local can = math.floor((GetItemCount(c.use, false) or 0) / c.uses)
+      m:Show()
+      m:SetText(c.uses > 1 and "Combine" or "Split")
+      m:SetEnabled(can > 0 and not InCombatLockdown())
+      expand.convertMacro = can > 0 and ("/use item:" .. c.use) or nil
+      info = string.format("%s  ·  can do %s now  ·  %s",
+        c.uses > 1 and string.format("Each click: %d into 1", c.uses) or string.format("Each click: 1 into %d", c.makes),
+        CR.ColorText(tostring(can), can > 0 and "40ff40" or "ff6060"), shortText)
     end
     expand.info:SetText(info)
     local nRows = how.recipe and #how.recipe.reagents or 1
