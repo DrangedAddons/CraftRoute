@@ -395,12 +395,14 @@ local function CreateWindow()
     frame.lookDD = lookDD
   end
 
-  frame.panels.plan = CR.CreatePlanPanel(frame)
-  frame.panels.recipes = CR.CreateRecipesPanel(frame)
-  frame.panels.craft = CR.CreateCraftPanel(frame)
-  for _, p in pairs(frame.panels) do
-    p:SetPoint("TOPLEFT", 14, -42)
-    p:SetPoint("BOTTOMRIGHT", -14, 12)
+  -- each tab is built on its own, so one failing doesn't leave the others blank
+  for _, spec in ipairs({ { "plan", CR.CreatePlanPanel }, { "recipes", CR.CreateRecipesPanel }, { "craft", CR.CreateCraftPanel } }) do
+    CR.SafeCall(function()
+      local p = spec[2](frame)
+      p:SetPoint("TOPLEFT", 14, -42)
+      p:SetPoint("BOTTOMRIGHT", -14, 12)
+      frame.panels[spec[1]] = p
+    end)
   end
   frame:SetScript("OnShow", function() CR.RefreshWindow() end)
   CR.ApplyTheme(frame)
@@ -410,7 +412,7 @@ function CR.ShowWindow(tab)
   if not frame then CreateWindow() end
   -- the last tab used is remembered, so the window reopens where you left it (e.g. on Craft)
   tab = tab or frame.current or CraftRouteDB.lastTab or "craft"
-  if not frame.panels[tab] then tab = "craft" end
+  if not frame.panels[tab] then tab = frame.panels.craft and "craft" or (frame.panels.plan and "plan" or "recipes") end
   CraftRouteDB.lastTab = tab
   frame.current = tab
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
@@ -421,7 +423,7 @@ function CR.ShowWindow(tab)
   frame:Show()
   CR.RefreshWindow()
   -- the Craft tab opens the profession window itself (this runs from a click or /cr)
-  if tab == "craft" and frame.panels.craft.AutoOpen then frame.panels.craft:AutoOpen() end
+  if tab == "craft" and frame.panels.craft and frame.panels.craft.AutoOpen then frame.panels.craft:AutoOpen() end
 end
 
 function CR.ToggleWindow()

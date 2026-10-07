@@ -28,10 +28,17 @@ function CR.FactionText(s)
 end
 
 -- Runs fn, printing any error to chat (script errors are hidden by default).
+-- Runs fn; an error is printed to chat and also handed to the game's error handler (the
+-- scriptErrors window / BugSack), with its stack, instead of being swallowed.
 function CR.SafeCall(fn, ...)
-  local ok, err = pcall(fn, ...)
+  local args, n = { ... }, select("#", ...)
+  local ok, err = xpcall(function() return fn(unpack(args, 1, n)) end, function(e)
+    return tostring(e) .. (debugstack and ("\n" .. debugstack(2)) or "")
+  end)
   if not ok then
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff4040CraftRoute error:|r " .. tostring(err))
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff4040CraftRoute error:|r " .. tostring(err):match("^[^\n]*"))
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(err) end
   end
   return ok
 end
