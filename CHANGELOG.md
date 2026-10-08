@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.4
+
+- Profession-window view: no more flash of Blizzard's recipes page when switching profession from the CraftRoute view. The view now stays open through the switch, and the page Blizzard shows as the new profession loads is hidden again in the same frame, before it's drawn. (The half-second retries from 0.19.3 remain only as a backup.)
+
 ## 0.19.3
 
 - Profession-window view: switching profession from its dropdown (or its Open buttons) now keeps you on the CraftRoute view. The profession still opens so you can craft, but Blizzard's window flips back to its own recipes page as it loads - CraftRoute now puts its view back once the new profession has loaded. Opening a profession any other way behaves as before.

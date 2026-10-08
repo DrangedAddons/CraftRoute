@@ -1353,8 +1353,15 @@ local function ToggleCompact()
 end
 
 -- A profession switch started from this view (dropdown, Open): Blizzard's window flips back to its
--- own recipes page as the new profession loads, so put this view back once it has.
+-- own recipes page as the new profession loads. This view isn't closed meanwhile, and the page
+-- Blizzard shows is hidden again straight away, in the same frame - before anything is drawn, so
+-- it never flashes up. ReopenSoon (a few retries over the next half second) is only the backup.
 local function Keeping() return ui.keepUntil and GetTime() < ui.keepUntil end
+local function KeepNow()
+  if not Keeping() or InCombatLockdown() or not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
+  pcall(HidePages)
+  if overlay and not overlay:IsShown() then OpenCompact() end
+end
 local function ReopenSoon()
   if not Keeping() then return end
   for _, delay in ipairs({ 0, 0.1, 0.3, 0.6 }) do
@@ -1366,7 +1373,7 @@ local function ReopenSoon()
 end
 
 local function OnNativeTab()
-  if Keeping() then ReopenSoon() return end
+  if Keeping() then KeepNow() ReopenSoon() return end
   if GetTime() - openedAt < 0.05 then return end
   if overlay and overlay:IsShown() then CloseCompact(true) end
 end
@@ -2134,12 +2141,14 @@ local function Install()
     hooksecurefunc(ProfessionsFrame, "SetTab", OnNativeTab)
   end
   ProfessionsFrame:HookScript("OnShow", function()
+    KeepNow()
     ReopenSoon()
     C_Timer.After(0, PositionEntry)
     C_Timer.After(0.2, PositionEntry)
     WatchTrainerSpells()
   end)
   ProfessionsFrame:HookScript("OnHide", function()
+    if Keeping() then return end   -- switching profession from this view: it stays open
     local wasOpen = overlay and overlay:IsShown()
     if wasOpen then
       overlay:Hide()
@@ -2147,6 +2156,16 @@ local function Install()
     end
     if wasOpen and not InCombatLockdown() then pcall(RestorePages) end
   end)
+  -- Blizzard's own pages: one shown while a switch from this view is loading is hidden again in
+  -- the same frame (only then - normal tab clicks behave as Blizzard intends).
+  local pages = ProfessionsFrame.Pages or { ProfessionsFrame.CraftingPage, ProfessionsFrame.BookPage }
+  for _, page in pairs(pages) do
+    if type(page) == "table" and page.HookScript then
+      page:HookScript("OnShow", function(self)
+        if Keeping() and overlay and overlay:IsShown() and not InCombatLockdown() then self:Hide() end
+      end)
+    end
+  end
   WatchTrainerSpells()
   CR.OnChange(function()
     if overlay and overlay:IsShown() then
