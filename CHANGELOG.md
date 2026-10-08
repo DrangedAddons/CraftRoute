@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.9
+
+- Profession-window skill bar: the fill sits inside the frame's dark track again (0.19.8 sized it from Blizzard's fill piece, which is drawn the frame's full height, so it came out taller than the track), and it draws the exact region of the texture sheet Blizzard's fill shows, instead of the whole sheet. /cr rankbar now also reports each piece's texture coordinates and the textures inside sub-frames.
+
 ## 0.19.8
 
 - Profession-window view, skill bar: the fill now spans the whole track - it was sized for a shorter track, so it stopped short and left black where it should have filled (and never quite reached the end at full skill).

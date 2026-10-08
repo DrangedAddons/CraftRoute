@@ -1121,7 +1121,9 @@ local function NativeRankBar()
   return nb, fill, Tex(nb.Flare) or Tex(nb.BarFlare)
 end
 
--- Where a texture's art is: file and its texture coordinates (atlas or plain texture).
+-- Where a texture's art is: file and the region of it the texture shows (its texture
+-- coordinates - art usually sits on a sheet with other art, so the whole file is the wrong
+-- picture). Atlas info when the client gives it, else the texture's own coordinates.
 local function ArtOf(tex)
   local atlas = tex.GetAtlas and tex:GetAtlas()
   if atlas and C_Texture and C_Texture.GetAtlasInfo then
@@ -1132,19 +1134,22 @@ local function ArtOf(tex)
     end
   end
   local file = tex:GetTexture()
-  if file then return file, 0, 1, 0, 1 end
+  if not file then return nil end
+  local ulx, uly, llx, lly, urx, ury = tex:GetTexCoord()
+  if type(ulx) == "number" and type(urx) == "number" and type(lly) == "number" then
+    return file, ulx, urx, uly, lly
+  end
+  return file, 0, 1, 0, 1
 end
 
--- Inset of the fill inside the bar frame (left, top/bottom), from Blizzard's bar when it has a
--- layout, scaled to this bar; otherwise the wood frame's usual inset.
-local function FillInset(bar, nb, nfill)
-  local bl, bt, bw, bh = nb and nb:GetLeft(), nb and nb:GetTop(), nb and nb:GetWidth(), nb and nb:GetHeight()
-  local fl, ft, fh = nfill and nfill:GetLeft(), nfill and nfill:GetTop(), nfill and nfill:GetHeight()
-  if bl and bt and bw and bh and fl and ft and fh and bw > 0 and bh > 0 and fh > 0 then
-    local sx, sy = (bar:GetWidth() or bw) / bw, (bar:GetHeight() or bh) / bh
-    return (fl - bl) * sx, (bt - ft) * sy, fh * sy
-  end
-  return 9, 8, 13
+-- The fill sits inside the wood frame's dark track: inset 4 on each side, as on Blizzard's bar
+-- (its fill is about 21 of the frame's 27-29 px). Fixed, not measured from Blizzard's bar - its
+-- fill piece is drawn the frame's full height, which made this one taller than the track.
+local FILL_INSET_X, FILL_INSET_Y = 4, 4
+local function FillInset(bar)
+  local h = bar:GetHeight() or 29
+  if h < 10 then h = 29 end
+  return FILL_INSET_X, FILL_INSET_Y, h - 2 * FILL_INSET_Y
 end
 
 local function UpdateRankBar()
@@ -1168,7 +1173,7 @@ local function UpdateRankBar()
   -- The fill spans the whole track (the frame's inset on both sides), so a full bar is full:
   -- it used to stop well short of the right end and leave black in the track.
   local nb, nfill, nflare = NativeRankBar()
-  local left, top, height = FillInset(bar, nb, nfill)
+  local left, top, height = FillInset(bar)
   local track = math.max(1, width - 2 * left)
   local fill = bar.fill
   fill:ClearAllPoints()
@@ -1228,7 +1233,16 @@ function CR.DebugRankBar()
       local kind = v:GetObjectType()
       local extra = ""
       if kind == "Texture" then
-        extra = string.format(" atlas=%s tex=%s", tostring(v.GetAtlas and v:GetAtlas()), tostring(v:GetTexture()))
+        local c = { v:GetTexCoord() }
+        extra = string.format(" atlas=%s tex=%s coords=%.3f,%.3f-%.3f,%.3f shown=%s", tostring(v.GetAtlas and v:GetAtlas()),
+          tostring(v:GetTexture()), c[1] or 0, c[2] or 0, c[7] or 0, c[8] or 0, tostring(v:IsShown()))
+      elseif v.GetRegions then
+        for _, r in ipairs({ v:GetRegions() }) do
+          if r.GetObjectType and r:GetObjectType() == "Texture" then
+            extra = extra .. string.format(" [tex %s atlas=%s %.0fx%.0f]", tostring(r:GetTexture()),
+              tostring(r.GetAtlas and r:GetAtlas()), r:GetWidth() or 0, r:GetHeight() or 0)
+          end
+        end
       end
       CR.Print(string.format("  .%s %s %.0fx%.0f%s", key, kind, v:GetWidth() or 0, v:GetHeight() or 0, extra))
     end
