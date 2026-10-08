@@ -35,21 +35,21 @@ function CR.FormatMoney(copper)
   return table.concat(parts, " ")
 end
 
--- Builds (or replaces) an Auctionator shopping list with the missing AH-bought materials.
-function CR.CreateShoppingList(plan)
+-- Builds (or replaces) an Auctionator shopping list called listName from { id, missing, name }
+-- entries: what's short, minus anything a vendor sells (buy those from the vendor).
+local function MakeShoppingList(listName, wanted)
   if not CR.HasAuctionator() or not Auctionator.API.v1.CreateShoppingList then
     CR.Print("Auctionator isn't loaded.")
     return
   end
   local api = Auctionator.API.v1
   local terms = {}
-  for _, m in ipairs(plan.materials) do
-    local missing = m.need - m.have
-    local _, src = CR.GetUnitPrice(m.id)
-    if missing > 0 and src ~= "vendor" then
-      local name = GetItemInfo(m.id) or m.name
+  for _, w in ipairs(wanted) do
+    local _, src = CR.GetUnitPrice(w.id)
+    if w.missing > 0 and src ~= "vendor" then
+      local name = GetItemInfo(w.id) or w.name
       local ok, str = pcall(api.ConvertToSearchString, CALLER,
-        { searchString = name, isExact = true, categoryKey = "", quantity = missing })
+        { searchString = name, isExact = true, categoryKey = "", quantity = w.missing })
       table.insert(terms, ok and str or ('"' .. name .. '"'))
     end
   end
@@ -57,11 +57,30 @@ function CR.CreateShoppingList(plan)
     CR.Print("Nothing to buy from the Auction House - you have everything (vendor items excluded).")
     return
   end
-  local listName = "CraftRoute " .. plan.prof
   local ok, err = pcall(api.CreateShoppingList, CALLER, listName, terms)
   if ok then
     CR.Print(string.format("Auctionator shopping list '%s' created with %d items.", listName, #terms))
   else
     CR.Print("Couldn't create the shopping list: " .. tostring(err))
   end
+end
+
+-- The whole plan's missing materials.
+function CR.CreateShoppingList(plan)
+  local wanted = {}
+  for _, m in ipairs(plan.materials) do
+    table.insert(wanted, { id = m.id, missing = m.need - m.have, name = m.name })
+  end
+  MakeShoppingList("CraftRoute " .. plan.prof, wanted)
+end
+
+-- Just one step: what its crafts need that you don't own anywhere (bags, bank, mail, alts).
+function CR.CreateStepShoppingList(recipe, crafts)
+  local wanted = {}
+  for _, rg in ipairs(recipe.reagents or {}) do
+    local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+    table.insert(wanted, { id = rg[1], missing = rg[2] * math.max(1, crafts or 1) - bags - elsewhere,
+                           name = CR.ItemName(rg[1]) })
+  end
+  MakeShoppingList("CraftRoute: " .. recipe.name, wanted)
 end

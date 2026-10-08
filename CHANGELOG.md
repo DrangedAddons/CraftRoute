@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.20.0
+
+- Profession-window view: a "Shopping List" button above Create makes an Auctionator shopping list for just the current step - what its crafts need that you don't have anywhere (bags, bank, mail, alts), named "CraftRoute: <recipe>". Vendor-sold reagents are left off (buy those from a vendor). Shown when Auctionator is installed; styled with the selected look.
+
 ## 0.19.12
 
 - Tooltips never stretch across the screen: long text wraps (guide-step and training notes in the profession-window view - the Artisan Cooking note was one long line - and the "choose ONE" option tooltips in both windows), and two-column lines that can't wrap ("Needed for ..." on item tooltips, the crafts listed on Plan options) cut long labels short with "...". Every tooltip in the addon was checked.

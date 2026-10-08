@@ -1078,6 +1078,7 @@ local function FillSchematic(info)
   end
   frame.lastSpell = recipe.spell
   frame.current = st
+  frame.shopBtn:SetShown(CR.HasAuctionator() and true or false)
   frame.craftProf = profName
 
   local _, _, detected = CR.GetSkill(info.profName)
@@ -1813,7 +1814,7 @@ local function BuildOverlay()
   frame.buttons:SetHeight(24)
   frame.status = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.status:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 0, 6)
-  frame.status:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -4, 30)
+  frame.status:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)   -- clear of the shopping list button
   frame.status:SetJustifyH("LEFT")
   frame.status:SetWordWrap(false)
 
@@ -1850,6 +1851,26 @@ local function BuildOverlay()
   frame.nextBtn:SetScript("OnClick", function()
     frame.countBox:SetText(tostring(math.min(9999, (tonumber(frame.countBox:GetText()) or 1) + 1)))
   end)
+  -- Auctionator shopping list for just this step, above Create
+  frame.shopBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
+  frame.shopBtn:SetSize(130, 22)
+  frame.shopBtn:SetPoint("BOTTOMRIGHT", frame.buttons, "TOPRIGHT", 0, 6)
+  frame.shopBtn:SetText("Shopping List")
+  CR.ThemeRegisterButton(frame.shopBtn)
+  frame.shopBtn:SetScript("OnClick", function()
+    local st = frame.current
+    if st and st.recipe then CR.CreateStepShoppingList(st.recipe, st.crafts) end
+  end)
+  frame.shopBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Auctionator shopping list")
+    GameTooltip:AddLine("Makes a list of what this step still needs - everything its crafts use that you "
+      .. "don't have anywhere (bags, bank, mail, alts). Vendor items are left off: buy those from a vendor.", 1, 1, 1, true)
+    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
+    GameTooltip:Show()
+  end)
+  frame.shopBtn:SetScript("OnLeave", GameTooltip_Hide)
+
   frame.createAll = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.createAll:SetSize(130, 22)
   frame.createAll:SetPoint("LEFT", frame.buttons, "LEFT", -7, 0)
