@@ -25,20 +25,25 @@ function CR.TradeSkillOpenFor(profName)
   return false
 end
 
--- Profession skill line IDs, for when the client doesn't hand them over with the profession list.
-local SKILL_LINES = {
-  Alchemy = 171, Blacksmithing = 164, Enchanting = 333, Engineering = 202, Leatherworking = 165,
-  Tailoring = 197, Mining = 186, Cooking = 185, ["First Aid"] = 129, Fishing = 356,
-}
+-- Opening a profession window. The game only lets a real click do it (OpenTradeSkill is
+-- protected - calling it from addon code is blocked), so CraftRoute's Open buttons and its
+-- profession pickers are covered by secure buttons that cast the profession as part of your
+-- click, like typing /cast Leatherworking. OpenProfessionMacro gives that macro (nil if there's
+-- nothing to open: not learned, already open, or no crafting window, like Fishing).
+local CAST_NAME = { Mining = "Smelting" }   -- the spell that opens the window, if not the name
+function CR.OpenProfessionMacro(profName)
+  local route = profName and CR.Route(profName)
+  profName = route and route.recipeProf or profName
+  if not profName or profName == "Fishing" then return nil end
+  local _, _, learned = CR.GetSkill(profName)
+  if not learned or CR.TradeSkillOpenFor(profName) then return nil end
+  return "/cast " .. (CAST_NAME[profName] or profName)
+end
+
+-- Reached only when a click didn't go through a secure cover (e.g. in combat).
 function CR.OpenTradeSkill(profName)
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
-  local s = CR.skill[profName]
-  local line = (s and s.skillLine) or SKILL_LINES[profName]
-  if line and TS.OpenTradeSkill then
-    TS.OpenTradeSkill(line)
-  else
-    CR.Print("Open " .. profName .. " from your spellbook / profession book first.")
-  end
+  CR.Print("Open " .. profName .. " with its Open button or from your profession book.")
 end
 
 -- Learned? and how many can be made from what's in your bags right now.
@@ -347,11 +352,13 @@ end
 
 -- Show each secure button only while its target is visible and it's wanted - by default while
 -- enchanting (out of combat).
+local lastEnchanting = false
 local function SyncSecureButtons(enchanting)
+  if enchanting ~= nil then lastEnchanting = enchanting end
   if InCombatLockdown() or CR.inCombat then return end
   for _, b in ipairs(secureButtons) do
     local want
-    if b.wanted then want = b.wanted() else want = enchanting end
+    if b.wanted then want = b.wanted() else want = lastEnchanting end
     local show = want and b.target:IsVisible() and b.target:IsEnabled() ~= false and PlaceOver(b, b.target)
     if show then
       b:SetFrameStrata(b.target:GetFrameStrata())
@@ -359,6 +366,13 @@ local function SyncSecureButtons(enchanting)
     end
     b:SetShown(show and true or false)
   end
+end
+
+-- For other windows' covers (the dropdown menus): show / place them now.
+function CR.SyncSecureCovers() SyncSecureButtons() end
+-- A secure cover over `target` that runs onClick()'s macro once per click (see SecureEnchantButton).
+function CR.SecureCover(target, onClick, wanted)
+  return SecureEnchantButton(target, onClick, { plain = true, wanted = wanted })
 end
 
 function CR.HideSecureEnchantButtons()
@@ -871,7 +885,7 @@ function CR.CreateCraftPanel(parent)
     db().profession = v; db().profPicked = true; panel.viewOffset = 0
     panel:AutoOpen(true)
     CR.NotifyChanged()
-  end)
+  end, CR.OpenProfessionMacro)
   profDD:SetPoint("TOPLEFT", 4, -8)
 
   -- Same setting as the Plan tab's tickbox: list professions this character hasn't learned.
@@ -1053,10 +1067,11 @@ function CR.CreateCraftPanel(parent)
       if self.openProf then CR.OpenTradeSkill(self.openProf)
       elseif self.recipe and (self.count or 0) > 0 then Craft(self.recipe, self.count) end
     end)
-    -- essences: the secure cover that uses the item when you click Split / Combine
-    SecureEnchantButton(ex.make, function() return ex.convertMacro or "" end, {
+    -- secure cover: uses the item for Split / Combine (essences), or casts the profession for
+    -- Open - only a real click may do either
+    SecureEnchantButton(ex.make, function() return ex.convertMacro or ex.openMacro or "" end, {
       plain = true,
-      wanted = function() return ex:IsVisible() and ex.convertMacro ~= nil end,
+      wanted = function() return ex:IsVisible() and (ex.convertMacro or ex.openMacro) ~= nil end,
     })
     return ex
   end
@@ -1115,7 +1130,7 @@ function CR.CreateCraftPanel(parent)
     })
     local m, info = ex.make, nil
     m.recipe, m.count, m.openProf = nil, nil, nil
-    ex.convertMacro = nil
+    ex.convertMacro, ex.openMacro = nil, nil
     if how.recipe then
       local r = how.recipe
       local learned, available = RecipeState(prof, r)
@@ -1131,6 +1146,7 @@ function CR.CreateCraftPanel(parent)
         m:SetText("Open")
         m:SetEnabled(not InCombatLockdown())
         m.openProf = prof.name
+        ex.openMacro = CR.OpenProfessionMacro(prof.name)
         info = (smelting and "Open Mining (Smelting) to smelt" or ("Open " .. prof.name .. " to craft")) .. "  ·  " .. shortText
       else
         local n = math.min(toMake, available)
@@ -1601,19 +1617,9 @@ function CR.CreateCraftPanel(parent)
   panel:HookScript("OnSizeChanged", SizeColumn)
   SizeColumn()
 
-  -- Open the profession window by itself (on a click or /cr - the game may block it otherwise).
-  -- Once per visit: if you close it yourself, it stays closed until you come back to the tab.
-  function panel:AutoOpen(force)
-    local profName = db().profession
-    local route = CR.Route(profName)
-    local craftProf = route and route.recipeProf or profName
-    local _, _, detected = CR.GetSkill(craftProf)
-    if not detected or InCombatLockdown() or CR.TradeSkillOpenFor(craftProf) then return end
-    if not CR.professions[craftProf] or not next(CR.professions[craftProf].recipes) then return end
-    if self.autoOpened == craftProf and not force then return end
-    self.autoOpened = craftProf
-    pcall(CR.OpenTradeSkill, craftProf)
-  end
+  -- The profession window can't be opened by addon code (only by a click), so there's no
+  -- automatic opening: the Open button and the profession picker do it on your click.
+  function panel:AutoOpen() end
   panel:SetScript("OnHide", function(self) self.autoOpened = nil; CR.HideBuyPop(panel); CR.HideSecureEnchantButtons() end)
 
   -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
@@ -1925,6 +1931,10 @@ function CR.CreateCraftPanel(parent)
     local route = CR.Route(db().profession)
     CR.OpenTradeSkill(route and route.recipeProf or db().profession)
   end)
+  SecureEnchantButton(openBtn, function() return CR.OpenProfessionMacro(db().profession) or "" end, {
+    plain = true,
+    wanted = function() return openBtn:IsVisible() and CR.OpenProfessionMacro(db().profession) ~= nil end,
+  })
 
   CR.craftPanel = panel
   return panel

@@ -182,7 +182,10 @@ end
 -- Simple dropdown: a button that opens a list of options below it.
 -- options: { {value=, text=} } (or a function returning that), getter() -> value, setter(value)
 local openMenu
-function CR.CreateDropdown(parent, width, options, getter, setter)
+-- openMacro(value), if given: picking that entry also runs this macro on your click (a secure
+-- cover over the entry) - used by the profession pickers to cast the profession, which opens its
+-- window. nil for an entry = a normal click.
+function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
   local dd = CreateFrame("Button", nil, parent, "BackdropTemplate")
   dd:SetSize(width, 20)
   Backdrop(dd, 0.08, 0.08, 0.08, 0.9)
@@ -230,6 +233,17 @@ function CR.CreateDropdown(parent, width, options, getter, setter)
         setter(o.value)
         dd:Sync()
       end)
+      b.value = o.value
+      if openMacro and not b.crCover and CR.SecureCover and not InCombatLockdown() then
+        b.crCover = CR.SecureCover(b, function()
+          local v = b.value
+          local macro = openMacro(v)
+          menu:Hide()
+          setter(v)
+          dd:Sync()
+          return macro or ""
+        end, function() return menu:IsVisible() and b:IsVisible() and openMacro(b.value) ~= nil end)
+      end
       b:Show()
     end
     for i = #opts + 1, #menu.buttons do menu.buttons[i]:Hide() end
@@ -244,8 +258,12 @@ function CR.CreateDropdown(parent, width, options, getter, setter)
     menu:SetPoint("TOPLEFT", dd, "BOTTOMLEFT", 0, -2)
     menu:Show()
     openMenu = menu
+    if openMacro and CR.SyncSecureCovers then CR.SyncSecureCovers() end
   end)
   dd:SetScript("OnHide", function() menu:Hide() end)
+  if openMacro then
+    menu:SetScript("OnHide", function() if CR.SyncSecureCovers then CR.SyncSecureCovers() end end)
+  end
 
   function dd:Sync()
     local v = getter()

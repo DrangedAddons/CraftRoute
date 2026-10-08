@@ -107,10 +107,7 @@ local function SelectProfession(name)
   wipe(ui.openSteps)
   wipe(ui.openParts)
   ui.keepScroll = false
-  local _, _, detected = CR.GetSkill(name)
-  if detected and OpenProfessionName() ~= name and not InCombatLockdown() then
-    CR.OpenTradeSkill(name)
-  end
+  -- (the window itself is opened by the secure cover on the dropdown entry - addon code can't)
   CR.InvalidatePlan()
   if overlay and overlay:IsShown() then overlay:Refresh() end
   CR.NotifyChanged()
@@ -176,7 +173,7 @@ local function CraftSpell(spell, count, profName)
   if InCombatLockdown() then CR.Print("Can't craft in combat.") return end
   count = math.max(1, math.floor(count or 1))
   if profName and not CR.TradeSkillOpenFor(profName) then
-    CR.OpenTradeSkill(profName)
+    CR.OpenTradeSkill(profName)   -- just says how: opening needs a click on an Open button
     return
   end
   if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe then
@@ -400,6 +397,7 @@ local function ApplyRow(row, item)
           a:SetText("Open")
           a:SetEnabled(not InCombatLockdown())
           a:SetScript("OnClick", function() CR.OpenTradeSkill(info.prof.name) end)
+          row.actMacro = CR.OpenProfessionMacro(info.prof.name)   -- the secure cover casts it
         else
           local n = info.count or 0
           a:SetText((info.smelting and "Smelt " or "Make ") .. n)
@@ -1445,7 +1443,7 @@ local function BuildOverlay()
   frame.divider:SetColorTexture(1, 0.82, 0.35, 0.18)
 
   frame.profDD = CR.CreateDropdown(frame, 200, ProfessionOptions,
-    function() return DB() and DB().profession or "" end, SelectProfession)
+    function() return DB() and DB().profession or "" end, SelectProfession, CR.OpenProfessionMacro)
   frame.goalDD = CR.CreateDropdown(frame, 168, CR.GoalOptions,
     function() return DB() and DB().goalMode or "next" end,
     function(v)
@@ -2046,6 +2044,9 @@ local function BuildOverlay()
   frame.openBtn:SetScript("OnClick", function()
     if frame.craftProf then CR.OpenTradeSkill(frame.craftProf) end
   end)
+  -- the click opens the profession by casting it (only a secure click may)
+  AttachPlainCover(frame.openBtn, function() return CR.OpenProfessionMacro(frame.craftProf) or "" end,
+    function() return frame:IsShown() and frame.openBtn:IsShown() and CR.OpenProfessionMacro(frame.craftProf) ~= nil end)
 
   local watch = 0
   frame:SetScript("OnUpdate", function(_, elapsed)

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.19.2
+
+- Fixed: "Interface action failed because of an AddOn" when switching profession. The game only lets a real click open a profession window (OpenTradeSkill is protected), so CraftRoute no longer tries to open one by itself. Instead, picking a learned profession from a CraftRoute profession dropdown (Craft tab and profession-window view) casts it as part of your click, like /cast Cooking, which opens its window; and every Open button (Craft tab, opened component sections, profession-window view) does the same. Mining opens Smelting; Fishing has no crafting window, so it's just selected.
+- The Craft tab no longer tries to open the profession window when you open /cr - use its Open button (one click).
+
 ## 0.19.1
 
 - When the game blocks something CraftRoute tried ("Interface action failed because of an AddOn"), CraftRoute now says in chat exactly which function was refused and whether it was forbidden outright or blocked (e.g. in combat), so it can be fixed.
