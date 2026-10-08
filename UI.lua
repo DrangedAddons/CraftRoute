@@ -732,7 +732,7 @@ function CR.CreatePlanPanel(parent)
         GameTooltip:Show()
       elseif st.kind == "option" then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(st.letter .. ": " .. st.label .. string.format("  (%d-%d)", st.from, st.to))
+        GameTooltip:SetText(st.letter .. ": " .. st.label .. string.format("  (%d-%d)", st.from, st.to), 1, 1, 1, 1, true)
         GameTooltip:AddLine(st.selected and "Selected - this is what the materials and cost count."
           or "Click Choose to use this one instead.", 0.6, 0.8, 1)
         if st.crafts and #st.crafts > 0 then
@@ -741,7 +741,7 @@ function CR.CreatePlanPanel(parent)
             local qr, qg, qb = 1, 1, 1
             local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[c.recipe.q]
             if qc then qr, qg, qb = qc.r, qc.g, qc.b end
-            GameTooltip:AddDoubleLine("  " .. c.recipe.name, (c.estimated and "~" or "") .. c.n .. "x",
+            GameTooltip:AddDoubleLine("  " .. CR.TipShort(c.recipe.name, 40), (c.estimated and "~" or "") .. c.n .. "x",
               qr, qg, qb, 1, 1, 1)
           end
         end

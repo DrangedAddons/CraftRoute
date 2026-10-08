@@ -39,7 +39,7 @@ local function AddProfessionLines(tooltip, entry, m, f, heading)
         tooltip:AddLine(string.format("  ...and %d more", #m.usage - MAX_USAGE_LINES), 0.6, 0.6, 0.6)
         break
       end
-      tooltip:AddDoubleLine("  Needed for " .. u.label, u.n, 0.8, 0.8, 0.8, 1, 1, 1)
+      tooltip:AddDoubleLine("  Needed for " .. CR.TipShort(u.label), u.n, 0.8, 0.8, 0.8, 1, 1, 1)
     end
     local extra = m.crafted > 0 and string.format(" (+%d crafted)", m.crafted) or ""
     local label = entry.route.sequential and ("To finish the " .. entry.route.label .. " guide:")

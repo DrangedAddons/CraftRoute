@@ -200,6 +200,15 @@ function CR.ProfessionColor(name)
   return 0.92, 0.68, 0.28   -- gold for anything else
 end
 
+-- Two-column tooltip lines can't wrap, so long labels are cut short (with "...") rather than
+-- stretching the tooltip across the screen. Single lines use the wrap flag instead.
+function CR.TipShort(text, max)
+  max = max or 46
+  text = tostring(text or "")
+  if #text <= max then return text end
+  return text:sub(1, max - 3):gsub("%s+$", "") .. "..."
+end
+
 function CR.Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffCraftRoute|r: " .. tostring(msg))
 end

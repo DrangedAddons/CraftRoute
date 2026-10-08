@@ -308,10 +308,10 @@ local function ShowTooltip(row)
     GameTooltip:AddLine(item.open and "Click to collapse." or "Click to expand the reagents.", 0.6, 0.6, 0.6)
   elseif item.kind == "option" and item.step then
     local st = item.step
-    GameTooltip:SetText(st.letter .. ": " .. st.label)
+    GameTooltip:SetText(st.letter .. ": " .. st.label, 1, 1, 1, 1, true)
     GameTooltip:AddLine(st.selected and "Selected for the route." or "Click to use this one.", 0.6, 0.8, 1, true)
   elseif item.kind == "note" then
-    GameTooltip:SetText(item.tip or item.text or "")
+    GameTooltip:SetText(item.tip or item.text or "", 1, 0.82, 0, 1, true)   -- long guide notes wrap
   else
     GameTooltip:Hide()
     return

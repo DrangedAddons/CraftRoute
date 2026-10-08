@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.12
+
+- Tooltips never stretch across the screen: long text wraps (guide-step and training notes in the profession-window view - the Artisan Cooking note was one long line - and the "choose ONE" option tooltips in both windows), and two-column lines that can't wrap ("Needed for ..." on item tooltips, the crafts listed on Plan options) cut long labels short with "...". Every tooltip in the addon was checked.
+
 ## 0.19.11
 
 - Skill bars take the profession's own colour, in both windows: Alchemy green, Blacksmithing forge orange, Enchanting violet, Engineering brass, Leatherworking tan, Tailoring rose, Mining steel, Cooking orange, First Aid red, Fishing blue.
