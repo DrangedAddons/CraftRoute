@@ -448,6 +448,8 @@ function CR.ToggleWindow()
   if frame and frame:IsShown() then frame:Hide() else CR.ShowWindow() end
 end
 
+function CR.IsWindowShown() return frame and frame:IsShown() and true or false end
+
 function CR.RefreshWindow()
   if not frame or not frame:IsShown() then return end
   local p = frame.panels[frame.current]

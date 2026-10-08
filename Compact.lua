@@ -1134,22 +1134,48 @@ local function UpdateRankBar()
   end
 end
 
+-- The pickers sit above the route list, across the left column: profession and goal side by side
+-- (with the custom skill box when "Custom skill" is picked), and the route mode (Cooking: alone or
+-- with Fishing) on a second line when there is one. The list starts below them.
 local function LayoutHeader()
   if not overlay then return end
-  local widgets = { overlay.profDD }
-  if overlay.goalDD:IsShown() then table.insert(widgets, 1, overlay.goalDD) end
-  if overlay.customBox:IsShown() then table.insert(widgets, 1, overlay.customBox) end
-  if overlay.modeDD:IsShown() then table.insert(widgets, 1, overlay.modeDD) end
-  local prev
-  for i = #widgets, 1, -1 do
-    local w = widgets[i]
-    w:ClearAllPoints()
-    if prev then
-      w:SetPoint("RIGHT", prev, "LEFT", -6, 0)
-    else
-      w:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -8, RANK_DROP_Y)
-    end
-    prev = w
+  local leftW = overlay.leftW or 300
+  local x, y, gap = 6, RANK_DROP_Y, 6
+  local avail = leftW - x - 4
+  local custom = overlay.customBox:IsShown() and 42 or 0
+  local goal = overlay.goalDD:IsShown()
+  local profW = goal and math.floor((avail - gap - custom) / 2) or avail
+  overlay.profDD:ClearAllPoints()
+  overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y)
+  overlay.profDD:SetWidth(profW)
+  local prev = overlay.profDD
+  if goal then
+    overlay.goalDD:ClearAllPoints()
+    overlay.goalDD:SetPoint("LEFT", prev, "RIGHT", gap, 0)
+    overlay.goalDD:SetWidth(avail - gap - custom - profW)
+    prev = overlay.goalDD
+  end
+  if custom > 0 then
+    overlay.customBox:ClearAllPoints()
+    overlay.customBox:SetPoint("LEFT", prev, "RIGHT", gap + 4, 0)
+  end
+  local listTop = LIST_TOP
+  if overlay.modeDD:IsShown() then
+    overlay.modeDD:ClearAllPoints()
+    overlay.modeDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y - 24)
+    overlay.modeDD:SetWidth(avail)
+    listTop = LIST_TOP - 24
+  end
+  if list and overlay.listTop ~= listTop then
+    overlay.listTop = listTop
+    list:ClearAllPoints()
+    list:SetPoint("TOPLEFT", overlay, "TOPLEFT", 6, listTop)
+    list:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 6, 8)
+    list:SetPoint("RIGHT", overlay.divider, "LEFT", -4, 0)
+  end
+  -- main CraftRoute window button, above the recipe at the right edge
+  if overlay.mainBtn then
+    overlay.mainBtn:SetText(CR.IsWindowShown and CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
   end
 end
 
@@ -1158,11 +1184,13 @@ local function LayoutColumns()
   local w = overlay:GetWidth() or 0
   local leftW = 300
   if w > 0 then leftW = math.max(260, math.min(380, math.floor(w * 0.42))) end
+  overlay.leftW = leftW
   overlay.divider:ClearAllPoints()
   overlay.divider:SetWidth(1)
   overlay.divider:SetPoint("TOPLEFT", overlay, "TOPLEFT", leftW, DIVIDER_TOP)
   overlay.divider:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", leftW, 8)
   UpdateRankBar()
+  LayoutHeader()
   if overlay.rName then
     local sw = math.max(40, w - leftW - 20)
     local oh = overlay:GetHeight() or 0
@@ -1512,6 +1540,24 @@ local function BuildOverlay()
     db.routeMode[pname] = v
     Changed()
   end)
+
+  -- opens / closes the main CraftRoute window (Plan, Recipes and the full Craft tab)
+  frame.mainBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.mainBtn:SetSize(130, 22)
+  frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
+  frame.mainBtn:SetText("Open CraftRoute")
+  frame.mainBtn:SetScript("OnClick", function(self)
+    CR.SafeCall(CR.ToggleWindow)
+    self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
+  end)
+  frame.mainBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("CraftRoute window")
+    GameTooltip:AddLine("Opens the full CraftRoute window: the Plan, the Recipes picker and the Craft tab. "
+      .. "Same settings as here. (Also /cr.)", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.mainBtn:SetScript("OnLeave", GameTooltip_Hide)
 
   frame.rankBar = CreateFrame("Frame", nil, frame)
   frame.rankBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -2)
@@ -2085,6 +2131,8 @@ local function BuildOverlay()
     watch = watch + elapsed
     if watch < 0.4 then return end
     watch = 0
+    -- the main window can be closed from its own X: keep the button's label right
+    frame.mainBtn:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
     local before = ui.openProf
     SyncOpenProfession()
     if ui.openProf ~= before then

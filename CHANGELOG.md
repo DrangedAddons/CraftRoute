@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.5
+
+- Profession-window view: the profession and goal pickers moved to the left column, above the route list (side by side; the custom skill box beside them when "Custom skill" is picked, and the route mode on a line of its own for Cooking / Fishing). An "Open CraftRoute" / "Close CraftRoute" button above the recipe, at the right edge, opens and closes the main window.
+
 ## 0.19.4
 
 - Profession-window view: no more flash of Blizzard's recipes page when switching profession from the CraftRoute view. The view now stays open through the switch, and the page Blizzard shows as the new profession loads is hidden again in the same frame, before it's drawn. (The half-second retries from 0.19.3 remain only as a backup.)
