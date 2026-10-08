@@ -18,7 +18,7 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 **Makes the parts for you.**
 - Short on a component you can make yourself? Click it to open what it's made from and craft it on the spot.
 - Chains as deep as they go: scraps → Light → Medium → Heavy Leather.
-- Pulls from every profession you have: a blacksmith with Mining can smelt bars, a blacksmith with Leatherworking can make the leather, and enchanters can split essences.
+- Pulls from every profession you have: a blacksmith with Mining can smelt bars, a blacksmith with Leatherworking can make the leather.
 
 **Enchanting made painless.** Pick a target item from your gear or bags, and each click enchants it. The "replace existing enchant?" prompt is answered for you, so you can level without fighting dialogs.
 
