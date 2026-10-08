@@ -254,6 +254,13 @@ local function ResetRow(row)
   row.item = nil
   row.bg:SetColorTexture(0, 0, 0, 0)
   row.sel:Hide()
+  row:ShowSelected(false)
+  row.optBg:Hide()
+  row.optCapL:Hide()
+  row.optCapR:Hide()
+  row.radio:Hide()
+  row.tick:Hide()
+  if row.name.SetShadowOffset then row.name:SetShadowOffset(1, -1) end
   row.hover:Hide()
   row.icon:Hide()
   row.barLeft:Hide()
@@ -309,7 +316,8 @@ local function ShowTooltip(row)
   elseif item.kind == "option" and item.step then
     local st = item.step
     GameTooltip:SetText(st.letter .. ": " .. st.label, 1, 1, 1, 1, true)
-    GameTooltip:AddLine(st.selected and "Selected for the route." or "Click to use this one.", 0.6, 0.8, 1, true)
+    GameTooltip:AddLine(st.selected and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Chosen - this is the path the route follows."
+      or "Click to choose this path instead.", st.selected and 0.4 or 1, st.selected and 1 or 0.82, st.selected and 0.4 or 0, true)
   elseif item.kind == "note" then
     GameTooltip:SetText(item.tip or item.text or "", 1, 0.82, 0, 1, true)   -- long guide notes wrap
   else
@@ -353,12 +361,23 @@ local function ApplyRow(row, item)
 
   if item.kind == "option" then
     local st = item.step
-    if st.selected then row.sel:Show() end
-    row.name:SetText((st.letter or "") .. "   " .. (st.label or ""))
-    row.name:SetTextColor(st.selected and 0.75 or 0.85, st.selected and 1 or 0.78, st.selected and 0.7 or 0.55)
+    local sel = st.selected
+    row.optBg:SetVertexColor(sel and 0.15 or 0.4, sel and 0.45 or 0.3, sel and 0.15 or 0.05, sel and 0.35 or 0.22)
+    row.optBg:Show()
+    for _, cap in ipairs({ row.optCapL, row.optCapR }) do
+      cap:SetVertexColor(sel and 0.25 or 0.9, sel and 1 or 0.7, sel and 0.25 or 0.15, 1)
+      cap:Show()
+    end
+    -- radio: UI-RadioButton holds unchecked (left quarter) and checked (second quarter)
+    if sel then row.radio:SetTexCoord(0.25, 0.5, 0, 1) else row.radio:SetTexCoord(0, 0.25, 0, 1) end
+    row.radio:Show()
+    row.tick:SetShown(sel and true or false)
+    row.name:SetText((st.letter or "") .. "  " .. (st.label or ""))
+    -- light text with a shadow so it reads on either tint
+    if sel then row.name:SetTextColor(0.82, 1, 0.82) else row.name:SetTextColor(1, 0.9, 0.62) end
     row.name:ClearAllPoints()
-    row.name:SetPoint("LEFT", 18, 0)
-    row.name:SetPoint("RIGHT", -8, 0)
+    row.name:SetPoint("LEFT", row.radio, "RIGHT", 6, 0)
+    row.name:SetPoint("RIGHT", row.tick, "LEFT", -6, 0)
     row:SetScript("OnClick", function()
       if st.selected then return end
       CR.ProfTable("choices", st.routeID)[st.choice] = st.option
@@ -459,7 +478,7 @@ local function ApplyRow(row, item)
     row.barMid:Show()
     row.barRight:Show()
   end
-  if item.selected then row.sel:Show() end
+  row:ShowSelected(item.selected and true or false)
   row.icon:SetTexture(CR.RecipeIcon(st.recipe))
   row.icon:Show()
   row.icon:ClearAllPoints()
@@ -536,11 +555,71 @@ local function CreateRow(parent)
   row.barLeft:Hide()
   row.barMid:Hide()
   row.barRight:Hide()
-  row.sel = row:CreateTexture(nil, "ARTWORK")
+  row.sel = row:CreateTexture(nil, "ARTWORK")   -- (kept for compatibility; not shown)
   row.sel:SetAllPoints()
-  row.sel:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-  row.sel:SetBlendMode("ADD")
   row.sel:Hide()
+
+  -- "Choose one" options, a compact take on the main window's: a tinted panel (green when
+  -- chosen, dark gold when not) with brighter caps at both ends, a radio button, and a tick on
+  -- the chosen one in place of the main window's Choose / Selected button.
+  row.optBg = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+  row.optBg:SetPoint("TOPLEFT", 2, -2)
+  row.optBg:SetPoint("BOTTOMRIGHT", -2, 2)
+  row.optBg:SetColorTexture(1, 1, 1, 1)
+  row.optBg:Hide()
+  row.optCapL = row:CreateTexture(nil, "BORDER")
+  row.optCapL:SetPoint("TOPLEFT", row.optBg, "TOPLEFT")
+  row.optCapL:SetPoint("BOTTOMLEFT", row.optBg, "BOTTOMLEFT")
+  row.optCapL:SetWidth(3)
+  row.optCapL:SetColorTexture(1, 1, 1, 1)
+  row.optCapL:Hide()
+  row.optCapR = row:CreateTexture(nil, "BORDER")
+  row.optCapR:SetPoint("TOPRIGHT", row.optBg, "TOPRIGHT")
+  row.optCapR:SetPoint("BOTTOMRIGHT", row.optBg, "BOTTOMRIGHT")
+  row.optCapR:SetWidth(3)
+  row.optCapR:SetColorTexture(1, 1, 1, 1)
+  row.optCapR:Hide()
+  row.radio = row:CreateTexture(nil, "ARTWORK")
+  row.radio:SetSize(16, 16)
+  row.radio:SetPoint("LEFT", 10, 0)
+  row.radio:SetTexture("Interface\\Buttons\\UI-RadioButton")
+  row.radio:Hide()
+  row.tick = row:CreateTexture(nil, "OVERLAY")
+  row.tick:SetSize(14, 14)
+  row.tick:SetPoint("RIGHT", -10, 0)
+  row.tick:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+  row.tick:Hide()
+
+  -- The step you're looking at: a cool blue selection (soft fill, thin outline, bright bar on the
+  -- left) - nothing like the green / gold options, so the two never get confused.
+  local SEL_R, SEL_G, SEL_B = 0.35, 0.65, 1
+  row.selFill = row:CreateTexture(nil, "BACKGROUND", nil, 2)
+  row.selFill:SetPoint("TOPLEFT", 1, -1)
+  row.selFill:SetPoint("BOTTOMRIGHT", -1, 1)
+  row.selFill:SetColorTexture(SEL_R, SEL_G, SEL_B, 0.16)
+  row.selFill:Hide()
+  row.selBar = row:CreateTexture(nil, "ARTWORK", nil, 2)
+  row.selBar:SetPoint("TOPLEFT", row.selFill, "TOPLEFT")
+  row.selBar:SetPoint("BOTTOMLEFT", row.selFill, "BOTTOMLEFT")
+  row.selBar:SetWidth(3)
+  row.selBar:SetColorTexture(SEL_R, SEL_G, SEL_B, 1)
+  row.selBar:Hide()
+  row.selEdges = {}
+  for i, spec in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
+                          { "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false } }) do
+    local e = row:CreateTexture(nil, "ARTWORK", nil, 1)
+    e:SetPoint(spec[1], row.selFill, spec[1])
+    e:SetPoint(spec[2], row.selFill, spec[2])
+    if spec[3] then e:SetHeight(1) else e:SetWidth(1) end
+    e:SetColorTexture(SEL_R, SEL_G, SEL_B, 0.75)
+    e:Hide()
+    row.selEdges[i] = e
+  end
+  function row:ShowSelected(on)
+    self.selFill:SetShown(on)
+    self.selBar:SetShown(on)
+    for _, e in ipairs(self.selEdges) do e:SetShown(on) end
+  end
   row.hover = row:CreateTexture(nil, "HIGHLIGHT")
   row.hover:SetAllPoints()
   row.hover:SetColorTexture(1, 1, 1, 0.06)

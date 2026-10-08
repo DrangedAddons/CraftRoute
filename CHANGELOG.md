@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.20.1
+
+- Profession-window view, "choose ONE" options: a compact version of the main window's style - a tinted panel (green when chosen, dark gold when not) with brighter caps at both ends, a radio button, and a tick on the chosen option in place of the Choose / Selected button. Light text with a shadow for contrast on either tint; the tooltip says which is chosen.
+- The step you're looking at gets its own, unmistakable highlight: a cool blue selection (soft fill, thin outline, bright bar on the left) instead of the gold glow that looked like the options.
+
 ## 0.20.0
 
 - Profession-window view: a "Shopping List" button above Create makes an Auctionator shopping list for just the current step - what its crafts need that you don't have anywhere (bags, bank, mail, alts), named "CraftRoute: <recipe>". Vendor-sold reagents are left off (buy those from a vendor). Shown when Auctionator is installed; styled with the selected look.
