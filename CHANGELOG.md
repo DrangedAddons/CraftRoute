@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.17.2
+
+- README rewritten: a fresh feature summary of what CraftRoute does.
+
 ## 0.17.1
 
 Routes updated to the wow-professions.com guides as of 8 Oct 2026:
