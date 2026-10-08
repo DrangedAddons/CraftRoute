@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.3
+
+- Profession-window view: switching profession from its dropdown (or its Open buttons) now keeps you on the CraftRoute view. The profession still opens so you can craft, but Blizzard's window flips back to its own recipes page as it loads - CraftRoute now puts its view back once the new profession has loaded. Opening a profession any other way behaves as before.
+
 ## 0.19.2
 
 - Fixed: "Interface action failed because of an AddOn" when switching profession. The game only lets a real click open a profession window (OpenTradeSkill is protected), so CraftRoute no longer tries to open one by itself. Instead, picking a learned profession from a CraftRoute profession dropdown (Craft tab and profession-window view) casts it as part of your click, like /cast Cooking, which opens its window; and every Open button (Craft tab, opened component sections, profession-window view) does the same. Mining opens Smelting; Fishing has no crafting window, so it's just selected.

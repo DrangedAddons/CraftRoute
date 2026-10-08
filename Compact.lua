@@ -33,6 +33,7 @@ local ui = {
   keepScroll = false,
   openProf = nil,
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
+  keepUntil = nil, -- a profession switch started here: stay on this view while it loads
 }
 
 ---------------------------------------------------------------------------
@@ -108,6 +109,7 @@ local function SelectProfession(name)
   wipe(ui.openParts)
   ui.keepScroll = false
   -- (the window itself is opened by the secure cover on the dropdown entry - addon code can't)
+  ui.keepUntil = GetTime() + 2   -- and this view comes back once the new profession has loaded
   CR.InvalidatePlan()
   if overlay and overlay:IsShown() then overlay:Refresh() end
   CR.NotifyChanged()
@@ -567,7 +569,11 @@ local function CreateRow(parent)
   row.buy:SetText("Buy")
   row.buy:Hide()
   -- essences split / combine by using the item, which needs a secure click
-  row.actCover = AttachPlainCover and AttachPlainCover(row.act, function() return row.actMacro or "" end,
+  row.actCover = AttachPlainCover and AttachPlainCover(row.act, function()
+      -- "Open" casts another profession: stay on this view while it loads
+      if row.actMacro and row.actMacro:find("^/cast") then ui.keepUntil = GetTime() + 2 end
+      return row.actMacro or ""
+    end,
     function() return overlay and overlay:IsShown() and row:IsVisible() and row.act:IsShown() and row.actMacro ~= nil end)
   row.right = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
@@ -1346,7 +1352,21 @@ local function ToggleCompact()
   if overlay and overlay:IsShown() then CloseCompact(true) else OpenCompact() end
 end
 
+-- A profession switch started from this view (dropdown, Open): Blizzard's window flips back to its
+-- own recipes page as the new profession loads, so put this view back once it has.
+local function Keeping() return ui.keepUntil and GetTime() < ui.keepUntil end
+local function ReopenSoon()
+  if not Keeping() then return end
+  for _, delay in ipairs({ 0, 0.1, 0.3, 0.6 }) do
+    C_Timer.After(delay, function()
+      if not Keeping() or InCombatLockdown() or not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
+      if overlay and overlay:IsShown() then pcall(HidePages) else OpenCompact() end
+    end)
+  end
+end
+
 local function OnNativeTab()
+  if Keeping() then ReopenSoon() return end
   if GetTime() - openedAt < 0.05 then return end
   if overlay and overlay:IsShown() then CloseCompact(true) end
 end
@@ -2045,7 +2065,11 @@ local function BuildOverlay()
     if frame.craftProf then CR.OpenTradeSkill(frame.craftProf) end
   end)
   -- the click opens the profession by casting it (only a secure click may)
-  AttachPlainCover(frame.openBtn, function() return CR.OpenProfessionMacro(frame.craftProf) or "" end,
+  AttachPlainCover(frame.openBtn, function()
+      local macro = CR.OpenProfessionMacro(frame.craftProf)
+      if macro then ui.keepUntil = GetTime() + 2 end   -- stay on this view while it loads
+      return macro or ""
+    end,
     function() return frame:IsShown() and frame.openBtn:IsShown() and CR.OpenProfessionMacro(frame.craftProf) ~= nil end)
 
   local watch = 0
@@ -2110,6 +2134,7 @@ local function Install()
     hooksecurefunc(ProfessionsFrame, "SetTab", OnNativeTab)
   end
   ProfessionsFrame:HookScript("OnShow", function()
+    ReopenSoon()
     C_Timer.After(0, PositionEntry)
     C_Timer.After(0.2, PositionEntry)
     WatchTrainerSpells()
@@ -2147,5 +2172,6 @@ trade:SetScript("OnEvent", function()
   Install()
   WatchTrainerSpells()
   PositionEntry()
+  ReopenSoon()
 end)
 if ProfessionsFrame then Install() end
