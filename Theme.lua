@@ -251,6 +251,13 @@ function CR.ThemeBorderColor()
   return c[1], c[2], c[3], c[4]
 end
 
+-- Buttons made later (the profession-window view, rows created as lists grow) are styled as soon
+-- as they're registered, not only at the next theme change.
+function CR.ThemeRegisterButton(b)
+  buttons[b] = true
+  pcall(ApplyButton, b, CR.ActiveTheme())
+end
+
 function CR.ApplyTheme(frame)
   if not frame then return end
   local theme = CR.ActiveTheme()
@@ -267,6 +274,7 @@ function CR.ApplyTheme(frame)
       if theme == "eui" then frame.crTitle:SetTextColor(1, 1, 1) else frame.crTitle:SetTextColor(1, 0.82, 0) end
     end
     CR.ApplyThemeFonts(frame)
+    if CR.compactFrame then CR.ApplyThemeFonts(CR.compactFrame) end   -- the profession-window view
   end)
   if not ok then
     -- Never leave the window broken: fall back to the default look and say why.

@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.19.6
+
+- Profession-window view: the profession box shows just the profession's name (its skill is on the bar above; the list still shows it), with room for the whole name. The goal box shows a short label too ("Expert (225)" rather than "My level's highest rank: Expert (225)"; the list keeps the full wording) - in the main window as well.
+- Dropdown lists are as wide as their longest entry, so no text runs past the edge (both windows).
+- The profession-window view follows the selected look: its buttons (Create, Make, Buy, Open...) are flat in EllesmereUI Style and Blizzard-styled otherwise, and its text uses EllesmereUI's font in that style. Buttons made after the look was applied are styled straight away.
+
 ## 0.19.5
 
 - Profession-window view: the profession and goal pickers moved to the left column, above the route list (side by side; the custom skill box beside them when "Custom skill" is picked, and the route mode on a line of its own for Cooking / Fishing). An "Open CraftRoute" / "Close CraftRoute" button above the recipe, at the right edge, opens and closes the main window.

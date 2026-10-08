@@ -212,6 +212,7 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
 
   local function BuildMenu()
     local opts = Opts()
+    local widest = 0
     for i, o in ipairs(opts) do
       local b = menu.buttons[i]
       if not b then
@@ -228,6 +229,7 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
       end
       local selected = getter() == o.value
       b.text:SetText((selected and "|cff33ccff> |r" or "   ") .. o.text)
+      widest = math.max(widest, b.text:GetStringWidth() or 0)
       b:SetScript("OnClick", function()
         menu:Hide()
         setter(o.value)
@@ -247,7 +249,8 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
       b:Show()
     end
     for i = #opts + 1, #menu.buttons do menu.buttons[i]:Hide() end
-    menu:SetSize(math.max(width, 160), #opts * 18 + 4)
+    -- as wide as the longest entry, so no text runs past the menu's edge
+    menu:SetSize(math.max(dd:GetWidth() or width, 160, math.ceil(widest) + 22), #opts * 18 + 4)
   end
 
   dd:SetScript("OnClick", function()
@@ -268,7 +271,7 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
   function dd:Sync()
     local v = getter()
     for _, o in ipairs(Opts()) do
-      if o.value == v then self.text:SetText(o.text) return end
+      if o.value == v then self.text:SetText(o.short or o.text) return end   -- short: the label in the box
     end
     self.text:SetText(tostring(v))
   end
@@ -471,16 +474,17 @@ function CR.GoalOptions()
   local function RankText(prefix, r)
     return r and string.format("%s: %s (%d)", prefix, r.name, r.cap) or prefix
   end
+  local function Short(r, fallback) return r and string.format("%s (%d)", r.name, r.cap) or fallback end
   local opts = {
-    { value = "next",  text = "Next target recipe" },
-    { value = "tier",  text = RankText("My rank", info.current) },
-    { value = "level", text = RankText("My level's highest rank", info.levelRank) },
+    { value = "next",  text = "Next target recipe", short = "Next target" },
+    { value = "tier",  text = RankText("My rank", info.current), short = Short(info.current, "My rank") },
+    { value = "level", text = RankText("My level's highest rank", info.levelRank), short = Short(info.levelRank, "My level's rank") },
   }
   for _, r in ipairs(info.ranks) do
     table.insert(opts, { value = "rank:" .. r.name, text = string.format("%s (%d)", r.name, r.cap) })
   end
   table.insert(opts, { value = "route", text = string.format("End of guide (%d)", route and route.routeEnd or 300) })
-  table.insert(opts, { value = "custom", text = "Custom skill" })
+  table.insert(opts, { value = "custom", text = "Custom skill", short = "Custom" })
   return opts
 end
 

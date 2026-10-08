@@ -88,7 +88,7 @@ local function ProfessionOptions()
   local learned, other = {}, {}
   for _, name in ipairs(CR.SupportedProfessions()) do
     local _, _, detected = CR.GetSkill(name)
-    table.insert(detected and learned or other, { value = name, text = ProfessionLabel(name) })
+    table.insert(detected and learned or other, { value = name, text = ProfessionLabel(name), short = name })
   end
   local showAll = not db or db.showUnlearned or #learned == 0
   local selected = db and db.profession
@@ -568,6 +568,8 @@ local function CreateRow(parent)
   row.buy:SetSize(36, 20)
   row.buy:SetText("Buy")
   row.buy:Hide()
+  CR.ThemeRegisterButton(row.act)
+  CR.ThemeRegisterButton(row.buy)
   -- essences split / combine by using the item, which needs a secure click
   row.actCover = AttachPlainCover and AttachPlainCover(row.act, function()
       -- "Open" casts another profession: stay on this view while it loads
@@ -1144,7 +1146,7 @@ local function LayoutHeader()
   local avail = leftW - x - 4
   local custom = overlay.customBox:IsShown() and 42 or 0
   local goal = overlay.goalDD:IsShown()
-  local profW = goal and math.floor((avail - gap - custom) / 2) or avail
+  local profW = goal and math.min(avail - gap - custom - 90, math.max(130, math.floor((avail - gap - custom) / 2))) or avail
   overlay.profDD:ClearAllPoints()
   overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y)
   overlay.profDD:SetWidth(profW)
@@ -1374,6 +1376,7 @@ local function OpenCompact()
   SetEntryChecked(true)
   PositionEntry()
   overlay:Refresh()
+  if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, overlay) end   -- the selected look's font
 end
 
 local function ToggleCompact()
@@ -1546,6 +1549,7 @@ local function BuildOverlay()
   frame.mainBtn:SetSize(130, 22)
   frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
   frame.mainBtn:SetText("Open CraftRoute")
+  CR.ThemeRegisterButton(frame.mainBtn)
   frame.mainBtn:SetScript("OnClick", function(self)
     CR.SafeCall(CR.ToggleWindow)
     self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
@@ -1703,6 +1707,7 @@ local function BuildOverlay()
     row.buy:SetPoint("RIGHT", row, "RIGHT", 0, 0)
     row.buy:SetText("Buy")
     row.buy:Hide()
+    CR.ThemeRegisterButton(row.buy)
     row:SetScript("OnEnter", function(self)
       if not self.itemID then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1757,6 +1762,7 @@ local function BuildOverlay()
   frame.create:SetSize(88, 22)
   frame.create:SetPoint("RIGHT", 0, 0)
   frame.create:SetText("Create")
+  CR.ThemeRegisterButton(frame.create)
   frame.nextBtn = CreateFrame("Button", nil, frame.buttons)
   frame.nextBtn:SetSize(20, 20)
   frame.nextBtn:SetPoint("RIGHT", frame.create, "LEFT", -8, 0)
@@ -1789,11 +1795,13 @@ local function BuildOverlay()
   frame.createAll:SetSize(130, 22)
   frame.createAll:SetPoint("RIGHT", frame.prevBtn, "LEFT", -12, 0)
   frame.createAll:SetText("Create All [0]")
+  CR.ThemeRegisterButton(frame.createAll)
   frame.openBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.openBtn:SetSize(160, 22)
   frame.openBtn:SetPoint("RIGHT", 0, 0)
   frame.openBtn:SetText("Open")
   frame.openBtn:Hide()
+  CR.ThemeRegisterButton(frame.openBtn)
 
   local enchant = CreateFrame("Frame", nil, schematic)
   enchant:SetHeight(54)
@@ -2156,6 +2164,7 @@ local function BuildOverlay()
     CR.RefreshCompact()
   end
   overlay = frame
+  CR.compactFrame = frame
   LayoutColumns()
   LayoutHeader()
 end
