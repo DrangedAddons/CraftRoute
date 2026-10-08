@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.17.3
+
+Routes checked against the wow-professions.com guides as of 9 Oct 2026:
+- Engineering: keep all 6 Mithril Tubes at 195-200 if you might pick Gnomish Engineering; a new step at 200 explains the Gnomish / Goblin specialization (Engineering 200, level 30); the route is now marked untested only past 225 (was from 200), as in the guide.
+- Every other guide only gained a link to its trainers page - no route changes.
+
 ## 0.17.2
 
 - README rewritten: a fresh feature summary of what CraftRoute does.

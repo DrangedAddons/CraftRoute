@@ -1,6 +1,6 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Engineering guide
--- (https://www.wow-professions.com/forever/engineering-leveling-guide, beta data, Oct 2026).
--- 200-300 is the guide's untested Classic route (Engineering ranges are unchanged in Forever).
+-- (https://www.wow-professions.com/forever/engineering-leveling-guide, beta data, as of 9 Oct 2026).
+-- Past 225 is the guide's untested Classic route (Engineering ranges are unchanged in Forever).
 -- Powders, bolts, tubes and frames are Engineering recipes, so shortfalls become extra crafts.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
@@ -71,11 +71,16 @@ CR.RegisterRoute("Engineering", {
     { from = 175, to = 180, spell = 12585, crafts = 10, when = { g175 = "grenade" } },
     { from = 180, to = 194, spell = 3962,  crafts = 20, when = { g175 = "grenade" } },
     { from = 194, to = 195, spell = 12590, crafts = 1,  note = "Keep it - recipes need it" },
-    { from = 195, to = 200, spell = 12589, crafts = 6 },
+    { from = 195, to = 200, spell = 12589, crafts = 6,  note = "Keep all 6 if you might pick Gnomish Engineering" },
 
-    -- Artisan (untested Classic route)
-    { from = 200, to = 215, spell = 12591, crafts = 20, note = "Untested in Forever - keep all 20 for the bombs" },
-    { from = 215, to = 238, spell = 12599, crafts = 40, note = "Keep 40 for the bombs" },
+    -- Artisan
+    { kind = "guide", from = 200, to = 200,
+      text = "Engineering specialization: at Engineering 200 and level 30 you can pick Gnomish or Goblin "
+        .. "Engineering (a quest). Some items need a specific one to use; most made by one are usable by any "
+        .. "engineer. See the guide's Engineering Specializations page to choose." },
+    { from = 200, to = 215, spell = 12591, crafts = 20, note = "Keep all 20 for the bombs at 238" },
+    { from = 215, to = 238, spell = 12599, crafts = 40,
+      note = "Keep 40 for the bombs. Past 225 is untested in Forever (Classic route)" },
     { from = 238, to = 250, spell = 12619, crafts = 20 },
     { from = 250, to = 260, spell = 19788, crafts = 30, note = "Yellow from 250" },
     { from = 260, to = 285, spell = 19791, crafts = 35,
