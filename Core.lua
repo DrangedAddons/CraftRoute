@@ -289,11 +289,23 @@ for _, event in ipairs({
   "ADDON_LOADED", "PLAYER_LOGIN", "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPDATE",
   "TRADE_SKILL_LIST_UPDATE", "NEW_RECIPE_LEARNED", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED",
   "PLAYERBANKSLOTS_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_LEVEL_UP", "PLAYER_EQUIPMENT_CHANGED",
+  "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }) do
   SafeRegister(event)
 end
 
 local function OnEvent(event, ...)
+  -- The game refused something CraftRoute did ("Interface action failed because of an AddOn"):
+  -- say exactly what, so it can be fixed. FORBIDDEN = a function addons may never call;
+  -- BLOCKED = a protected action attempted in combat or from tainted code.
+  if event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
+    local addon, func = ...
+    if addon == ADDON then
+      CR.Print(string.format("|cffff4040the game %s %s|r (%s)",
+        event == "ADDON_ACTION_FORBIDDEN" and "forbids addons calling" or "blocked a call to", tostring(func), event))
+    end
+    return
+  end
   if event == "ADDON_LOADED" then
     if ... ~= ADDON then return end
     CraftRouteDB = CraftRouteDB or {}

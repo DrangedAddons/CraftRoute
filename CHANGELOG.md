@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.1
+
+- When the game blocks something CraftRoute tried ("Interface action failed because of an AddOn"), CraftRoute now says in chat exactly which function was refused and whether it was forbidden outright or blocked (e.g. in combat), so it can be fixed.
+
 ## 0.19.0
 
 - Profession-window view: components and vendor buying, like the Craft tab. In the route list, a reagent you can make gets a + that opens what it's made from, a level further in each time (Medium -> Light -> scraps, bars -> ore, essences), each with a Make N / Smelt N / Split / Combine button (or Open, to switch to the profession that makes it). With a vendor open, reagents it sells get a Buy button, in the list and in the recipe panel. Clicking a reagent in the recipe panel opens its chain in the list.
