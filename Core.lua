@@ -153,6 +153,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     CR.NotifyChanged()
   elseif msg == "popup" then
     CR.DebugPopups()
+  elseif msg == "rankbar" then
+    if CR.DebugRankBar then CR.DebugRankBar() end
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
   elseif msg == "help" then

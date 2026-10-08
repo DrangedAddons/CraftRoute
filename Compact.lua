@@ -1109,6 +1109,44 @@ local function TextureLoaded(ok, loaded)
   return ok and loaded ~= false
 end
 
+-- Blizzard's own rank bar on its recipe page (hidden while this view shows): its fill art and
+-- where the fill sits inside the frame. nil when the client doesn't have one.
+local function NativeRankBar()
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  local nb = page and (page.RankBar or page.ProfessionRankBar)
+  if not nb then return nil end
+  local function Tex(t) return type(t) == "table" and t.GetTexture and t or nil end
+  local fill = Tex(nb.Fill) or Tex(nb.BarFill) or (type(nb.Bar) == "table" and Tex(nb.Bar.Fill))
+  if not fill then return nil end
+  return nb, fill, Tex(nb.Flare) or Tex(nb.BarFlare)
+end
+
+-- Where a texture's art is: file and its texture coordinates (atlas or plain texture).
+local function ArtOf(tex)
+  local atlas = tex.GetAtlas and tex:GetAtlas()
+  if atlas and C_Texture and C_Texture.GetAtlasInfo then
+    local info = C_Texture.GetAtlasInfo(atlas)
+    if info and (info.file or info.filename) then
+      return info.file or info.filename, info.leftTexCoord or 0, info.rightTexCoord or 1,
+        info.topTexCoord or 0, info.bottomTexCoord or 1, atlas
+    end
+  end
+  local file = tex:GetTexture()
+  if file then return file, 0, 1, 0, 1 end
+end
+
+-- Inset of the fill inside the bar frame (left, top/bottom), from Blizzard's bar when it has a
+-- layout, scaled to this bar; otherwise the wood frame's usual inset.
+local function FillInset(bar, nb, nfill)
+  local bl, bt, bw, bh = nb and nb:GetLeft(), nb and nb:GetTop(), nb and nb:GetWidth(), nb and nb:GetHeight()
+  local fl, ft, fh = nfill and nfill:GetLeft(), nfill and nfill:GetTop(), nfill and nfill:GetHeight()
+  if bl and bt and bw and bh and fl and ft and fh and bw > 0 and bh > 0 and fh > 0 then
+    local sx, sy = (bar:GetWidth() or bw) / bw, (bar:GetHeight() or bh) / bh
+    return (fl - bl) * sx, (bt - ft) * sy, fh * sy
+  end
+  return 9, 8, 13
+end
+
 local function UpdateRankBar()
   local bar = overlay and overlay.rankBar
   if not bar then return end
@@ -1122,23 +1160,78 @@ local function UpdateRankBar()
   end
   local ratio = 0
   if detected and maxRank and maxRank > 0 then
-    ratio = (cur or 0) / maxRank
-    if ratio < 0 then ratio = 0 end
-    if ratio > 1 then ratio = 1 end
+    ratio = math.max(0, math.min(1, (cur or 0) / maxRank))
   end
   local width = bar:GetWidth() or 0
   if width < 40 then width = 440 end
-  -- The wood track is the background. A full-width fill or mask was painting a black rect over it.
-  local inner = width - 40
-  if inner < 1 then inner = 1 end
-  bar.fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-  bar.fill:SetTexCoord(0, 1, 0, 1)
-  bar.fill:SetVertexColor(0.92, 0.68, 0.28, 0.9)
-  if ratio <= 0 then
-    bar.fill:Hide()
+
+  -- The fill spans the whole track (the frame's inset on both sides), so a full bar is full:
+  -- it used to stop well short of the right end and leave black in the track.
+  local nb, nfill, nflare = NativeRankBar()
+  local left, top, height = FillInset(bar, nb, nfill)
+  local track = math.max(1, width - 2 * left)
+  local fill = bar.fill
+  fill:ClearAllPoints()
+  fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
+  fill:SetHeight(height)
+
+  -- Art: Blizzard's own fill (the textured, profession-styled bar) unless the look is EllesmereUI
+  -- Style, which keeps a flat bar in its accent colour. The art is cropped to the skill, not squashed.
+  local styled = CR.ActiveTheme and CR.ActiveTheme() ~= "eui"
+  local file, l, r, t, b = nil
+  if styled and nfill then file, l, r, t, b = ArtOf(nfill) end
+  if file then
+    fill:SetTexture(file)
+    fill:SetTexCoord(l, l + (r - l) * math.max(ratio, 0.001), t, b)
+    fill:SetVertexColor(1, 1, 1, 1)
   else
-    bar.fill:Show()
-    bar.fill:SetWidth(math.max(1, inner * ratio))
+    fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
+    if styled then
+      fill:SetVertexColor(0.92, 0.68, 0.28, 0.95)
+    else
+      local ar, ag, ab = CR.AccentColor()
+      fill:SetVertexColor(ar, ag, ab, 0.9)
+    end
+  end
+  fill:SetShown(ratio > 0)
+  fill:SetWidth(math.max(1, track * ratio))
+
+  -- the bright flare at the end of the fill, when Blizzard's bar has one
+  if not bar.crFlare then
+    bar.crFlare = bar:CreateTexture(nil, "OVERLAY")
+    bar.crFlare:SetBlendMode("ADD")
+  end
+  local ffile, fl2, fr2, ft2, fb2 = nil
+  if styled and nflare then ffile, fl2, fr2, ft2, fb2 = ArtOf(nflare) end
+  if ffile and ratio > 0 and ratio < 1 then
+    bar.crFlare:SetTexture(ffile)
+    bar.crFlare:SetTexCoord(fl2, fr2, ft2, fb2)
+    local fw, fh = nflare:GetWidth(), nflare:GetHeight()
+    bar.crFlare:SetSize((fw and fw > 0) and fw or 16, (fh and fh > 0) and fh or height + 8)
+    bar.crFlare:ClearAllPoints()
+    bar.crFlare:SetPoint("CENTER", fill, "RIGHT", 0, 0)
+    bar.crFlare:Show()
+  else
+    bar.crFlare:Hide()
+  end
+end
+
+-- /cr rankbar: what Blizzard's rank bar is made of (to match its art if this client differs).
+function CR.DebugRankBar()
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  local nb = page and (page.RankBar or page.ProfessionRankBar)
+  if not nb then CR.Print("No Blizzard rank bar found (open a profession first).") return end
+  CR.Print(string.format("RankBar %s  %.0fx%.0f", nb:GetName() or "?", nb:GetWidth() or 0, nb:GetHeight() or 0))
+  for key, v in pairs(nb) do
+    if type(v) == "table" and v.GetObjectType then
+      local kind = v:GetObjectType()
+      local extra = ""
+      if kind == "Texture" then
+        extra = string.format(" atlas=%s tex=%s", tostring(v.GetAtlas and v:GetAtlas()), tostring(v:GetTexture()))
+      end
+      CR.Print(string.format("  .%s %s %.0fx%.0f%s", key, kind, v:GetWidth() or 0, v:GetHeight() or 0, extra))
+    end
   end
 end
 
@@ -1595,8 +1688,8 @@ local function BuildOverlay()
     frame.rankBar.bg:SetColorTexture(0.22, 0.16, 0.08, 0.9)
   end
   frame.rankBar.fill = frame.rankBar:CreateTexture(nil, "ARTWORK")
-  frame.rankBar.fill:SetPoint("LEFT", frame.rankBar, "LEFT", 12, -1)
-  frame.rankBar.fill:SetHeight(12)
+  frame.rankBar.fill:SetPoint("TOPLEFT", frame.rankBar, "TOPLEFT", 9, -8)   -- placed by UpdateRankBar
+  frame.rankBar.fill:SetHeight(13)
   frame.rankBar.fill:SetWidth(1)
   frame.rankBar.fill:Hide()
   local rankText = CreateFrame("Frame", nil, frame.rankBar)

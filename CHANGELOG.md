@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.19.8
+
+- Profession-window view, skill bar: the fill now spans the whole track - it was sized for a shorter track, so it stopped short and left black where it should have filled (and never quite reached the end at full skill).
+- The fill uses Blizzard's own textured, profession-styled bar art (read from its recipe page's bar, cropped to your skill rather than squashed), with its bright flare at the end, unless the look is EllesmereUI Style, which keeps a flat bar in its accent colour. Falls back to a gold bar if the art can't be found. /cr rankbar lists what Blizzard's bar is made of, to help match it if a client differs.
+
 ## 0.19.7
 
 - Profession-window view: laid out to match Blizzard's own recipe page, so flicking between the two barely moves anything. A header band with the skill bar centred at the same height and width; the pickers on the line where Blizzard's search box is; the route list starting where its recipe list does, in a column of the same width; the recipe icon, name and "Reagents:" where its schematic has them, with reagent icons the same size; Create All at the panel's left edge and a wider Create at the right, with the count between.
