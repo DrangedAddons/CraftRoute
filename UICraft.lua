@@ -259,6 +259,8 @@ local function EnchantClick(r, t, canCast)
   return ""
 end
 
+CR.EnchantClick = EnchantClick   -- also used by Compact.lua's covers in the profession window
+
 -- A secure button laid over `target` (the slot, the Enchant button) - only secure code may answer
 -- the dialog. It sits on UIParent so CraftRoute's window can still close in combat; it's hidden
 -- whenever it isn't wanted, and always when combat starts. onClick(button) returns the macro.

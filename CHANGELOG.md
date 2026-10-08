@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.18.0
+
+- New: a CraftRoute tab in Blizzard's profession window (Compact.lua, contributed by a friend of the project). It opens a compact CraftRoute view inside the profession book: the route down the left (expand a step to see its reagents, pick "choose ONE" options), the selected recipe with reagents, costs and Create / Create All on the right, and the enchant target for enchants. Profession, goal and route mode are the same settings as /cr, so the two stay in sync. It sits alongside TrainerSpells' tab if you use it.
+- Its reagent counts and colours follow the Craft tab's rule; its enchant covers hide when combat starts.
+
 ## 0.17.3
 
 Routes checked against the wow-professions.com guides as of 9 Oct 2026:
