@@ -25,6 +25,7 @@ local RANK_DROP_Y = -73   -- the pickers: Blizzard's search / filter line
 local LIST_TOP = -101     -- Blizzard's first recipe header
 local DIVIDER_TOP = -66   -- right panel top
 local LEFT_W = 357        -- Blizzard's recipe-list column
+local COST_BAR_H = 22     -- the route cost bar under the list
 
 local overlay, entry, list
 local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
@@ -1297,7 +1298,7 @@ local function LayoutHeader()
     overlay.listTop = listTop
     list:ClearAllPoints()
     list:SetPoint("TOPLEFT", overlay, "TOPLEFT", 6, listTop)
-    list:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 6, 8)
+    list:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 6, 8 + COST_BAR_H + 4)
     list:SetPoint("RIGHT", overlay.divider, "LEFT", -4, 0)
   end
   -- main CraftRoute window button, above the recipe at the right edge
@@ -1364,6 +1365,7 @@ function CR.RefreshCompact()
       overlay.customBox:SetText(tostring(DB().customGoal or ""))
     end
     FillSchematic(info)
+    overlay:UpdateRouteCost(info and info.entry and info.entry.plan)
     if CR.RefreshBuyPop then CR.RefreshBuyPop() end
   end)
   if not ok then CR.Print("Compact: " .. tostring(err)) end
@@ -1742,8 +1744,55 @@ local function BuildOverlay()
 
   list = CreateList(frame)
   list:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, LIST_TOP)
-  list:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 6, 8)
+  list:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 6, 8 + COST_BAR_H + 4)
   list:SetPoint("RIGHT", frame.divider, "LEFT", -4, 0)
+  -- What the rest of the route costs: everything still to buy (Auctionator prices), under the list.
+  local costBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  costBar:SetHeight(COST_BAR_H)
+  costBar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 6, 8)
+  costBar:SetPoint("RIGHT", frame.divider, "LEFT", -4, 0)
+  CR.Backdrop(costBar, 0, 0, 0, 0.55)
+  costBar:EnableMouse(true)
+  costBar.label = costBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  costBar.label:SetPoint("LEFT", 8, 0)
+  costBar.label:SetText("Route cost")
+  CR.ThemeRegisterAccentText(costBar.label)
+  costBar.money = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  costBar.money:SetPoint("RIGHT", -8, 0)
+  costBar.money:SetJustifyH("RIGHT")
+  costBar.note = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  costBar.note:SetPoint("LEFT", costBar.label, "RIGHT", 6, 0)
+  costBar.note:SetPoint("RIGHT", costBar.money, "LEFT", -6, 0)
+  costBar.note:SetJustifyH("LEFT")
+  costBar.note:SetWordWrap(false)
+  costBar:SetScript("OnEnter", function(self)
+    local plan = self.plan
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Route cost")
+    GameTooltip:AddLine("What buying everything the rest of the route still needs would cost - materials you "
+      .. "don't have anywhere, at Auctionator's prices (vendor price for vendor items).", 1, 1, 1, true)
+    if plan and plan.unpriced > 0 then
+      GameTooltip:AddLine(string.format("%d item%s have no price yet - scan the Auction House to include them.",
+        plan.unpriced, plan.unpriced == 1 and "" or "s"), 1, 0.6, 0.4, true)
+    end
+    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator for prices.", 1, 0.5, 0.3, true) end
+    GameTooltip:Show()
+  end)
+  costBar:SetScript("OnLeave", GameTooltip_Hide)
+  frame.costBar = costBar
+  function frame:UpdateRouteCost(plan)
+    costBar.plan = plan
+    if not plan then costBar:Hide() return end
+    costBar:Show()
+    if not CR.HasAuctionator() then
+      costBar.money:SetText("")
+      costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))
+      return
+    end
+    costBar.money:SetText(CR.FormatMoney(plan.missingCost or 0))
+    costBar.note:SetText(plan.unpriced > 0 and CR.ColorText(string.format("(+%d unpriced)", plan.unpriced), "ff9966") or "")
+  end
+
   frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   frame.empty:SetPoint("TOPLEFT", list, "TOPLEFT", 8, -24)
   frame.empty:SetWidth(240)

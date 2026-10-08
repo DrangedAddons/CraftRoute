@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.0
+
+- Profession-window view: a route cost bar at the bottom of the route column - "Route cost" with what buying everything the rest of the route still needs would cost (Auctionator prices, vendor price for vendor items), and an orange "(+N unpriced)" note when some items have no price yet. Hover for details. Styled like the main window's cost bar; the list ends just above it.
+
 ## 0.20.1
 
 - Profession-window view, "choose ONE" options: a compact version of the main window's style - a tinted panel (green when chosen, dark gold when not) with brighter caps at both ends, a radio button, and a tick on the chosen option in place of the Choose / Selected button. Light text with a shadow for contrast on either tint; the tooltip says which is chosen.
