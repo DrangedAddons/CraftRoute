@@ -25,11 +25,17 @@ function CR.TradeSkillOpenFor(profName)
   return false
 end
 
+-- Profession skill line IDs, for when the client doesn't hand them over with the profession list.
+local SKILL_LINES = {
+  Alchemy = 171, Blacksmithing = 164, Enchanting = 333, Engineering = 202, Leatherworking = 165,
+  Tailoring = 197, Mining = 186, Cooking = 185, ["First Aid"] = 129, Fishing = 356,
+}
 function CR.OpenTradeSkill(profName)
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
   local s = CR.skill[profName]
-  if s and s.skillLine and TS.OpenTradeSkill then
-    TS.OpenTradeSkill(s.skillLine)
+  local line = (s and s.skillLine) or SKILL_LINES[profName]
+  if line and TS.OpenTradeSkill then
+    TS.OpenTradeSkill(line)
   else
     CR.Print("Open " .. profName .. " from your spellbook / profession book first.")
   end
@@ -670,6 +676,159 @@ local function FillReagents(box, rows, r, crafts, opts)
 end
 
 ---------------------------------------------------------------------------
+-- Buy popup (shared by the Craft tab and the profession-window view): opened from a reagent's
+-- Buy button while a vendor is open - buy one, the amount still needed in your bags, or any
+-- amount. It sits on UIParent so it shows over whichever window opened it.
+---------------------------------------------------------------------------
+local buyPop, bp
+local function UpdateBuyPop()
+  local id = buyPop and buyPop.itemID
+  if not id or not CR.MerchantSells(id) then if buyPop then buyPop:Hide() end return end
+  local price, batch = MerchantSlotInfo(merchantIndex[id])
+  bp.title:SetText("Buy " .. CR.ItemName(id))
+  bp.price:SetText(CR.FormatMoney(price or 0) .. ((batch or 1) > 1 and string.format(" per %d", batch) or " each"))
+  local _, items, needCost = BuyPlan(id, buyPop.need)
+  bp.need:SetText(items > 0 and string.format("Buy needed (%d)", items) or "Buy needed")
+  bp.need:SetEnabled(items > 0)
+  bp.needCost:SetText(items > 0 and CR.FormatMoney(needCost)
+    or CR.ColorText(buyPop.need > 0 and "Can't afford" or "Nothing needed", buyPop.need > 0 and "ff6060" or "40ff40"))
+  bp.one:SetEnabled((BuyPlan(id, 1)) > 0)
+  local n = math.max(1, bp.box:GetNumber() or 1)
+  local _, boxItems, boxCost = BuyPlan(id, n)
+  bp.buy:SetText("Buy " .. boxItems)
+  bp.buy:SetEnabled(boxItems > 0)
+  bp.total:SetText(boxItems > 0 and ("Total: " .. CR.FormatMoney(boxCost)) or CR.ColorText("Can't afford", "ff6060"))
+end
+
+local function BuildBuyPop()
+  buyPop = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  buyPop:SetSize(236, 150)
+  buyPop:SetFrameStrata("DIALOG")
+  CR.Backdrop(buyPop, 0.04, 0.04, 0.06, 0.97)
+  CR.ThemeRegisterBorder(buyPop)
+  buyPop:EnableMouse(true)
+  buyPop:Hide()
+  bp = {}
+  bp.title = buyPop:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  bp.title:SetPoint("TOPLEFT", 10, -10)
+  bp.title:SetPoint("RIGHT", -10, 0)
+  bp.title:SetJustifyH("LEFT")
+  CR.ThemeRegisterAccentText(bp.title)
+  bp.price = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  bp.price:SetPoint("TOPLEFT", bp.title, "BOTTOMLEFT", 0, -3)
+  local function PopButton(w, text)
+    local b = CreateFrame("Button", nil, buyPop, "UIPanelButtonTemplate")
+    b:SetSize(w, 22)
+    if text then b:SetText(text) end
+    CR.ThemeRegisterButton(b)
+    return b
+  end
+  bp.one = PopButton(64, "Buy 1")
+  bp.one:SetPoint("TOPLEFT", 10, -60)
+  bp.need = PopButton(144)
+  bp.need:SetPoint("LEFT", bp.one, "RIGHT", 8, 0)
+  bp.needCost = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")   -- what "Buy needed" costs
+  bp.needCost:SetPoint("BOTTOM", bp.need, "TOP", 0, 3)
+  bp.box = CreateFrame("EditBox", nil, buyPop, "InputBoxTemplate")
+  bp.box:SetSize(44, 20)
+  bp.box:SetPoint("TOPLEFT", 40, -94)
+  bp.box:SetAutoFocus(false)
+  bp.box:SetNumeric(true)
+  bp.box:SetMaxLetters(4)
+  bp.box:SetJustifyH("CENTER")
+  local function BpStep(dir)
+    local b = CreateFrame("Button", nil, buyPop)
+    b:SetSize(22, 22)
+    local base = dir < 0 and "Interface\\Buttons\\UI-SpellbookIcon-PrevPage-" or "Interface\\Buttons\\UI-SpellbookIcon-NextPage-"
+    b:SetNormalTexture(base .. "Up")
+    b:SetPushedTexture(base .. "Down")
+    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    b:SetScript("OnClick", function() bp.box:SetNumber(math.max(1, (bp.box:GetNumber() or 1) + dir)) end)
+    return b
+  end
+  BpStep(-1):SetPoint("RIGHT", bp.box, "LEFT", -6, 0)
+  BpStep(1):SetPoint("LEFT", bp.box, "RIGHT", 2, 0)
+  bp.buy = PopButton(92)
+  bp.buy:SetPoint("LEFT", bp.box, "RIGHT", 30, 0)
+  bp.cancel = PopButton(80, "Cancel")
+  bp.cancel:SetPoint("BOTTOMRIGHT", -10, 8)
+  bp.total = buyPop:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  bp.total:SetPoint("BOTTOMLEFT", 10, 13)
+  bp.box:SetScript("OnTextChanged", UpdateBuyPop)
+  bp.box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  bp.box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+  bp.one:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, 1) end)
+  bp.need:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, buyPop.need) buyPop:Hide() end)
+  bp.buy:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, math.max(1, bp.box:GetNumber() or 1)) buyPop:Hide() end)
+  bp.cancel:SetScript("OnClick", function() buyPop:Hide() end)
+end
+
+-- Open the buy box for itemID next to `anchor`. short: how many more you need in your bags.
+-- needFn(itemID) recomputes that as bags change (nil = the recipe moved on: close).
+-- owner: who opened it, so closing that window closes the box (CR.HideBuyPop(owner)).
+function CR.OpenBuy(itemID, short, anchor, needFn, owner)
+  if not buyPop then BuildBuyPop() end
+  if buyPop:IsShown() and buyPop.itemID == itemID then buyPop:Hide() return end
+  buyPop.itemID, buyPop.need, buyPop.needFn, buyPop.owner = itemID, short, needFn, owner
+  buyPop:ClearAllPoints()
+  buyPop:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0)
+  bp.box:SetNumber(1)   -- "Buy needed" covers the usual case; a stray click here buys just one
+  buyPop:Show()
+  UpdateBuyPop()
+end
+
+-- Keep the open buy box in step with your bags (and close it if its item no longer applies).
+function CR.RefreshBuyPop()
+  if not (buyPop and buyPop:IsShown()) then return end
+  if buyPop.needFn then
+    local need = buyPop.needFn(buyPop.itemID)
+    if not need then buyPop:Hide() return end
+    buyPop.need = need
+  end
+  UpdateBuyPop()
+end
+
+function CR.HideBuyPop(owner)
+  if buyPop and (owner == nil or buyPop.owner == owner) then buyPop:Hide() end
+end
+
+---------------------------------------------------------------------------
+-- Components, for views outside the Craft tab (the profession-window view): how this
+-- character makes itemID when `need` of it is wanted, and what one click would do.
+---------------------------------------------------------------------------
+CR.RecipeState = function(prof, r) return RecipeState(prof, r) end
+CR.CraftRecipe = function(r, count) return Craft(r, count) end
+
+function CR.ComponentInfo(prof, itemID, need)
+  local how = CR.ComponentMaker(prof, itemID)
+  if not how then return nil end
+  local mprof = how.prof or prof
+  local bags, elsewhere = CR.BagsAndElsewhere(itemID)
+  local missing = math.max(0, need - bags - elsewhere)
+  local shortBags = math.max(0, need - bags)
+  local makes = how.recipe and how.recipe.makes or how.convert.makes
+  local info = {
+    how = how, prof = mprof, recipe = how.recipe, convert = how.convert,
+    missing = missing, shortBags = shortBags, smelting = mprof.name == "Mining",
+    toMake = math.ceil((missing > 0 and missing or shortBags) / makes),
+  }
+  if how.recipe then
+    local learned, available = RecipeState(mprof, how.recipe)
+    info.learned, info.available = learned, available or 0
+    info.skillOK = not how.recipe.learn or (CR.GetSkill(mprof.name) or 0) >= how.recipe.learn
+    info.open = CR.TradeSkillOpenFor(mprof.name)
+    info.count = math.min(info.toMake, info.available)
+    info.reagents = how.recipe.reagents
+  else
+    local c = how.convert
+    info.available = math.floor((GetItemCount(c.use, false) or 0) / c.uses)
+    info.macro = info.available > 0 and ("/use item:" .. c.use) or nil
+    info.reagents = { { c.use, c.uses } }
+  end
+  return info
+end
+
+---------------------------------------------------------------------------
 -- Panel
 ---------------------------------------------------------------------------
 function CR.CreateCraftPanel(parent)
@@ -914,114 +1073,18 @@ function CR.CreateCraftPanel(parent)
     panel:Refresh()
   end
 
-  -- Buy popup, opened from a reagent's Buy button while a vendor is open: buy one, the amount
-  -- this step still needs in your bags, or any amount.
-  local buyPop = CreateFrame("Frame", nil, panel, "BackdropTemplate")
-  buyPop:SetSize(236, 150)
-  CR.Backdrop(buyPop, 0.04, 0.04, 0.06, 0.97)
-  CR.ThemeRegisterBorder(buyPop)
-  buyPop:SetFrameLevel(panel:GetFrameLevel() + 40)
-  buyPop:EnableMouse(true)
-  buyPop:Hide()
-  local bpTitle = buyPop:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  bpTitle:SetPoint("TOPLEFT", 10, -10)
-  bpTitle:SetPoint("RIGHT", -10, 0)
-  bpTitle:SetJustifyH("LEFT")
-  CR.ThemeRegisterAccentText(bpTitle)
-  local bpPrice = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  bpPrice:SetPoint("TOPLEFT", bpTitle, "BOTTOMLEFT", 0, -3)
-  local function PopButton(w, text)
-    local b = CreateFrame("Button", nil, buyPop, "UIPanelButtonTemplate")
-    b:SetSize(w, 22)
-    if text then b:SetText(text) end
-    CR.ThemeRegisterButton(b)
-    return b
-  end
-  local bpOne = PopButton(64, "Buy 1")
-  bpOne:SetPoint("TOPLEFT", 10, -60)
-  local bpNeed = PopButton(144)
-  bpNeed:SetPoint("LEFT", bpOne, "RIGHT", 8, 0)
-  local bpNeedCost = buyPop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")   -- what "Buy needed" costs
-  bpNeedCost:SetPoint("BOTTOM", bpNeed, "TOP", 0, 3)
-  local bpBox = CreateFrame("EditBox", nil, buyPop, "InputBoxTemplate")
-  bpBox:SetSize(44, 20)
-  bpBox:SetPoint("TOPLEFT", 40, -94)
-  bpBox:SetAutoFocus(false)
-  bpBox:SetNumeric(true)
-  bpBox:SetMaxLetters(4)
-  bpBox:SetJustifyH("CENTER")
-  local function BpStep(dir)
-    local b = CreateFrame("Button", nil, buyPop)
-    b:SetSize(22, 22)
-    local base = dir < 0 and "Interface\\Buttons\\UI-SpellbookIcon-PrevPage-" or "Interface\\Buttons\\UI-SpellbookIcon-NextPage-"
-    b:SetNormalTexture(base .. "Up")
-    b:SetPushedTexture(base .. "Down")
-    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    b:SetScript("OnClick", function() bpBox:SetNumber(math.max(1, (bpBox:GetNumber() or 1) + dir)) end)
-    return b
-  end
-  BpStep(-1):SetPoint("RIGHT", bpBox, "LEFT", -6, 0)
-  BpStep(1):SetPoint("LEFT", bpBox, "RIGHT", 2, 0)
-  local bpBuy = PopButton(92)
-  bpBuy:SetPoint("LEFT", bpBox, "RIGHT", 30, 0)
-  local bpCancel = PopButton(80, "Cancel")
-  bpCancel:SetPoint("BOTTOMRIGHT", -10, 8)
-  local bpTotal = buyPop:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  bpTotal:SetPoint("BOTTOMLEFT", 10, 13)
-
-  local function BuyText(prefix, count)
-    local _, items, cost = BuyPlan(buyPop.itemID, count)
-    return items > 0 and string.format("%s (%d)", prefix, items) or prefix, items, cost
-  end
-  local function UpdateBuyPop()
-    local id = buyPop.itemID
-    if not id or not CR.MerchantSells(id) then buyPop:Hide() return end
-    local price, batch = MerchantSlotInfo(merchantIndex[id])
-    bpTitle:SetText("Buy " .. CR.ItemName(id))
-    bpPrice:SetText(CR.FormatMoney(price or 0) .. ((batch or 1) > 1 and string.format(" per %d", batch) or " each"))
-    local t, items, needCost = BuyText("Buy needed", buyPop.need)
-    bpNeed:SetText(t)
-    bpNeed:SetEnabled(items > 0)
-    bpNeedCost:SetText(items > 0 and CR.FormatMoney(needCost)
-      or CR.ColorText(buyPop.need > 0 and "Can't afford" or "Nothing needed", buyPop.need > 0 and "ff6060" or "40ff40"))
-    bpOne:SetEnabled((BuyPlan(id, 1)) > 0)
-    local n = math.max(1, bpBox:GetNumber() or 1)
-    local _, boxItems, boxCost = BuyPlan(id, n)
-    bpBuy:SetText("Buy " .. boxItems)
-    bpBuy:SetEnabled(boxItems > 0)
-    bpTotal:SetText(boxItems > 0 and ("Total: " .. CR.FormatMoney(boxCost)) or CR.ColorText("Can't afford", "ff6060"))
-  end
-  bpBox:SetScript("OnTextChanged", UpdateBuyPop)
-  bpBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-  bpBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-  bpOne:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, 1) end)
-  bpNeed:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, buyPop.need) buyPop:Hide() end)
-  bpBuy:SetScript("OnClick", function() BuyFromMerchant(buyPop.itemID, math.max(1, bpBox:GetNumber() or 1)) buyPop:Hide() end)
-  bpCancel:SetScript("OnClick", function() buyPop:Hide() end)
-
-  -- short: how many more this step needs in your bags
+  -- Buy (the shared buy box, below): short = how many more this step needs in your bags
   local function OpenBuy(itemID, short, button)
-    if buyPop:IsShown() and buyPop.itemID == itemID then buyPop:Hide() return end
-    buyPop.itemID, buyPop.need = itemID, short
-    buyPop:ClearAllPoints()
-    buyPop:SetPoint("TOPLEFT", button, "TOPRIGHT", 6, 0)
-    bpBox:SetNumber(1)   -- "Buy needed" covers the usual case; a stray click here buys just one
-    buyPop:Show()
-    UpdateBuyPop()
-  end
-  panel.UpdateBuyPop = function()
-    if buyPop:IsShown() then
+    CR.OpenBuy(itemID, short, button, function(id)
       -- keep "Buy needed" in step with your bags; close if the recipe moved on
-      local found
       for _, rg in ipairs(panel.current and panel.current.reagents or {}) do
-        if rg[1] == buyPop.itemID then
-          found = true
-          buyPop.need = math.max(0, rg[2] * (panel.currentCrafts or 1) - (GetItemCount(rg[1], false) or 0))
+        if rg[1] == id then
+          return math.max(0, rg[2] * (panel.currentCrafts or 1) - (GetItemCount(rg[1], false) or 0))
         end
       end
-      if found then UpdateBuyPop() else buyPop:Hide() end
-    end
+    end, panel)
   end
+  panel.UpdateBuyPop = CR.RefreshBuyPop
 
   -- Fills the section for itemID at `level` (the level above needs `need` of it); returns its
   -- height (0 if it can't be made), how many crafts / uses cover the shortfall, and the recipe.
@@ -1551,7 +1614,7 @@ function CR.CreateCraftPanel(parent)
     self.autoOpened = craftProf
     pcall(CR.OpenTradeSkill, craftProf)
   end
-  panel:SetScript("OnHide", function(self) self.autoOpened = nil; buyPop:Hide(); CR.HideSecureEnchantButtons() end)
+  panel:SetScript("OnHide", function(self) self.autoOpened = nil; CR.HideBuyPop(panel); CR.HideSecureEnchantButtons() end)
 
   -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
   local function CraftSteps(entry)
@@ -1891,6 +1954,7 @@ ev:SetScript("OnEvent", function(_, event, unit)
   if event:find("^MERCHANT_") then
     if event == "MERCHANT_SHOW" then merchantOpen = true elseif event == "MERCHANT_CLOSED" then merchantOpen = false end
     ScanMerchant()
+    CR.RefreshBuyPop()
   end
   if event:find("^UNIT_SPELLCAST") and CR.craftPanel then
     CR.SafeCall(CR.craftPanel.UpdateCast, CR.craftPanel, event)

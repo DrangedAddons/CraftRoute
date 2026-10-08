@@ -21,6 +21,7 @@ local LIST_TOP = -62
 local DIVIDER_TOP = -60
 
 local overlay, entry, list
+local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
 local installed = false
 local installFailed = false
 local openedAt = 0
@@ -28,6 +29,7 @@ local openedAt = 0
 local ui = {
   selectedKey = nil,
   openSteps = {},
+  openParts = {}, -- component chains opened under a step's reagents
   keepScroll = false,
   openProf = nil,
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
@@ -103,6 +105,7 @@ local function SelectProfession(name)
   ui.pinned = name
   ui.selectedKey = nil
   wipe(ui.openSteps)
+  wipe(ui.openParts)
   ui.keepScroll = false
   local _, _, detected = CR.GetSkill(name)
   if detected and OpenProfessionName() ~= name and not InCombatLockdown() then
@@ -129,6 +132,7 @@ local function SyncOpenProfession()
     db.profPicked = true
     ui.selectedKey = nil
     wipe(ui.openSteps)
+    wipe(ui.openParts)
     ui.keepScroll = false
     CR.InvalidatePlan()
     CR.NotifyChanged()
@@ -255,6 +259,11 @@ local function ResetRow(row)
   row.name:SetText("")
   row.name:SetTextColor(1, 1, 1)
   row.right:SetText("")
+  row.act:Hide()
+  row.act:SetScript("OnClick", nil)
+  row.buy:Hide()
+  row.buy:SetScript("OnClick", nil)
+  row.actMacro = nil
   row.name:ClearAllPoints()
   row.name:SetPoint("LEFT", 8, 0)
   row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
@@ -271,6 +280,22 @@ local function ShowTooltip(row)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
     CR.AddLocationLines(GameTooltip, item.itemID)
+    local info = item.info
+    if info then
+      GameTooltip:AddLine(" ")
+      local what = info.recipe and ((info.smelting and "Smelt it" or "Make it") .. " with " .. info.prof.name)
+        or (info.convert.uses > 1 and "Combine 3 lesser into 1 greater" or "Split 1 greater into 3 lesser")
+      GameTooltip:AddLine(what .. " - click + to see what from.", 0.2, 1, 0.2, true)
+      if info.missing > 0 then
+        GameTooltip:AddLine(string.format("%d short: %d %s cover it.", info.missing, info.toMake,
+          info.recipe and "crafts" or "uses"), 1, 0.4, 0.4, true)
+      end
+      if info.recipe and info.learned == false then
+        GameTooltip:AddLine("Not learned: " .. CR.FactionText(info.recipe.pattern or info.recipe.src or ""), 1, 0.6, 0.4, true)
+      elseif info.recipe and not info.skillOK then
+        GameTooltip:AddLine("Needs " .. info.recipe.learn .. " " .. info.prof.name .. " skill.", 1, 0.4, 0.4, true)
+      end
+    end
   elseif item.kind == "step" and item.step and item.step.recipe then
     CR.RecipeTooltip(GameTooltip, item.step.recipe, item.step.crafts)
     if item.step.note then GameTooltip:AddLine(CR.FactionText(item.step.note), 0.7, 0.7, 0.7, true) end
@@ -345,15 +370,77 @@ local function ApplyRow(row, item)
     row.icon:SetTexture(CR.GetItemIcon(item.itemID) or "Interface\\Icons\\INV_Misc_QuestionMark")
     row.icon:Show()
     row.icon:ClearAllPoints()
-    row.icon:SetPoint("LEFT", 26, 0)
+    row.icon:SetPoint("LEFT", 26 + (item.level - 1) * 12, 0)
     row.name:SetText(HaveNeed(item.itemID, item.per, item.crafts))
+    local info = item.info
+    local toggle = info and (item.short or item.open)
+    local rightmost = row.chevron
+    if toggle then
+      -- + / - opens what it's made from, a level further in
+      row.chevron:Show()
+      row.chevron.icon:Hide()
+      row.chevron.glow:Hide()
+      row.chevron.label:Show()
+      row.chevron.label:SetText(item.open and "-" or "+")
+      row.chevron:SetScript("OnClick", function()
+        ui.openParts[item.key] = not item.open or nil
+        ui.keepScroll = true
+        if overlay then overlay:Refresh() end
+      end)
+      -- what one click does
+      local a = row.act
+      a:Show()
+      a:Disable()
+      if info.recipe then
+        if info.learned == false then
+          a:SetText("Learn")
+        elseif not info.skillOK then
+          a:SetText("Skill")
+        elseif not info.open then
+          a:SetText("Open")
+          a:SetEnabled(not InCombatLockdown())
+          a:SetScript("OnClick", function() CR.OpenTradeSkill(info.prof.name) end)
+        else
+          local n = info.count or 0
+          a:SetText((info.smelting and "Smelt " or "Make ") .. n)
+          a:SetEnabled(n > 0 and not InCombatLockdown())
+          a:SetScript("OnClick", function() CraftSpell(info.recipe.spell, n, info.prof.name) end)
+        end
+      else
+        a:SetText(info.convert.uses > 1 and "Combine" or "Split")
+        a:SetEnabled(info.available > 0 and not InCombatLockdown())
+        row.actMacro = info.macro
+      end
+      rightmost = a
+    end
+    -- Buy, while a vendor that sells it is open and your bags are short
+    if item.short and CR.MerchantSells and CR.MerchantSells(item.itemID) then
+      row.buy:Show()
+      row.buy:ClearAllPoints()
+      row.buy:SetPoint("RIGHT", toggle and rightmost or row, toggle and "LEFT" or "RIGHT", toggle and -2 or -6, 0)
+      local need, id = item.need, item.itemID
+      row.buy:SetScript("OnClick", function(self)
+        CR.OpenBuy(id, need - (CR.BagsAndElsewhere(id)), self, function(i)
+          return math.max(0, need - (CR.BagsAndElsewhere(i)))
+        end, overlay)
+      end)
+      rightmost = row.buy
+    end
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-    row.name:SetPoint("RIGHT", -8, 0)
+    if rightmost ~= row.chevron or toggle then
+      row.name:SetPoint("RIGHT", rightmost, "LEFT", -4, 0)
+    else
+      row.name:SetPoint("RIGHT", -8, 0)
+    end
     row:SetScript("OnClick", function()
       if IsModifiedClick("CHATLINK") then
         local _, link = CR.GetItemInfo(item.itemID)
         if link then ChatEdit_InsertLink(link) end
+      elseif toggle then
+        ui.openParts[item.key] = not item.open or nil
+        ui.keepScroll = true
+        if overlay then overlay:Refresh() end
       end
     end)
     return
@@ -473,6 +560,17 @@ local function CreateRow(parent)
   end
   row.chevron.label:Hide()
   row.chevron:Hide()
+  row.act = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.act:SetSize(62, 20)
+  row.act:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
+  row.act:Hide()
+  row.buy = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.buy:SetSize(36, 20)
+  row.buy:SetText("Buy")
+  row.buy:Hide()
+  -- essences split / combine by using the item, which needs a secure click
+  row.actCover = AttachPlainCover and AttachPlainCover(row.act, function() return row.actMacro or "" end,
+    function() return overlay and overlay:IsShown() and row:IsVisible() and row.act:IsShown() and row.actMacro ~= nil end)
   row.right = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
   row.right:SetWidth(78)
@@ -564,6 +662,34 @@ end
 -- What the route still has left to make
 ---------------------------------------------------------------------------
 
+-- The profession whose recipes count as "its own" for components (the combined guide crafts Cooking).
+local function CraftProf(name)
+  local route = CR.Route(name)
+  return CR.professions[route and route.recipeProf or name]
+end
+
+-- A step's reagents, and under any opened one what it's made from, a level further in (up to 8
+-- levels: scraps -> Light -> ... -> Rugged Leather). mult: crafts the level above needs.
+local function AddReagents(items, reagents, mult, level, prof, keyPrefix, path)
+  for _, rg in ipairs(reagents) do
+    local id = rg[1]
+    local need = rg[2] * mult
+    local key = keyPrefix .. ">" .. id
+    local info = (level < 8 and not path[id] and CR.ComponentInfo) and CR.ComponentInfo(prof, id, need) or nil
+    local bags = CR.BagsAndElsewhere(id)
+    local open = info and ui.openParts[key] and true or false
+    table.insert(items, {
+      kind = "reagent", itemID = id, per = rg[2], crafts = mult, need = need, level = level,
+      key = key, info = info, open = open, short = bags < need,
+    })
+    if open then
+      path[id] = true   -- never loop (essences convert both ways)
+      AddReagents(items, info.reagents, math.max(1, info.toMake), level + 1, info.prof, key, path)
+      path[id] = nil
+    end
+  end
+end
+
 local function BuildItems()
   local name = PlanProfession()
   local openName = OpenProfessionName()
@@ -611,9 +737,7 @@ local function BuildItems()
         kind = "step", step = st, key = key, open = open, selected = key == ui.selectedKey,
       })
       if open then
-        for _, rg in ipairs(st.recipe.reagents or {}) do
-          table.insert(items, { kind = "reagent", itemID = rg[1], per = rg[2], crafts = st.crafts or 1 })
-        end
+        AddReagents(items, st.recipe.reagents or {}, st.crafts or 1, 1, CraftProf(name), key, {})
         if not st.recipe.reagents or #st.recipe.reagents == 0 then
           table.insert(items, { kind = "note", text = CR.ColorText("No reagents.", "808080") })
         end
@@ -781,6 +905,39 @@ local function AttachEnchantCover(target, onClick)
   return b
 end
 
+-- Split / Combine: using an item needs a real click, so a secure cover over the row's button
+-- runs /use on the press the game acts on (press-down with "cast on key down", else release).
+AttachPlainCover = function(target, onClick, wanted)
+  if InCombatLockdown() then return nil end
+  local ok, b = pcall(CreateFrame, "Button", nil, UIParent, "SecureActionButtonTemplate")
+  if not (ok and b) then return nil end
+  b:SetSize(1, 1)
+  b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+  b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetAttribute("type", "macro")
+  b:SetAttribute("macrotext", "")
+  b:Hide()
+  b:SetScript("PreClick", function(self, button, down)
+    if InCombatLockdown() then return end
+    local onDown = GetCVarBool and GetCVarBool("ActionButtonUseKeyDown") or false
+    local act = (down and true or false) == (onDown and true or false)
+    self:SetAttribute("macrotext", act and (onClick(button) or "") or "")
+  end)
+  local row = target:GetParent()
+  b:SetScript("OnEnter", function()
+    local enter = row and row:GetScript("OnEnter")
+    if enter then enter(row) end
+  end)
+  b:SetScript("OnLeave", function()
+    local leave = row and row:GetScript("OnLeave")
+    if leave then leave(row) end
+  end)
+  b.target = target
+  b.wanted = wanted
+  table.insert(enchantSecure, b)
+  return b
+end
+
 local function FillSchematic(info)
   local frame = overlay
   local st = info and info.selected
@@ -847,8 +1004,18 @@ local function FillSchematic(info)
       row:Show()
       row:SetWidth(rowW)
       row.icon:SetTexture(CR.GetItemIcon(rg[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
-      row.text:SetText(HaveNeed(rg[1], rg[2], st.crafts or 1))
+      local text, bags, need = HaveNeed(rg[1], rg[2], st.crafts or 1)
+      row.text:SetText(text)
       row.itemID = rg[1]
+      local canBuy = bags < need and CR.MerchantSells and CR.MerchantSells(rg[1])
+      row.buy:SetShown(canBuy and true or false)
+      row.text:SetPoint("RIGHT", row, "RIGHT", canBuy and -44 or -4, 0)
+      local id, needAll = rg[1], need
+      row.buy:SetScript("OnClick", canBuy and function(self)
+        CR.OpenBuy(id, needAll - (CR.BagsAndElsewhere(id)), self, function(i)
+          return math.max(0, needAll - (CR.BagsAndElsewhere(i)))
+        end, overlay)
+      end or nil)
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, i == 1 and -6 or -4)
       anchor = row
@@ -1036,6 +1203,7 @@ function CR.RefreshCompact()
       overlay.customBox:SetText(tostring(DB().customGoal or ""))
     end
     FillSchematic(info)
+    if CR.RefreshBuyPop then CR.RefreshBuyPop() end
   end)
   if not ok then CR.Print("Compact: " .. tostring(err)) end
 end
@@ -1459,6 +1627,11 @@ local function BuildOverlay()
     row.text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     row.text:SetJustifyH("LEFT")
     row.text:SetWordWrap(false)
+    row.buy = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.buy:SetSize(40, 20)
+    row.buy:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    row.buy:SetText("Buy")
+    row.buy:Hide()
     row:SetScript("OnEnter", function(self)
       if not self.itemID then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1473,6 +1646,13 @@ local function BuildOverlay()
       if IsModifiedClick("CHATLINK") and self.itemID then
         local _, link = CR.GetItemInfo(self.itemID)
         if link then ChatEdit_InsertLink(link) end
+      elseif self.itemID and ui.selectedKey then
+        -- open this reagent's chain in the route list
+        ui.openSteps[ui.selectedKey] = true
+        local key = ui.selectedKey .. ">" .. self.itemID
+        ui.openParts[key] = not ui.openParts[key] or nil
+        ui.keepScroll = true
+        if overlay then overlay:Refresh() end
       end
     end)
     row:Hide()
@@ -1883,6 +2063,7 @@ local function BuildOverlay()
   frame:SetScript("OnShow", function() PositionEntry() end)
   frame:HookScript("OnHide", function()
     if frame.enchant and frame.enchant.flyout then frame.enchant.flyout:Hide() end
+    if CR.HideBuyPop then CR.HideBuyPop(frame) end
     SyncEnchantSecure()
   end)
   frame:SetScript("OnSizeChanged", LayoutColumns)

@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.19.0
+
+- Profession-window view: components and vendor buying, like the Craft tab. In the route list, a reagent you can make gets a + that opens what it's made from, a level further in each time (Medium -> Light -> scraps, bars -> ore, essences), each with a Make N / Smelt N / Split / Combine button (or Open, to switch to the profession that makes it). With a vendor open, reagents it sells get a Buy button, in the list and in the recipe panel. Clicking a reagent in the recipe panel opens its chain in the list.
+- Picking a profession from a CraftRoute dropdown now opens that profession's window even when the game doesn't report its skill line (it used to say "Open Leatherworking from your spellbook").
+- The buy box is shared by both views (one box, shown over whichever window opened it).
+
 ## 0.18.0
 
 - New: a CraftRoute tab in Blizzard's profession window (Compact.lua, contributed by a friend of the project). It opens a compact CraftRoute view inside the profession book: the route down the left (expand a step to see its reagents, pick "choose ONE" options), the selected recipe with reagents, costs and Create / Create All on the right, and the enchant target for enchants. Profession, goal and route mode are the same settings as /cr, so the two stay in sync. It sits alongside TrainerSpells' tab if you use it.
