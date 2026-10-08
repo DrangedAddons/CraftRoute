@@ -16,9 +16,15 @@ local TAB_ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"
 local BOOK = "Interface\\Icons\\INV_Misc_Book_09"
 local REAGENT_SLOTS = 8
 -- Skill bar sits under the native title. Dropdowns, then the list, follow it.
-local RANK_DROP_Y = -36
-local LIST_TOP = -62
-local DIVIDER_TOP = -60
+-- Positions follow Blizzard's own recipe page (measured from it), so flicking between the two
+-- barely moves anything: the header band with a centred skill bar, the pickers where its search
+-- box is, the list where its recipe list starts, the right panel where its schematic is.
+local HEADER_H = 57       -- the dark band behind the skill bar
+local RANK_BAR_Y = -38    -- skill bar centre
+local RANK_DROP_Y = -73   -- the pickers: Blizzard's search / filter line
+local LIST_TOP = -101     -- Blizzard's first recipe header
+local DIVIDER_TOP = -66   -- right panel top
+local LEFT_W = 357        -- Blizzard's recipe-list column
 
 local overlay, entry, list
 local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
@@ -996,8 +1002,8 @@ local function FillSchematic(info)
     -- Icon, reagent label, cost block, craft buttons, and the enchant target when this recipe needs one.
     local bottom = 130
     if CR.EnchantSlotFor(recipe) then bottom = bottom + 58 end
-    local usable = schemH - 100 - bottom
-    cap = math.floor(usable / 40)
+    local usable = schemH - 195 - bottom   -- reagents start at Blizzard's height (~195 down)
+    cap = math.floor(usable / 46)
     if cap < 1 then cap = 1 end
     if cap > REAGENT_SLOTS then cap = REAGENT_SLOTS end
   end
@@ -1185,12 +1191,14 @@ local function LayoutColumns()
   if not overlay then return end
   local w = overlay:GetWidth() or 0
   local leftW = 300
-  if w > 0 then leftW = math.max(260, math.min(380, math.floor(w * 0.42))) end
+  if w > 0 then leftW = math.max(260, math.min(LEFT_W, math.floor(w * 0.45))) end
   overlay.leftW = leftW
   overlay.divider:ClearAllPoints()
   overlay.divider:SetWidth(1)
   overlay.divider:SetPoint("TOPLEFT", overlay, "TOPLEFT", leftW, DIVIDER_TOP)
   overlay.divider:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", leftW, 8)
+  -- the skill bar is centred, about two thirds of the width, as on Blizzard's page
+  if w > 0 and overlay.rankBar then overlay.rankBar:SetWidth(math.max(300, math.min(560, math.floor(w * 0.67)))) end
   UpdateRankBar()
   LayoutHeader()
   if overlay.rName then
@@ -1564,8 +1572,19 @@ local function BuildOverlay()
   frame.mainBtn:SetScript("OnLeave", GameTooltip_Hide)
 
   frame.rankBar = CreateFrame("Frame", nil, frame)
-  frame.rankBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -2)
-  frame.rankBar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -2)
+  frame.rankBar:SetPoint("CENTER", frame, "TOP", 0, RANK_BAR_Y)
+  frame.rankBar:SetWidth(540)
+  -- the header band behind it, like the top of Blizzard's page
+  frame.headerBand = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+  frame.headerBand:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -4)
+  frame.headerBand:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, -4)
+  frame.headerBand:SetHeight(HEADER_H)
+  frame.headerBand:SetColorTexture(0, 0, 0, 0.35)
+  frame.headerLine = frame:CreateTexture(nil, "BORDER")
+  frame.headerLine:SetPoint("TOPLEFT", frame.headerBand, "BOTTOMLEFT", 0, 0)
+  frame.headerLine:SetPoint("TOPRIGHT", frame.headerBand, "BOTTOMRIGHT", 0, 0)
+  frame.headerLine:SetHeight(1)
+  frame.headerLine:SetColorTexture(1, 0.82, 0.35, 0.15)
   -- Atlas is 451x29. Matching the height keeps the wood from being squashed.
   frame.rankBar:SetHeight(29)
   frame.rankBar.bg = frame.rankBar:CreateTexture(nil, "BACKGROUND")
@@ -1639,7 +1658,7 @@ local function BuildOverlay()
   end
   frame.icon = icon
   frame.icon:SetSize(54, 54)
-  frame.icon:SetPoint("TOPLEFT", 0, -2)
+  frame.icon:SetPoint("TOPLEFT", 28, -28)
   -- CircularGiant's IconBorder is this atlas at 68px: a thin ring around the
   -- 46px circle. The recrafting frame is the thick square the schematic had.
   local ring = icon.IconBorder
@@ -1670,7 +1689,7 @@ local function BuildOverlay()
   frame.icon:SetScript("OnLeave", GameTooltip_Hide)
 
   frame.rName = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  frame.rName:SetPoint("TOPLEFT", frame.icon, "TOPRIGHT", 16, -2)
+  frame.rName:SetPoint("BOTTOMLEFT", frame.icon, "RIGHT", 16, 6)   -- level with the icon's upper half
   frame.rName:SetWidth(180)
   frame.rName:SetJustifyH("LEFT")
   frame.rName:SetWordWrap(false)
@@ -1687,18 +1706,18 @@ local function BuildOverlay()
   frame.rStructure:SetWordWrap(false)
 
   frame.reagentsLabel = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  frame.reagentsLabel:SetPoint("TOPLEFT", frame.icon, "BOTTOMLEFT", 0, -16)
+  frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
   frame.reagentsLabel:SetText("Reagents:")
   frame.reagents = {}
   for i = 1, REAGENT_SLOTS do
     local row = CreateFrame("Button", nil, schematic)
-    row:SetSize(280, 36)
+    row:SetSize(280, 42)
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(36, 36)
+    row.icon:SetSize(42, 42)
     row.icon:SetPoint("LEFT", 0, 0)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+    row.text:SetPoint("LEFT", row.icon, "RIGHT", 10, 0)
     row.text:SetPoint("RIGHT", row, "RIGHT", -4, 0)
     row.text:SetJustifyH("LEFT")
     row.text:SetWordWrap(false)
@@ -1759,13 +1778,13 @@ local function BuildOverlay()
   frame.status:SetWordWrap(false)
 
   frame.create = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
-  frame.create:SetSize(88, 22)
+  frame.create:SetSize(96, 22)
   frame.create:SetPoint("RIGHT", 0, 0)
   frame.create:SetText("Create")
   CR.ThemeRegisterButton(frame.create)
   frame.nextBtn = CreateFrame("Button", nil, frame.buttons)
   frame.nextBtn:SetSize(20, 20)
-  frame.nextBtn:SetPoint("RIGHT", frame.create, "LEFT", -8, 0)
+  frame.nextBtn:SetPoint("RIGHT", frame.create, "LEFT", -52, 0)
   frame.nextBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
   frame.nextBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
   frame.nextBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
@@ -1793,7 +1812,7 @@ local function BuildOverlay()
   end)
   frame.createAll = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.createAll:SetSize(130, 22)
-  frame.createAll:SetPoint("RIGHT", frame.prevBtn, "LEFT", -12, 0)
+  frame.createAll:SetPoint("LEFT", frame.buttons, "LEFT", -7, 0)
   frame.createAll:SetText("Create All [0]")
   CR.ThemeRegisterButton(frame.createAll)
   frame.openBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")

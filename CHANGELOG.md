@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.19.7
+
+- Profession-window view: laid out to match Blizzard's own recipe page, so flicking between the two barely moves anything. A header band with the skill bar centred at the same height and width; the pickers on the line where Blizzard's search box is; the route list starting where its recipe list does, in a column of the same width; the recipe icon, name and "Reagents:" where its schematic has them, with reagent icons the same size; Create All at the panel's left edge and a wider Create at the right, with the count between.
+
 ## 0.19.6
 
 - Profession-window view: the profession box shows just the profession's name (its skill is on the bar above; the list still shows it), with room for the whole name. The goal box shows a short label too ("Expert (225)" rather than "My level's highest rank: Expert (225)"; the list keeps the full wording) - in the main window as well.
