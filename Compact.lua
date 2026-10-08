@@ -1109,47 +1109,13 @@ local function TextureLoaded(ok, loaded)
   return ok and loaded ~= false
 end
 
--- Blizzard's own rank bar on its recipe page (hidden while this view shows): its fill art and
--- where the fill sits inside the frame. nil when the client doesn't have one.
-local function NativeRankBar()
-  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
-  local nb = page and (page.RankBar or page.ProfessionRankBar)
-  if not nb then return nil end
-  local function Tex(t) return type(t) == "table" and t.GetTexture and t or nil end
-  local fill = Tex(nb.Fill) or Tex(nb.BarFill) or (type(nb.Bar) == "table" and Tex(nb.Bar.Fill))
-  if not fill then return nil end
-  return nb, fill, Tex(nb.Flare) or Tex(nb.BarFlare)
-end
-
--- Where a texture's art is: file and the region of it the texture shows (its texture
--- coordinates - art usually sits on a sheet with other art, so the whole file is the wrong
--- picture). Atlas info when the client gives it, else the texture's own coordinates.
-local function ArtOf(tex)
-  local atlas = tex.GetAtlas and tex:GetAtlas()
-  if atlas and C_Texture and C_Texture.GetAtlasInfo then
-    local info = C_Texture.GetAtlasInfo(atlas)
-    if info and (info.file or info.filename) then
-      return info.file or info.filename, info.leftTexCoord or 0, info.rightTexCoord or 1,
-        info.topTexCoord or 0, info.bottomTexCoord or 1, atlas
-    end
-  end
-  local file = tex:GetTexture()
-  if not file then return nil end
-  local ulx, uly, llx, lly, urx, ury = tex:GetTexCoord()
-  if type(ulx) == "number" and type(urx) == "number" and type(lly) == "number" then
-    return file, ulx, urx, uly, lly
-  end
-  return file, 0, 1, 0, 1
-end
-
--- The fill sits inside the wood frame's dark track: inset 4 on each side, as on Blizzard's bar
--- (its fill is about 21 of the frame's 27-29 px). Fixed, not measured from Blizzard's bar - its
--- fill piece is drawn the frame's full height, which made this one taller than the track.
-local FILL_INSET_X, FILL_INSET_Y = 4, 4
+-- The fill covers exactly the frame art's dark track: it starts 4 px in from the top and the
+-- sides, and stops 7 px above the bottom (the art's lower bevel), so it never spills past it.
+local FILL_INSET_X, FILL_INSET_TOP, FILL_INSET_BOTTOM = 4, 4, 7
 local function FillInset(bar)
   local h = bar:GetHeight() or 29
-  if h < 10 then h = 29 end
-  return FILL_INSET_X, FILL_INSET_Y, h - 2 * FILL_INSET_Y
+  if h < 15 then h = 29 end
+  return FILL_INSET_X, FILL_INSET_TOP, h - FILL_INSET_TOP - FILL_INSET_BOTTOM
 end
 
 local function UpdateRankBar()
@@ -1172,7 +1138,6 @@ local function UpdateRankBar()
 
   -- The fill spans the whole track (the frame's inset on both sides), so a full bar is full:
   -- it used to stop well short of the right end and leave black in the track.
-  local nb, nfill, nflare = NativeRankBar()
   local left, top, height = FillInset(bar)
   local track = math.max(1, width - 2 * left)
   local fill = bar.fill
@@ -1180,46 +1145,12 @@ local function UpdateRankBar()
   fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
   fill:SetHeight(height)
 
-  -- Art: Blizzard's own fill (the textured, profession-styled bar) unless the look is EllesmereUI
-  -- Style, which keeps a flat bar in its accent colour. The art is cropped to the skill, not squashed.
-  local styled = CR.ActiveTheme and CR.ActiveTheme() ~= "eui"
-  local file, l, r, t, b = nil
-  if styled and nfill then file, l, r, t, b = ArtOf(nfill) end
-  if file then
-    fill:SetTexture(file)
-    fill:SetTexCoord(l, l + (r - l) * math.max(ratio, 0.001), t, b)
-    fill:SetVertexColor(1, 1, 1, 1)
-  else
-    fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-    fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
-    if styled then
-      fill:SetVertexColor(0.92, 0.68, 0.28, 0.95)
-    else
-      local ar, ag, ab = CR.AccentColor()
-      fill:SetVertexColor(ar, ag, ab, 0.9)
-    end
-  end
+  -- plain gold fill
+  fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
+  fill:SetVertexColor(0.92, 0.68, 0.28, 0.95)
   fill:SetShown(ratio > 0)
   fill:SetWidth(math.max(1, track * ratio))
-
-  -- the bright flare at the end of the fill, when Blizzard's bar has one
-  if not bar.crFlare then
-    bar.crFlare = bar:CreateTexture(nil, "OVERLAY")
-    bar.crFlare:SetBlendMode("ADD")
-  end
-  local ffile, fl2, fr2, ft2, fb2 = nil
-  if styled and nflare then ffile, fl2, fr2, ft2, fb2 = ArtOf(nflare) end
-  if ffile and ratio > 0 and ratio < 1 then
-    bar.crFlare:SetTexture(ffile)
-    bar.crFlare:SetTexCoord(fl2, fr2, ft2, fb2)
-    local fw, fh = nflare:GetWidth(), nflare:GetHeight()
-    bar.crFlare:SetSize((fw and fw > 0) and fw or 16, (fh and fh > 0) and fh or height + 8)
-    bar.crFlare:ClearAllPoints()
-    bar.crFlare:SetPoint("CENTER", fill, "RIGHT", 0, 0)
-    bar.crFlare:Show()
-  else
-    bar.crFlare:Hide()
-  end
 end
 
 -- /cr rankbar: what Blizzard's rank bar is made of (to match its art if this client differs).
