@@ -1752,7 +1752,6 @@ local function BuildOverlay()
   costBar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 6, 8)
   costBar:SetPoint("RIGHT", frame.divider, "LEFT", -4, 0)
   CR.Backdrop(costBar, 0, 0, 0, 0.55)
-  costBar:EnableMouse(true)
   costBar.label = costBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   costBar.label:SetPoint("LEFT", 8, 0)
   costBar.label:SetText("Route cost")
@@ -1765,20 +1764,6 @@ local function BuildOverlay()
   costBar.note:SetPoint("RIGHT", costBar.money, "LEFT", -6, 0)
   costBar.note:SetJustifyH("LEFT")
   costBar.note:SetWordWrap(false)
-  costBar:SetScript("OnEnter", function(self)
-    local plan = self.plan
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Route cost")
-    GameTooltip:AddLine("What buying everything the rest of the route still needs would cost - materials you "
-      .. "don't have anywhere, at Auctionator's prices (vendor price for vendor items).", 1, 1, 1, true)
-    if plan and plan.unpriced > 0 then
-      GameTooltip:AddLine(string.format("%d item%s have no price yet - scan the Auction House to include them.",
-        plan.unpriced, plan.unpriced == 1 and "" or "s"), 1, 0.6, 0.4, true)
-    end
-    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator for prices.", 1, 0.5, 0.3, true) end
-    GameTooltip:Show()
-  end)
-  costBar:SetScript("OnLeave", GameTooltip_Hide)
   frame.costBar = costBar
   function frame:UpdateRouteCost(plan)
     costBar.plan = plan

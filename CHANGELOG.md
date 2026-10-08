@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.1
+
+- Profession-window view: the route cost bar no longer has a tooltip (it got in the way; the cost speaks for itself).
+
 ## 0.21.0
 
 - Profession-window view: a route cost bar at the bottom of the route column - "Route cost" with what buying everything the rest of the route still needs would cost (Auctionator prices, vendor price for vendor items), and an orange "(+N unpriced)" note when some items have no price yet. Hover for details. Styled like the main window's cost bar; the list ends just above it.
