@@ -180,6 +180,26 @@ function CR.RecipeIcon(r)
   return icon or QUESTION
 end
 
+-- Each profession's colour, for its skill bar (both windows): picked from its theme - Alchemy's
+-- green, Enchanting's violet, Leatherworking's tan, Blacksmithing's forge orange...
+local PROFESSION_COLORS = {
+  Alchemy        = { 0.36, 0.78, 0.32 },
+  Blacksmithing  = { 0.93, 0.47, 0.18 },
+  Enchanting     = { 0.66, 0.42, 0.96 },
+  Engineering    = { 0.95, 0.76, 0.24 },
+  Leatherworking = { 0.80, 0.53, 0.28 },
+  Tailoring      = { 0.86, 0.38, 0.64 },
+  Mining         = { 0.60, 0.66, 0.74 },
+  Cooking        = { 0.96, 0.58, 0.22 },
+  ["First Aid"]  = { 0.88, 0.24, 0.24 },
+  Fishing        = { 0.28, 0.60, 0.94 },
+}
+function CR.ProfessionColor(name)
+  local c = name and PROFESSION_COLORS[name]
+  if c then return c[1], c[2], c[3] end
+  return 0.92, 0.68, 0.28   -- gold for anything else
+end
+
 function CR.Print(msg)
   DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffCraftRoute|r: " .. tostring(msg))
 end

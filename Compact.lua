@@ -1145,10 +1145,11 @@ local function UpdateRankBar()
   fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
   fill:SetHeight(height)
 
-  -- plain gold fill
+  -- the profession's own colour
   fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
   fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
-  fill:SetVertexColor(0.92, 0.68, 0.28, 0.95)
+  local r, g, b = CR.ProfessionColor(name)
+  fill:SetVertexColor(r, g, b, 0.95)
   fill:SetShown(ratio > 0)
   fill:SetWidth(math.max(1, track * ratio))
 end
@@ -1641,7 +1642,8 @@ local function BuildOverlay()
   rankText:SetAllPoints()
   rankText:SetFrameLevel(frame.rankBar:GetFrameLevel() + 4)
   frame.rankBar.text = rankText:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  frame.rankBar.text:SetPoint("CENTER", rankText, "CENTER", 0, -1)
+  -- centred on the dark track (which sits high in the frame art), not on the whole frame
+  frame.rankBar.text:SetPoint("CENTER", rankText, "TOP", 0, -(FILL_INSET_TOP + (29 - FILL_INSET_TOP - FILL_INSET_BOTTOM) / 2))
   frame.rankBar.text:SetJustifyH("CENTER")
   if frame.rankBar.text.SetFontObject then
     pcall(frame.rankBar.text.SetFontObject, frame.rankBar.text, "Number12FontOutline")

@@ -2,7 +2,7 @@
 ## Title: CraftRoute
 ## Notes: Profession leveling planner for WoW Forever - guide routes, target crafts, materials and Auctionator costs for every crafting profession plus Cooking, Fishing and First Aid.
 ## Author: Dranged
-## Version: 0.19.10
+## Version: 0.19.11
 ## OptionalDeps: Auctionator, Syndicator, EllesmereUI
 ## SavedVariables: CraftRouteDB
 ## SavedVariablesPerCharacter: CraftRouteCharDB

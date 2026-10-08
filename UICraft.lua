@@ -1647,8 +1647,7 @@ function CR.CreateCraftPanel(parent)
     local rprof = route and CR.professions[route.recipeProf or profName] or prof
 
     bar:SetValue((maxRank and maxRank > 0) and (cur / maxRank) or 0)
-    local ar, ag, ab = CR.AccentColor()
-    bar:SetStatusBarColor(ar * 0.85, ag * 0.85, ab * 0.85)
+    bar:SetStatusBarColor(CR.ProfessionColor(profName))   -- the profession's own colour
     bar.text:SetText(detected and string.format("%s %d/%d", profName, cur, maxRank)
       or (profName .. " (not learned)"))
 

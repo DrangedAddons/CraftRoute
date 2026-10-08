@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.19.11
+
+- Skill bars take the profession's own colour, in both windows: Alchemy green, Blacksmithing forge orange, Enchanting violet, Engineering brass, Leatherworking tan, Tailoring rose, Mining steel, Cooking orange, First Aid red, Fishing blue.
+- Profession-window view: the skill bar's text is centred on the dark track rather than on the whole frame (the track sits high in the frame art, so the text looked low).
+
 ## 0.19.10
 
 - Profession-window skill bar: back to the plain gold fill (the attempt at Blizzard's styled art is dropped), and the fill now covers exactly the frame's dark track - 4 px in from the top and sides, stopping above the frame's lower bevel - so it no longer spills below it.
