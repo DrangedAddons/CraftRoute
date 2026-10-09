@@ -6,7 +6,7 @@ local _, CR = ...
 
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t "
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t "
-local MAX_CHECKS, MAX_PLACES = 8, 3
+local MAX_CHECKS, MAX_PLACES = 16, 3
 
 -- Book names, for "Bought ..." lines before the item is cached.
 CR.extraNames[16083] = "Expert Fishing - The Bass and You"
@@ -42,12 +42,27 @@ function CR.CreateTaskCard(parent, width)
   card.text:SetWordWrap(true)
   if card.text.SetSpacing then card.text:SetSpacing(2) end
 
-  card.checks = {}
+  card.checks, card.checkPins = {}, {}
   for i = 1, MAX_CHECKS do
     local fs = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(true)
     card.checks[i] = fs
+    -- an objective with a place (a fishing spot) gets a Pin of its own
+    local pin = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+    pin:SetSize(40, 18)
+    pin:SetText("Pin")
+    CR.ThemeRegisterButton(pin)
+    pin:SetScript("OnClick", function(self) if self.place then CR.PinPlace(self.place) end end)
+    pin:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText("Map pin")
+      GameTooltip:AddLine("Puts a pin on your map where to get this, and tracks it on screen.", 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    pin:SetScript("OnLeave", GameTooltip_Hide)
+    pin:Hide()
+    card.checkPins[i] = pin
   end
 
   -- skill progress for leveling steps (fishing)
@@ -139,14 +154,22 @@ function CR.CreateTaskCard(parent, width)
 
     for i, fs in ipairs(self.checks) do
       local c = task.checks[i]
+      local pin = self.checkPins[i]
+      pin.place = c and c.place
+      pin:SetShown(c and c.place and true or false)
       if c then
+        local indent = c.place and 46 or 0
+        if c.place then
+          pin:ClearAllPoints()
+          pin:SetPoint("TOPLEFT", 0, y + 2)
+        end
         fs:ClearAllPoints()
-        fs:SetPoint("TOPLEFT", 0, y)
-        fs:SetWidth(w)
+        fs:SetPoint("TOPLEFT", indent, y)
+        fs:SetWidth(w - indent)
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
-        y = y - (fs:GetStringHeight() or 14) - 4
+        y = y - math.max(c.place and 20 or 0, (fs:GetStringHeight() or 14)) - 4
       else
         fs:Hide()
       end

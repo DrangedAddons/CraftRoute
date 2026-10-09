@@ -5,6 +5,14 @@
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
 
+-- Nat Pagle's quest fish, each with where to catch it (Warcraft Wiki): { item, count, spot }
+CR.NAT_PAGLE_FISH = {
+  { 16967, 1, { name = "Verdantis River", uiMapID = 1444, x = 62, y = 51 } },     -- Feralas Ahi, Feralas
+  { 16970, 1, { name = "Misty Reed Strand", uiMapID = 1435, x = 93, y = 40 } },   -- Misty Reed Mahi Mahi, Swamp of Sorrows
+  { 16968, 1, { name = "Sar'theris Strand", uiMapID = 1443, x = 25, y = 77 } },   -- Sar'theris Striker, Desolace
+  { 16969, 1, { name = "Savage Coast", uiMapID = 1434, x = 33, y = 32 } },        -- Savage Coast Blue Sailfin, Stranglethorn
+}
+
 local POLE, SHINY_BAUBLE, NIGHTCRAWLERS, BRIGHT_BAUBLES = 6256, 6529, 6530, 6532
 
 local choices, steps = {}, {}
@@ -96,7 +104,7 @@ CR.RegisterRoute("Fishing", {
       text = "Buy and read 'Expert Fishing - The Bass and You' (skill 125, level 20) from Old Man Heming "
         .. "at the bottom of Booty Bay, near the fishing sign. Also on the Auction House." },
     { name = "Artisan", cap = 300, skill = 225, level = 35, quest = "Nat Pagle, Angler Extreme",
-      has = { { 16967, 1 }, { 16970, 1 }, { 16968, 1 }, { 16969, 1 } },   -- the four quest fish
+      has = CR.NAT_PAGLE_FISH,
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "skill 225). Catch Feralas Ahi (Feralas, use Bright Baubles), Misty Reed Mahi Mahi (Swamp of "
         .. "Sorrows), Sar'theris Striker (Desolace) and Savage Coast Blue Sailfin (Stranglethorn Vale)." },

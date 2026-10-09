@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.23.1
+
+- Nat Pagle, Angler Extreme: each quest fish on the card has its own Pin button for where to catch it - Feralas Ahi at Verdantis River (Feralas), Misty Reed Mahi Mahi at Misty Reed Strand (Swamp of Sorrows), Sar'theris Striker at Sar'theris Strand (Desolace), Savage Coast Blue Sailfin on the Savage Coast (Stranglethorn Vale). With WaypointUI the waypoint is named after the fish.
+- Task cards show up to 16 objectives (the Gadgetzan step has 11).
+
 ## 0.23.0
 
 - Rank steps stop at the right moment. A book, quest or trainer rank whose skill you haven't reached yet no longer blocks the route. You keep fishing or crafting, and the route stops on it the moment your skill gets there: e.g. it stops mid-way through cooking catfish at Cooking 125 to read the Expert Cookbook, then carries on.

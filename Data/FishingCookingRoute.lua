@@ -146,7 +146,7 @@ local route = {
       text = "No Nightcrawlers left? Buy 3 from Kilxx in Ratchet (nobody in Dustwallow sells them). Fish any "
         .. "inland open water in Dustwallow Marsh (not the ocean) until 225, Nightcrawler on." },
     { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300, quest = "Nat Pagle, Angler Extreme",
-      has = { { 16967, 1 }, { 16970, 1 }, { 16968, 1 }, { 16969, 1 } },   -- the four quest fish
+      has = CR.NAT_PAGLE_FISH,
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "Fishing 225). Catch Feralas Ahi (Feralas - use the Aquadynamic Fish Attractor or Bright Baubles from "
         .. "Sheendra Tallgrass / Vivianna), Misty Reed Mahi Mahi (Swamp of Sorrows), Sar'theris Striker "

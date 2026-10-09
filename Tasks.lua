@@ -318,6 +318,13 @@ function CR.StepTask(st, profName)
         else
           if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
           Prep(have >= it[2], label)
+          -- where to get it (a fishing spot): the line gets its own Pin button
+          local spot = it[3]
+          if spot then
+            t.checks[#t.checks].place = { name = CR.ItemName(it[1]) .. " (" .. spot.name .. ")", uiMapID = spot.uiMapID, x = spot.x, y = spot.y,
+                                          zone = ZoneName(spot.uiMapID) }
+            t.checks[#t.checks].text = label .. CR.ColorText("  -  " .. spot.name .. ", " .. ZoneName(spot.uiMapID), "aaaaaa")
+          end
           local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
           if price and total < it[2] then cost = cost + price * (it[2] - total) end
         end
