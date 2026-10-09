@@ -46,7 +46,7 @@ CR.RegisterRoute("Engineering", {
   },
 
   steps = {
-    { kind = "guide", from = 1, to = 30, items = { { HAMMER, 1 } },
+    { kind = "guide", from = 1, to = 30, items = { { HAMMER, 1 } }, nearTrainer = { "Engineering", "Blacksmithing" },
       text = "Buy a Blacksmith Hammer - most recipes need it. Most trainers have a Blacksmithing or Engineering "
         .. "Supply vendor nearby{A:; in Dun Morogh buy it from Thrawn Boltar in Kharanos}; on Zephras Isle buy "
         .. "it from Aedi Thriceforged in Shen'dar Village." },

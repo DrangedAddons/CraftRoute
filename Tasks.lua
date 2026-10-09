@@ -296,11 +296,15 @@ function CR.StepTask(st, profName)
       end
     end
     local cost = 0
+    -- supplies count once they're on you (bags or equipped) - one in the bank or on an alt
+    -- doesn't help at the anvil
     for _, it in ipairs(st.items or {}) do
-      local have = Owned(it[1])
-      Cond(have >= it[2], string.format("%d/%d %s", math.min(have, it[2]), it[2], CR.ItemName(it[1])))
+      local total, have = Owned(it[1])
+      local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
+      if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
+      Cond(have >= it[2], label)
       local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
-      if price and have < it[2] then cost = cost + price * (it[2] - have) end
+      if price and total < it[2] then cost = cost + price * (it[2] - total) end
     end
     if cost > 0 then t.cost = cost end
     -- leveling that isn't crafting (fishing): done at the skill
@@ -312,8 +316,20 @@ function CR.StepTask(st, profName)
     if activity and st.to and st.to > (st.from or 0) then
       Cond(cur >= st.to, string.format("%s %d (you: %d)", skillName, st.to, cur))
       t.progress = { from = st.from or 0, to = st.to, cur = cur }
+    elseif st.items and #st.items > 0 and not st.trainCap and not st.learnStep then
+      t.kind = "buy"
     end
     t.places = Nearest(NpcsInText(text))
+    -- sold by supply vendors who stand next to these trainers
+    if st.nearTrainer then
+      local list = {}
+      for _, p in ipairs(t.places) do table.insert(list, p) end
+      for _, prof in ipairs(st.nearTrainer) do
+        for _, p in ipairs(Trainers(prof, 1)) do table.insert(list, p) end
+      end
+      t.places = Nearest(list)
+      if #t.places > 0 then t.text = t.text .. "\n\nThe supply vendor stands next to the trainer." end
+    end
     -- a rank learned from a trainer (combined guide): its requirements, and the trainers
     if st.trainCap then t.kind = st.book and "book" or (st.quest and "quest" or "train") end
     if st.trainCap and not st.book and not st.quest then

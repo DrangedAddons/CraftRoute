@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.22.2
+
+- Shopping steps (Blacksmith Hammer, baubles, nightcrawlers) only count what's in your bags now. A hammer in your bank or on an alt used to tick the step off before you'd bought one, so it never stopped.
+- Engineering and Blacksmithing: the "Buy a Blacksmith Hammer" step lists the nearest trainers with Pin buttons; the supply vendor stands next to them.
+- Profession-window view: finished task steps stay clickable ("Done: ..." in grey), so you can still look up where something was. A step you ticked by hand has a "Not done yet" button to put it back on the route.
+- Shopping steps are labelled SHOPPING on the card.
+
 ## 0.22.1
 
 - Fishing + Cooking: the "Learn Journeyman / Expert / Artisan" steps now list the nearest trainers with Pin buttons (as the Fishing-only guide does), plus the skill and level they need, and are labelled as training / book / quest.

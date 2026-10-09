@@ -97,9 +97,17 @@ function CR.CreateTaskCard(parent, width)
   card.done:SetSize(130, 22)
   card.done:SetText("Mark as done")
   CR.ThemeRegisterButton(card.done)
-  card.done:SetScript("OnClick", function() if card.task then CR.MarkTaskDone(card.task, true) end end)
+  card.done:SetScript("OnClick", function()
+    if card.task then CR.MarkTaskDone(card.task, not card.task.manual) end
+  end)
   card.done:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    if card.task and card.task.manual then
+      GameTooltip:SetText("Not done yet")
+      GameTooltip:AddLine("Puts this step back on the route.", 1, 1, 1, true)
+      GameTooltip:Show()
+      return
+    end
     GameTooltip:SetText("Mark as done")
     GameTooltip:AddLine(card.task and card.task.auto and "The game ticks this off by itself when it's done - "
       .. "use this if it hasn't." or "The game can't tell when this is done - click when you have.", 1, 1, 1, true)
@@ -107,7 +115,7 @@ function CR.CreateTaskCard(parent, width)
   end)
   card.done:SetScript("OnLeave", GameTooltip_Hide)
 
-  local KIND_LABEL = { train = "TRAINING", book = "BOOK", quest = "QUEST", recipe = "LEARN A RECIPE",
+  local KIND_LABEL = { train = "TRAINING", book = "BOOK", quest = "QUEST", recipe = "LEARN A RECIPE", buy = "SHOPPING",
                        guide = "NEXT STEP" }
 
   -- Lays the card out top to bottom for this width; returns its height.
@@ -116,7 +124,7 @@ function CR.CreateTaskCard(parent, width)
     w = w or self:GetWidth() or width
     self:SetWidth(w)
     self.icon:SetTexture(task.icon or "Interface\\Icons\\INV_Misc_Note_01")
-    self.kind:SetText(KIND_LABEL[task.kind] or "NEXT STEP")
+    self.kind:SetText((KIND_LABEL[task.kind] or "NEXT STEP") .. (task.done and "  -  DONE" or ""))
     self.title:SetWidth(w - 54)
     self.title:SetText(task.title or "")
     local y = -math.max(48, 22 + (self.title:GetStringHeight() or 18)) - 10
@@ -203,9 +211,11 @@ function CR.CreateTaskCard(parent, width)
       self.cost:Hide()
     end
 
+    -- done by the game: nothing to click; ticked by hand: can be undone
     self.done:ClearAllPoints()
     self.done:SetPoint("TOPLEFT", 0, y - 4)
-    self.done:Show()
+    self.done:SetText(task.manual and "Not done yet" or "Mark as done")
+    self.done:SetShown(not task.done or task.manual)
     y = y - 30
     self:SetHeight(-y)
     self:Show()

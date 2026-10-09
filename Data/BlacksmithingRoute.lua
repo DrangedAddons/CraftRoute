@@ -58,7 +58,7 @@ CR.RegisterRoute("Blacksmithing", {
 
   steps = {
     -- Apprentice
-    { kind = "guide", from = 1, to = 75, items = { { HAMMER, 1 } },
+    { kind = "guide", from = 1, to = 75, items = { { HAMMER, 1 } }, nearTrainer = { "Blacksmithing" },
       text = "Buy a Blacksmith Hammer from the Blacksmithing Supply vendor next to your trainer - most recipes "
         .. "need it.{H: Undead: nobody near Angus Hammerhand sells one, buy it from Walter Mason in Deathknell "
         .. "or Abigail Shiel in Brill.}{A: Night Elves: the closest trainer is Delfrum Flintbeard in Auberdine, "

@@ -371,8 +371,13 @@ local function ApplyRow(row, item)
     row.icon:Show()
     row.icon:ClearAllPoints()
     row.icon:SetPoint("LEFT", 6, 0)
-    row.name:SetText(CR.ColorText("To do: ", "ff9933") .. (t.title or ""))
-    if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.82, 0) end
+    if t.done then
+      row.name:SetText(CR.ColorText("Done: ", "40c040") .. (t.title or ""))
+      if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.6, 0.6, 0.6) end
+    else
+      row.name:SetText(CR.ColorText("To do: ", "ff9933") .. (t.title or ""))
+      if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.82, 0) end
+    end
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
     row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
@@ -828,9 +833,24 @@ local function BuildItems()
   for _, a in ipairs(actions) do
     if a.task then taskOf[a.planStep] = a end
   end
+  -- finished task steps stay clickable (to look up where something was) but don't stop the route
+  local doneOf, doneList = {}, {}
+  for _, st in ipairs(plan.steps) do
+    if (st.kind == "guide" or st.kind == "train") and not taskOf[st] then
+      local t = CR.StepTask(st, name)
+      if t then
+        local a = { task = t, kind = "task", from = st.from, planStep = st }
+        doneOf[st] = a
+        table.insert(doneList, a)
+      end
+    end
+  end
   local selected
   if ui.selectedKey then
     for _, a in ipairs(actions) do
+      if ActionKey(a) == ui.selectedKey then selected = a end
+    end
+    for _, a in ipairs(doneList) do
       if ActionKey(a) == ui.selectedKey then selected = a end
     end
   end
@@ -846,8 +866,8 @@ local function BuildItems()
       table.insert(items, { kind = "note", gold = true, text = "Choose one", tip = st.text or "Choose one" })
     elseif st.kind == "option" then
       table.insert(items, { kind = "option", step = st })
-    elseif (st.kind == "guide" or st.kind == "train") and taskOf[st] then
-      table.insert(items, TaskItem(taskOf[st]))
+    elseif (st.kind == "guide" or st.kind == "train") and (taskOf[st] or doneOf[st]) then
+      table.insert(items, TaskItem(taskOf[st] or doneOf[st]))
     elseif st.kind == "guide" or st.kind == "train" then
       table.insert(items, {
         kind = "note", step = st, gold = st.kind == "train",
@@ -870,7 +890,7 @@ local function BuildItems()
       end
     end
   end
-  local ahead = selected and selected ~= actions[1]
+  local ahead = selected and selected ~= actions[1] and not (selected.task and selected.task.done)
   return items, { profName = name, entry = entry, selected = selected, ahead = ahead }, nil
 end
 
