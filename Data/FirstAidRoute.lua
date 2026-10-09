@@ -19,7 +19,7 @@ CR.RegisterRoute("First Aid", {
       text = "Buy and read 'Expert First Aid - Under Wraps' (skill 125, no level needed) from "
         .. "{H:Balai Lok'Wein, Dustwallow Marsh}{A:Deneb Walker, Arathi Highlands}. Buy Manual: Heavy Silk "
         .. "Bandage and Manual: Mageweave Bandage there too (or on the AH)." },
-    { name = "Artisan",    cap = 300, skill = 225, level = 35, quest = true,
+    { name = "Artisan",    cap = 300, skill = 225, level = 35, quest = "Triage",
       text = "Complete the Triage quest (level 35, skill 225) from {H:Doctor Gregory Victor at Hammerfall, "
         .. "Arathi Highlands}{A:Doctor Gustaf VanHowzen at Theramore, Dustwallow Marsh}. Use the doctor's "
         .. "Triage Bandages, heal the critical patients first, and turn in as soon as 15 are saved." },

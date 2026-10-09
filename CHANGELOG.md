@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.22.5
+
+- Task steps check the recipes a guide step tells you to buy: Fishing + Cooking's Gadgetzan step ticks off Spotted Yellowtail, Nightfin Soup and Poached Sunscale Salmon from Gikkix as you learn them, and the Feralas step Baked Salmon.
+- Artisan quest steps (Clamlette Surprise, Nat Pagle, Angler Extreme, Triage) show whether the quest is in your quest log, and "done" once the Artisan rank it rewards is learned.
+- The combined guide's Artisan quest steps also show the skill and level the quest needs.
+
 ## 0.22.4
 
 - Map pins carry the NPC's name with WaypointUI installed ("Therum Deepforge" instead of "Map Pin"). Without it, the plain Blizzard pin as before.

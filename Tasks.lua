@@ -251,6 +251,44 @@ end
 
 local function Check(ok, text) return { ok = ok and true or false, text = text } end
 
+-- Is a quest with this title in the quest log? nil when the log can't be read.
+local function QuestInLog(title)
+  if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
+      local info = C_QuestLog.GetInfo(i)
+      if info and not info.isHeader and info.title == title then return true end
+    end
+    return false
+  elseif GetNumQuestLogEntries and GetQuestLogTitle then
+    for i = 1, GetNumQuestLogEntries() or 0 do
+      local name, _, _, isHeader = GetQuestLogTitle(i)
+      if not isHeader and name == title then return true end
+    end
+    return false
+  end
+end
+
+-- The rank's quest (st.quest = its title): picked up, or done once the rank it rewards is
+-- learned. Shown, not required - turning it in is what trains the rank.
+local function QuestCheck(checks, title, trained)
+  if type(title) ~= "string" then return end
+  local inLog = QuestInLog(title)
+  local label = trained and ("Quest '" .. title .. "' done")
+    or (inLog and ("Quest '" .. title .. "' picked up") or ("Pick up the quest '" .. title .. "'"))
+  table.insert(checks, Check(trained or inLog, label))
+end
+
+-- Learned this recipe? Spellbook first (works with the profession closed), then what the
+-- profession window showed. nil = can't tell yet.
+local function KnowsRecipe(profName, spell)
+  if IsPlayerSpell and IsPlayerSpell(spell) then return true end
+  local p = CR.professions[profName]
+  local r = p and p.recipes[spell]
+  local known = r and RecipeLearned(profName, r)
+  if known == nil and IsPlayerSpell then known = false end   -- the spellbook answered: not learned
+  return known
+end
+
 -- The task for a train / guide step, or nil.
 function CR.StepTask(st, profName)
   if st.recipe or (st.kind ~= "train" and st.kind ~= "guide") then return nil end
@@ -283,6 +321,7 @@ function CR.StepTask(st, profName)
         local _, bags = Owned(st.book)
         table.insert(t.checks, Check(bags > 0 or maxRank >= st.cap, "Bought " .. CR.ItemName(st.book)))
       end
+      QuestCheck(t.checks, st.quest, learned and maxRank >= st.cap)
       Cond(learned and maxRank >= st.cap, string.format("%s %s learned (max skill %d)", st.tierName or "", skillName, st.cap))
       if st.book or st.quest then
         t.places = Nearest(NpcsInText(text))
@@ -303,6 +342,7 @@ function CR.StepTask(st, profName)
     if st.learnStep then Cond(learned, skillName .. " learned") end
     if st.trainCap then
       Cond(learned and maxRank >= st.trainCap, string.format("%s trained to %d", skillName, st.trainCap))
+      QuestCheck(t.checks, st.quest, learned and maxRank >= st.trainCap)
       if st.book then
         local _, bags = Owned(st.book)
         table.insert(t.checks, Check(bags > 0 or maxRank >= st.trainCap, "Bought " .. CR.ItemName(st.book)))
@@ -320,6 +360,15 @@ function CR.StepTask(st, profName)
       if price and total < it[2] then cost = cost + price * (it[2] - total) end
     end
     if cost > 0 then t.cost = cost end
+    -- recipes to buy and learn on the way (st.recipes = spell IDs)
+    local rprofName = (CR.Route(profName) or {}).recipeProf or profName
+    for _, spell in ipairs(st.recipes or {}) do
+      local p = CR.professions[rprofName]
+      local r = p and p.recipes[spell]
+      local known = KnowsRecipe(rprofName, spell)
+      Cond(known == true, "Learned " .. (r and r.name or ("recipe " .. spell))
+        .. (known == nil and CR.ColorText("  (open " .. rprofName .. " once to check)", "aaaaaa") or ""))
+    end
     -- leveling that isn't crafting (fishing): done at the skill
     -- (a training / learning step's range only says when it applies - it's done once trained)
     -- (the solo Fishing guide's tips and shopping steps sit beside a "fish here" step over the
@@ -345,7 +394,7 @@ function CR.StepTask(st, profName)
     end
     -- a rank learned from a trainer (combined guide): its requirements, and the trainers
     if st.trainCap then t.kind = st.book and "book" or (st.quest and "quest" or "train") end
-    if st.trainCap and not st.book and not st.quest then
+    if st.trainCap and not st.book then
       local tier = RankTier(skillName, st.trainCap)
       if tier then
         if tier.skill then
@@ -356,7 +405,7 @@ function CR.StepTask(st, profName)
           table.insert(t.checks, 2, Check(lvl >= tier.level, string.format("Level %d (you: %d)", tier.level, lvl)))
         end
       end
-      if #t.places == 0 then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
+      if #t.places == 0 and not st.quest then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
     end
     -- a tip with nothing to check and nobody to visit stays a note in the list - no stop
     if #conds == 0 and #t.places == 0 then return nil end

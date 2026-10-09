@@ -144,7 +144,7 @@ local route = {
     { kind = "guide", skill = F, from = 205, to = 225, catches = { TROUT },
       text = "No Nightcrawlers left? Buy 3 from Kilxx in Ratchet (nobody in Dustwallow sells them). Fish any "
         .. "inland open water in Dustwallow Marsh (not the ocean) until 225, Nightcrawler on." },
-    { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300,
+    { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300, quest = "Nat Pagle, Angler Extreme",
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "Fishing 225). Catch Feralas Ahi (Feralas - use the Aquadynamic Fish Attractor or Bright Baubles from "
         .. "Sheendra Tallgrass / Vivianna), Misty Reed Mahi Mahi (Swamp of Sorrows), Sar'theris Striker "
@@ -156,7 +156,8 @@ local route = {
       note = "Cook your Mithril Head Trout - stop at 225 and keep the rest" },
 
     -- Artisan Cooking quest
-    { kind = "guide", skill = C, from = 175, to = 250, trainCap = 300,
+    { kind = "guide", skill = C, from = 175, to = 250, trainCap = 300, quest = "Clamlette Surprise",
+      recipes = { 18238, 18243, 18244 },   -- from Gikkix
       items = { { GIANT_EGG, 12 }, { ZESTY_CLAM, 10 }, { ALTERAC_SWISS, 20 } },
       text = "Fly to Gadgetzan and take 'Clamlette Surprise' from Dirge Quikcleave (level 35, Cooking 225), "
         .. "rewarding Artisan Cooking. Bring 12 Giant Egg (Rocs in Tanaris), 10 Zesty Clam Meat (Big-mouth "
@@ -164,7 +165,7 @@ local route = {
         .. "Recipe: Nightfin Soup, Poached Sunscale Salmon and Spotted Yellowtail from Gikkix." },
 
     -- Fishing to 300 in Feralas, Cooking to 300
-    { kind = "guide", skill = F, from = 255, to = 300, items = { { NIGHTCRAWLERS, 10 } },
+    { kind = "guide", skill = F, from = 255, to = 300, items = { { NIGHTCRAWLERS, 10 } }, recipes = { 18247 },
       catches = { REDGILL, SUNSCALE, NIGHTFIN, WHITESCALE },
       text = "Fly to {H:Camp Mojache}{A:Feathermoon Stronghold} in Feralas. Buy Recipe: Baked Salmon and 10 "
         .. "Nightcrawlers from {H:Sheendra Tallgrass}{A:Vivianna}. Fish any inland Feralas water except "
