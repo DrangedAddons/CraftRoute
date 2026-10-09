@@ -2498,7 +2498,8 @@ function CR.ProbeUnderMouse()
   local function Walk(f, path, depth)
     if depth > 6 then return end
     for _, c in ipairs({ f:GetChildren() }) do
-      local key = KeyIn(f, c) or c:GetName() or tostring(c):gsub("table: ", "")
+      local name = c.GetName and c:GetName()
+      local key = KeyIn(f, c) or (type(name) == "string" and name) or (tostring(c):gsub("table: ", ""))
       local cpath = path .. "." .. key
       if c:IsVisible() and c.IsMouseOver and c:IsMouseOver() and not cpath:find("CraftRoute") then
         found = found + 1
@@ -2510,7 +2511,7 @@ function CR.ProbeUnderMouse()
           end
         end
         P(string.format("%s  [%s%s] level=%d %.0fx%.0f  %s", cpath, c:GetObjectType(),
-          c:GetName() and (" " .. c:GetName()) or "", n(c:GetFrameLevel()), n(c:GetWidth()), n(c:GetHeight()),
+          type(name) == "string" and (" " .. name) or "", n(c:GetFrameLevel()), n(c:GetWidth()), n(c:GetHeight()),
           #textures > 0 and ("tex: " .. table.concat(textures, ", ")) or ""))
       end
       Walk(c, cpath, depth + 1)
