@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.22.4
+
+- Map pins carry the NPC's name with WaypointUI installed ("Therum Deepforge" instead of "Map Pin"). Without it, the plain Blizzard pin as before.
+
 ## 0.22.3
 
 - Crafting equipment only counts when it's on the character doing the crafting (bags or equipped): Blacksmith Hammer, Mining Pick, Skinning Knife, fishing poles, Arclight Spanner, Gyromatic Micro-Adjustor, the Runed enchanting rods and the Philosopher's Stone. One in your bank or on an alt no longer counts as owned in the materials list, the route cost, reagent colours or task steps. Materials still count your bank, mail and (with the setting on) alts as before.

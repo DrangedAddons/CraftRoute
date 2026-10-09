@@ -151,8 +151,19 @@ function CR.PinPlace(place)
     CR.Print("Can't place a map pin in " .. (place.zone or "that zone") .. ".")
     return
   end
-  C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(place.uiMapID, place.x / 100, place.y / 100))
-  if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  -- WaypointUI installed: place it through its API so the waypoint carries the NPC's name (a
+  -- plain Blizzard pin has no name - WaypointUI would call it "Map Pin"). It sets the Blizzard
+  -- pin too. Coordinates are 0-100 there.
+  local nav = WaypointUIAPI and WaypointUIAPI.Navigation
+  local named = false
+  if nav and nav.NewUserNavigation then
+    local ok, res = pcall(nav.NewUserNavigation, { name = place.name, mapID = place.uiMapID, x = place.x, y = place.y })
+    named = ok and res ~= nil
+  end
+  if not named then
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(place.uiMapID, place.x / 100, place.y / 100))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  end
   CR.Print(string.format("Map pin set: %s, %s (%.0f, %.0f).", place.name, place.zone or "", place.x, place.y))
 end
 
