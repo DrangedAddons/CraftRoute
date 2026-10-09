@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.4
+
+- /cr view reports what the profession-window view and Blizzard's window are showing (which page is up, whether the view thinks it should be open, and every piece of its recipe icon) - to track down the stray boxes over the recipe icon.
+
 ## 0.21.3
 
 - Profession-window view: it now closes whenever one of Blizzard's own pages is showing. After the latest client update, going to one of Blizzard's tabs no longer closed it, so it stayed up - mostly empty - over Blizzard's page, which is where the stray boxes over Blizzard's recipe icon came from.

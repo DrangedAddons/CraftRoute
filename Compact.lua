@@ -2446,6 +2446,44 @@ local function Install()
   end)
 end
 
+-- /cr view: what the profession-window view and Blizzard's window are showing right now
+-- (for tracking down something drawn where it shouldn't be).
+function CR.DebugCompactView()
+  local P = CR.Print
+  local function n(v) return tonumber(v) or 0 end
+  if not overlay then P("CraftRoute view not built (open a profession first).") return end
+  P(string.format("view shown=%s visible=%s alpha=%.2f level=%d strata=%s | Keeping=%s | BlizzardPageShown=%s",
+    tostring(overlay:IsShown()), tostring(overlay:IsVisible()), n(overlay:GetAlpha()), n(overlay:GetFrameLevel()),
+    tostring(overlay:GetFrameStrata()), tostring(Keeping()), tostring(BlizzardPageShown())))
+  local f = ProfessionsFrame
+  if f then
+    P(string.format("ProfessionsFrame: Pages=%s CraftingPage=%s(%s) BookPage=%s(%s)",
+      f.Pages and #f.Pages or "nil", tostring(f.CraftingPage ~= nil), tostring(f.CraftingPage and f.CraftingPage:IsShown()),
+      tostring(f.BookPage ~= nil), tostring(f.BookPage and f.BookPage:IsShown())))
+    for key, v in pairs(f) do
+      if type(v) == "table" and v.IsShown and v.GetObjectType and v:GetObjectType() == "Frame" and v:IsShown()
+        and type(key) == "string" and key:find("Page") then
+        P("  shown page-like child: ." .. key)
+      end
+    end
+  end
+  local icon = overlay.icon
+  if icon then
+    P(string.format("recipe icon: shown=%s visible=%s %.0fx%.0f", tostring(icon:IsShown()), tostring(icon:IsVisible()),
+      n(icon:GetWidth()), n(icon:GetHeight())))
+    for _, r in ipairs({ icon:GetRegions() }) do
+      local t = r.GetObjectType and r:GetObjectType()
+      P(string.format("  region %s shown=%s %.0fx%.0f tex=%s atlas=%s layer=%s", tostring(t), tostring(r:IsShown()),
+        n(r:GetWidth()), n(r:GetHeight()), tostring(r.GetTexture and r:GetTexture()),
+        tostring(r.GetAtlas and r:GetAtlas()), tostring(r.GetDrawLayer and r:GetDrawLayer())))
+    end
+    for _, c in ipairs({ icon:GetChildren() }) do
+      P(string.format("  child %s %s shown=%s %.0fx%.0f", tostring(c:GetObjectType()), tostring(c:GetName()),
+        tostring(c:IsShown()), n(c:GetWidth()), n(c:GetHeight())))
+    end
+  end
+end
+
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(_, _, addonName)
