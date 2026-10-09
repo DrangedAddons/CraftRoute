@@ -67,6 +67,7 @@ CR.TOOLS = {
   [10498] = true,                                       -- Gyromatic Micro-Adjustor
   [6218] = true, [6339] = true, [11130] = true, [11145] = true, [16207] = true,   -- Runed rods
   [9149] = true,                                        -- Philosopher's Stone
+  [4471] = true,                                        -- Flint and Tinder
 }
 function CR.IsTool(itemID) return CR.TOOLS[itemID] or false end
 

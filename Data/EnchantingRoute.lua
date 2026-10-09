@@ -41,7 +41,7 @@ CR.RegisterRoute("Enchanting", {
   },
 
   steps = {
-    { kind = "guide", from = 1, to = 2,
+    { kind = "guide", from = 1, to = 2, has = { { 6217, 1 }, { 247786, 1 } }, nearTrainer = { "Enchanting" },
       text = "Buy the Copper Rod and Motes of Magic from the Enchanting Supply vendor next to your trainer, "
         .. "not the AH. Starting-zone trainers don't have one (except Zephras Isle), so use the capital city "
         .. "trainer." },

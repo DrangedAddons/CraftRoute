@@ -1,5 +1,15 @@
 # CraftRoute changelog
 
+## 0.22.6
+
+- More objectives on task steps, each with a tick or a cross:
+  - Fishing + Cooking: the recipes each starting-zone and capital step tells you to buy (Brilliant Smallfish, Slitherskin Mackerel, Longjaw Mud Snapper, Bristle Whisker Catfish), Booty Bay's Mithril Head Trout and Filet of Redgill from Kelsey Yance, and the 20 Alterac Swiss on the Stormwind and Desolace steps.
+  - Booty Bay's Expert Fishing step also shows the skill 125 and level 20 it needs.
+  - Cooking: Flint and Tinder for the campfire, with the nearest Cooking trainers pinned (the vendor is next to them).
+  - Enchanting: the Copper Rod and Mote of Magic for your first Runed Copper Rod, with the nearest Enchanting trainers pinned.
+- Flint and Tinder counts as crafting equipment (only on you).
+- Items a step checks that a later craft already uses aren't added to the materials list a second time.
+
 ## 0.22.5
 
 - Task steps check the recipes a guide step tells you to buy: Fishing + Cooking's Gadgetzan step ticks off Spotted Yellowtail, Nightfin Soup and Poached Sunscale Salmon from Gikkix as you learn them, and the Feralas step Baked Salmon.

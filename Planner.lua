@@ -329,7 +329,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
                 train = (st.trainCap or st.learnStep) and true or nil,
                 -- for the task cards (Tasks.lua)
                 trainCap = st.trainCap, learnStep = st.learnStep, book = st.book, quest = st.quest,
-                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes }
+                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has }
   if out.kind == "craft" then
     local r = rprof.recipes[st.spell]
     if not r then return nil end

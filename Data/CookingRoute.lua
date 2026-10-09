@@ -18,7 +18,7 @@ local function Band(key, label, from, to, opts, note)
   table.insert(choices, c)
 end
 
-table.insert(steps, { kind = "guide", from = 1, to = 50,
+table.insert(steps, { kind = "guide", from = 1, to = 50, items = { { 4471, 1 } }, nearTrainer = { "Cooking" },
   text = "You need a fire to cook. In Forever the campfire is an item: craft Basic Campfire Kits from Simple "
     .. "Wood and a Flint and Tinder (sold next to the Cooking trainer), or use a fire already burning there. "
     .. "Buy spices and Refreshing Spring Water from the Cooking Supply vendor, not the AH." })
@@ -104,3 +104,4 @@ CR.RegisterRoute("Cooking", {
 CR.extraNames[GIANT_EGG] = "Giant Egg"
 CR.extraNames[ZESTY_CLAM] = "Zesty Clam Meat"
 CR.extraNames[ALTERAC_SWISS] = "Alterac Swiss"
+CR.extraNames[4471] = "Flint and Tinder"

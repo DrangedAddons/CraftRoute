@@ -359,6 +359,16 @@ function CR.StepTask(st, profName)
       local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
       if price and total < it[2] then cost = cost + price * (it[2] - total) end
     end
+    -- things to have on you that the materials list already counts (reagents of a later craft):
+    -- checked here, not added to the shopping again
+    for _, it in ipairs(st.has or {}) do
+      local total, have = Owned(it[1])
+      local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
+      if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
+      Cond(have >= it[2], label)
+      local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
+      if price and total < it[2] then cost = cost + price * (it[2] - total) end
+    end
     if cost > 0 then t.cost = cost end
     -- recipes to buy and learn on the way (st.recipes = spell IDs)
     local rprofName = (CR.Route(profName) or {}).recipeProf or profName
@@ -378,7 +388,7 @@ function CR.StepTask(st, profName)
     if activity and st.to and st.to > (st.from or 0) then
       Cond(cur >= st.to, string.format("%s %d (you: %d)", skillName, st.to, cur))
       t.progress = { from = st.from or 0, to = st.to, cur = cur }
-    elseif st.items and #st.items > 0 and not st.trainCap and not st.learnStep then
+    elseif ((st.items and #st.items > 0) or (st.has and #st.has > 0)) and not st.trainCap and not st.learnStep then
       t.kind = "buy"
     end
     t.places = Nearest(NpcsInText(text))
@@ -394,7 +404,7 @@ function CR.StepTask(st, profName)
     end
     -- a rank learned from a trainer (combined guide): its requirements, and the trainers
     if st.trainCap then t.kind = st.book and "book" or (st.quest and "quest" or "train") end
-    if st.trainCap and not st.book then
+    if st.trainCap then
       local tier = RankTier(skillName, st.trainCap)
       if tier then
         if tier.skill then
@@ -405,7 +415,7 @@ function CR.StepTask(st, profName)
           table.insert(t.checks, 2, Check(lvl >= tier.level, string.format("Level %d (you: %d)", tier.level, lvl)))
         end
       end
-      if #t.places == 0 and not st.quest then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
+      if #t.places == 0 and not st.quest and not st.book then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
     end
     -- a tip with nothing to check and nobody to visit stays a note in the list - no stop
     if #conds == 0 and #t.places == 0 then return nil end
