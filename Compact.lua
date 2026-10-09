@@ -2510,7 +2510,7 @@ function CR.ProbeUnderMouse()
               tostring(r.GetAtlas and r:GetAtlas()), n(r:GetWidth()), n(r:GetHeight())))
           end
         end
-        P(string.format("%s  [%s%s] level=%d %.0fx%.0f  %s", cpath, c:GetObjectType(),
+        P(string.format("%s  [%s%s] level=%d %.0fx%.0f  %s", cpath, tostring(c:GetObjectType()),
           type(name) == "string" and (" " .. name) or "", n(c:GetFrameLevel()), n(c:GetWidth()), n(c:GetHeight()),
           #textures > 0 and ("tex: " .. table.concat(textures, ", ")) or ""))
       end
