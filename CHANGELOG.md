@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.22.1
+
+- Fishing + Cooking: the "Learn Journeyman / Expert / Artisan" steps now list the nearest trainers with Pin buttons (as the Fishing-only guide does), plus the skill and level they need, and are labelled as training / book / quest.
+- Profession-window view: a task step no longer shows the last recipe's "Not enough reagents" line under the card.
+
 ## 0.22.0
 
 - Task steps: the route now stops at the steps that aren't crafts - training the next rank, buying and reading a book (Expert Fishing / Cooking / First Aid), the Artisan quests, buying supplies (baubles, nightcrawlers), learning a recipe before its craft, and fishing to a skill. Both the Craft tab and the profession-window view show a task card in the recipe's place: what to do, a checklist, the nearest NPCs with a **Pin** button each (a Blizzard map pin, tracked on screen), the cost, and skill progress for fishing steps.

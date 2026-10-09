@@ -166,6 +166,24 @@ local function RankFor(learn)
   return 4
 end
 
+-- 75 Apprentice, 150 Journeyman, 225 Expert, 300 Artisan
+local function RankOfCap(cap)
+  if cap <= 75 then return 1 elseif cap <= 150 then return 2 elseif cap <= 225 then return 3 end
+  return 4
+end
+
+-- The rank (skill needed, level) that raises skillName's max to cap, from its own route.
+local function RankTier(skillName, cap)
+  local prof = CR.professions[skillName]
+  for _, route in pairs(prof and prof.routes or {}) do
+    if type(route) == "table" then
+      for _, tier in ipairs(route.tiers or {}) do
+        if tier.cap == cap then return tier end
+      end
+    end
+  end
+end
+
 local function DoneTable(profName) return CR.ProfTable("tasksDone", profName) end
 
 local function Owned(itemID)
@@ -296,6 +314,21 @@ function CR.StepTask(st, profName)
       t.progress = { from = st.from or 0, to = st.to, cur = cur }
     end
     t.places = Nearest(NpcsInText(text))
+    -- a rank learned from a trainer (combined guide): its requirements, and the trainers
+    if st.trainCap then t.kind = st.book and "book" or (st.quest and "quest" or "train") end
+    if st.trainCap and not st.book and not st.quest then
+      local tier = RankTier(skillName, st.trainCap)
+      if tier then
+        if tier.skill then
+          table.insert(t.checks, 1, Check(cur >= tier.skill, string.format("%s skill %d (you: %d)", skillName, tier.skill, cur)))
+        end
+        if tier.level and tier.level > 0 then
+          local lvl = UnitLevel("player") or 1
+          table.insert(t.checks, 2, Check(lvl >= tier.level, string.format("Level %d (you: %d)", tier.level, lvl)))
+        end
+      end
+      if #t.places == 0 then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
+    end
     -- a tip with nothing to check and nobody to visit stays a note in the list - no stop
     if #conds == 0 and #t.places == 0 then return nil end
     -- nothing the game can check: you're past it once your skill has moved beyond the step

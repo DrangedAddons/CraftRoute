@@ -1092,6 +1092,7 @@ local function FillSchematic(info)
     if frame.shopBtn then frame.shopBtn:Hide() end
     if task then
       frame.detailEmpty:Hide()
+      if frame.status then frame.status:SetText("") end
       if frame.UpdateEnchant then frame:UpdateEnchant(nil) end
       SyncEnchantSecure()
       return
