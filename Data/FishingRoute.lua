@@ -92,10 +92,10 @@ CR.RegisterRoute("Fishing", {
     { name = "Apprentice", cap = 75, skill = 0, level = 0 },
     { name = "Journeyman", cap = 150, skill = 50, level = 10,
       text = "Train Journeyman Fishing at any Fishing trainer (skill 50, level 10)." },
-    { name = "Expert", cap = 225, skill = 125, level = 20,
+    { name = "Expert", cap = 225, skill = 125, level = 20, book = 16083,
       text = "Buy and read 'Expert Fishing - The Bass and You' (skill 125, level 20) from Old Man Heming "
         .. "at the bottom of Booty Bay, near the fishing sign. Also on the Auction House." },
-    { name = "Artisan", cap = 300, skill = 225, level = 35,
+    { name = "Artisan", cap = 300, skill = 225, level = 35, quest = true,
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "skill 225). Catch Feralas Ahi (Feralas, use Bright Baubles), Misty Reed Mahi Mahi (Swamp of "
         .. "Sorrows), Sar'theris Striker (Desolace) and Savage Coast Blue Sailfin (Stranglethorn Vale)." },

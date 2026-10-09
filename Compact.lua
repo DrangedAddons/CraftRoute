@@ -319,6 +319,10 @@ local function ShowTooltip(row)
     GameTooltip:SetText(st.letter .. ": " .. st.label, 1, 1, 1, 1, true)
     GameTooltip:AddLine(st.selected and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Chosen - this is the path the route follows."
       or "Click to choose this path instead.", st.selected and 0.4 or 1, st.selected and 1 or 0.82, st.selected and 0.4 or 0, true)
+  elseif item.kind == "task" then
+    GameTooltip:SetText(item.task.title or "", 1, 0.82, 0, 1, true)
+    if item.task.text and item.task.text ~= "" then GameTooltip:AddLine(item.task.text, 1, 1, 1, true) end
+    GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
   elseif item.kind == "note" then
     GameTooltip:SetText(item.tip or item.text or "", 1, 0.82, 0, 1, true)   -- long guide notes wrap
   else
@@ -357,6 +361,28 @@ local function ApplyRow(row, item)
       row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
       row.name:SetPoint("RIGHT", -8, 0)
     end
+    return
+  end
+
+  if item.kind == "task" then
+    local t = item.task
+    row:ShowSelected(item.selected and true or false)
+    row.icon:SetTexture(t.icon or BOOK)
+    row.icon:Show()
+    row.icon:ClearAllPoints()
+    row.icon:SetPoint("LEFT", 6, 0)
+    row.name:SetText(CR.ColorText("To do: ", "ff9933") .. (t.title or ""))
+    if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.82, 0) end
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+    row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    local from = item.action.from
+    row.right:SetText(from and from > 0 and tostring(from) or "")
+    row:SetScript("OnClick", function()
+      ui.selectedKey = item.key
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end)
     return
   end
 
@@ -794,20 +820,25 @@ local function BuildItems()
   local plan = entry and entry.plan
   if not plan then return nil, nil, "No plan for " .. name .. "." end
 
-  local crafts = {}
-  for _, st in ipairs(plan.steps) do
-    if st.recipe and (st.kind == "craft" or st.kind == "extra" or st.kind == "target") then
-      table.insert(crafts, st)
-    end
+  -- what's left to do: crafts, and open tasks (train, book, learn a recipe, fishing) the route
+  -- stops at; taskOf[plan step] = its open task
+  local actions = CR.ActionSteps(entry, name)
+  local taskOf = {}
+  local function ActionKey(a) return a.task and ("task:" .. a.task.key) or StepKey(a) end
+  for _, a in ipairs(actions) do
+    if a.task then taskOf[a.planStep] = a end
   end
   local selected
   if ui.selectedKey then
-    for _, st in ipairs(crafts) do
-      if StepKey(st) == ui.selectedKey then selected = st end
+    for _, a in ipairs(actions) do
+      if ActionKey(a) == ui.selectedKey then selected = a end
     end
   end
-  if not selected then selected = crafts[1] end
-  ui.selectedKey = selected and StepKey(selected) or nil
+  if not selected then selected = actions[1] end
+  ui.selectedKey = selected and ActionKey(selected) or nil
+  local function TaskItem(a)
+    return { kind = "task", action = a, task = a.task, key = ActionKey(a), selected = ActionKey(a) == ui.selectedKey }
+  end
 
   local items = {}
   for _, st in ipairs(plan.steps) do
@@ -815,6 +846,8 @@ local function BuildItems()
       table.insert(items, { kind = "note", gold = true, text = "Choose one", tip = st.text or "Choose one" })
     elseif st.kind == "option" then
       table.insert(items, { kind = "option", step = st })
+    elseif (st.kind == "guide" or st.kind == "train") and taskOf[st] then
+      table.insert(items, TaskItem(taskOf[st]))
     elseif st.kind == "guide" or st.kind == "train" then
       table.insert(items, {
         kind = "note", step = st, gold = st.kind == "train",
@@ -823,6 +856,7 @@ local function BuildItems()
         tip = CR.FactionText(st.text or ""),
       })
     elseif st.recipe and (st.kind == "craft" or st.kind == "extra" or st.kind == "target") then
+      if taskOf[st] then table.insert(items, TaskItem(taskOf[st])) end   -- learn the recipe first
       local key = StepKey(st)
       local open = IsOpen(key)
       table.insert(items, {
@@ -836,7 +870,7 @@ local function BuildItems()
       end
     end
   end
-  local ahead = selected and selected ~= crafts[1]
+  local ahead = selected and selected ~= actions[1]
   return items, { profName = name, entry = entry, selected = selected, ahead = ahead }, nil
 end
 
@@ -1033,7 +1067,19 @@ end
 local function FillSchematic(info)
   local frame = overlay
   local st = info and info.selected
-  local recipe = st and st.recipe
+  local task = st and st.task
+  local recipe = st and not task and st.recipe or nil
+  if task then
+    if not frame.crTaskCard then
+      frame.crTaskCard = CR.CreateTaskCard(frame.schematic, 300)
+      frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, -12)
+    end
+    local sw = frame.schemW or frame.schematic:GetWidth() or 0
+    if sw < 40 then sw = 300 end
+    frame.crTaskCard:Fill(task, math.max(200, math.min(420, sw - 16)))
+  elseif frame.crTaskCard then
+    frame.crTaskCard:Hide()
+  end
   frame.icon:SetShown(recipe ~= nil)
   frame.rName:SetShown(recipe ~= nil)
   frame.rSub:SetShown(recipe ~= nil)
@@ -1043,6 +1089,13 @@ local function FillSchematic(info)
   frame.buttons:SetShown(recipe ~= nil)
   if not recipe then
     for i = 1, REAGENT_SLOTS do frame.reagents[i]:Hide() end
+    if frame.shopBtn then frame.shopBtn:Hide() end
+    if task then
+      frame.detailEmpty:Hide()
+      if frame.UpdateEnchant then frame:UpdateEnchant(nil) end
+      SyncEnchantSecure()
+      return
+    end
     frame.detailEmpty:SetText(info and info.entry and info.entry.cur >= info.entry.goal
       and ("Goal reached (" .. info.entry.goal .. "). Raise it in the route dropdown.")
       or "Nothing left to craft on this route.")

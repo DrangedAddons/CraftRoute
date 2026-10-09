@@ -15,6 +15,8 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 - A cast bar, and Create / Create All buttons.
 - Warnings when a recipe needs a special station, like a Tanning Rack or a Sewing Machine.
 
+**Stops at the steps that aren't crafts.** Training the next rank, a book or quest, supplies to buy, a recipe to learn, fishing to a skill: the route stops and shows what to do, the nearest NPCs with a map pin button, and the cost. It moves on by itself once the game shows it's done, or click Mark as done.
+
 **Makes the parts for you.**
 - Short on a component you can make yourself? Click it to open what it's made from and craft it on the spot.
 - Chains as deep as they go: scraps → Light → Medium → Heavy Leather.
@@ -42,6 +44,7 @@ Type `/cr` to open CraftRoute.
 Optional companions:
 - [Auctionator](https://www.curseforge.com/wow/addons/auctionator) for prices and shopping lists.
 - [Syndicator](https://www.curseforge.com/wow/addons/syndicator) for bank, mail and alt counts.
+- TrainerSpells for trainer and recipe vendor locations (map pins on task steps).
 - EllesmereUI for the matching themes.
 
 ## Notes

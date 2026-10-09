@@ -118,7 +118,7 @@ local route = {
     { skill = C, from = 50, to = 100, spell = 7753, note = "Cook all your Longjaw - you'll catch more later" },
 
     -- Fishing 130-205 and Cooking 100-175 (Expert: Fishing needs level 20 + 125, Cooking needs 125)
-    { kind = "guide", skill = F, from = 100, to = 205, trainCap = 225,
+    { kind = "guide", skill = F, from = 100, to = 205, trainCap = 225, book = 16083,
       text = "Go to Booty Bay{H: (take the boat from Ratchet)}. Buy and read 'Expert Fishing - The Bass and You' "
         .. "from Old Man Heming (level 20, Fishing 125). Buy Recipe: Mithril Head Trout and Recipe: Filet of "
         .. "Redgill from Kelsey Yance." },
@@ -126,7 +126,7 @@ local route = {
       yields = { { LONGJAW, 95 }, { CATFISH, 145 } },
       text = "Fly from Ratchet to Sun Rock Retreat (Stonetalon Mountains) and buy 5 Nightcrawlers from Kulwia "
         .. "(keep 3 for Dustwallow Marsh). Attach one and fish the open water until 205." },
-    { kind = "guide", skill = C, from = 100, to = 175, trainCap = 225, faction = "Horde",
+    { kind = "guide", skill = C, from = 100, to = 175, trainCap = 225, faction = "Horde", book = 16072,
       text = "Fly to Shadowprey Village (Desolace): buy the Expert Cookbook from Wulan (top floor of the "
         .. "eastern-most building) and read it at Cooking 125. Buy 20 Alterac Swiss from Innkeeper Sikewa "
         .. "for the Artisan Cooking quest." },
@@ -135,7 +135,7 @@ local route = {
       text = "Fly from Ratchet to Astranaar and ride south-east to Mystral Lake (Ashenvale). Buy the Expert "
         .. "Cookbook and 5 Nightcrawlers from Shandrina (keep 3 for Dustwallow). Fish Mystral Lake with a "
         .. "Nightcrawler until 205." },
-    { kind = "guide", skill = C, from = 100, to = 175, trainCap = 225, faction = "Alliance",
+    { kind = "guide", skill = C, from = 100, to = 175, trainCap = 225, faction = "Alliance", book = 16072,
       text = "Read the Expert Cookbook (from Shandrina) as soon as you reach Cooking 125 - without it you stop "
         .. "getting points at 150." },
     { skill = C, from = 100, to = 175, spell = 7755, note = "Cook all your Bristle Whisker Catfish" },

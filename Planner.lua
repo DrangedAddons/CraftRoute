@@ -326,7 +326,10 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
                 stepFrom = st.from, stepTo = st.to,   -- the guide's full range, for progress bars
                 -- A band's general instruction goes above its "pick one" block (forks sort at lo - 0.6).
                 sort = route.sequential and index or ((st.kind == "guide" and not st.when) and lo - 0.8 or lo),
-                train = (st.trainCap or st.learnStep) and true or nil }
+                train = (st.trainCap or st.learnStep) and true or nil,
+                -- for the task cards (Tasks.lua)
+                trainCap = st.trainCap, learnStep = st.learnStep, book = st.book, quest = st.quest,
+                chosen = st.when ~= nil, ownSkill = st.skill }
   if out.kind == "craft" then
     local r = rprof.recipes[st.spell]
     if not r then return nil end
@@ -497,7 +500,8 @@ function CR.BuildPlan(profName, cur, goal)
   -- Trainer milestones (routes followed in order spell these out as their own steps)
   local tiers = route.sequential and {} or (route.tiers or {})
   if not detected and not route.sequential then
-    table.insert(events, { kind = "train", from = 0, sort = -1, text = "Learn Apprentice " .. profName, ok = true })
+    table.insert(events, { kind = "train", from = 0, sort = -1, text = "Learn Apprentice " .. profName, ok = true,
+                           apprentice = true, rankIndex = 1 })
   end
   for i = 2, #tiers do
     local tier, prev = tiers[i], tiers[i - 1]
@@ -507,8 +511,11 @@ function CR.BuildPlan(profName, cur, goal)
         profName, tier.skill, tier.level, tier.where and (" - " .. tier.where) or ""))
       -- Listed where you can first train it (before any "do one of these" block at that skill).
       local at = max(tier.skill, cur)
+      -- rank details for the task card (Tasks.lua): what it needs, and when it's done
       table.insert(events, { kind = "train", from = at, sort = at - 0.7, text = text, ok = lvlOK,
-                             items = tier.items, skill = profName })
+                             items = tier.items, skill = profName, rankIndex = i, cap = tier.cap,
+                             tierName = tier.name, need = tier.skill, level = tier.level,
+                             book = tier.book, quest = tier.quest })
     end
   end
 

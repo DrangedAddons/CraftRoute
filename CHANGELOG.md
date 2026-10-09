@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.22.0
+
+- Task steps: the route now stops at the steps that aren't crafts - training the next rank, buying and reading a book (Expert Fishing / Cooking / First Aid), the Artisan quests, buying supplies (baubles, nightcrawlers), learning a recipe before its craft, and fishing to a skill. Both the Craft tab and the profession-window view show a task card in the recipe's place: what to do, a checklist, the nearest NPCs with a **Pin** button each (a Blizzard map pin, tracked on screen), the cost, and skill progress for fishing steps.
+- The game ticks tasks off by itself where it can tell (rank learned, max skill raised, book or supplies in your bags, recipe learned, skill reached); **Mark as done** is the fallback for anything it can't. `/cr tasks reset` undoes the manual ticks for the current profession.
+- NPC locations come from the TrainerSpells addon when it's installed (profession trainers and recipe vendors, filtered to your faction, nearest first), plus Old Man Heming, Shandrina and Nat Pagle for the guide steps.
+- "Learn this recipe" tasks appear once CraftRoute knows what you've learned (open the profession once); trainer recipes show the training cost.
+- Tips with nothing to do and nobody to visit stay plain notes in the route list.
+- Fishing+Cooking: the Expert steps now say which book to buy.
+
 ## 0.21.5
 
 - /cr probe lists every frame of the profession window under the mouse (outside CraftRoute): where it hangs, its size and textures - to identify the stray boxes over the recipe icon, which /cr view showed aren't CraftRoute's.

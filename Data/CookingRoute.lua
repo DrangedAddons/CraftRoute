@@ -86,10 +86,10 @@ CR.RegisterRoute("Cooking", {
     { name = "Journeyman", cap = 150, skill = 50, level = 0,
       text = "Train Journeyman Cooking at any Cooking trainer (skill 50). Do it before 75 or you stop "
         .. "getting skill points." },
-    { name = "Expert", cap = 225, skill = 125, level = 0,
+    { name = "Expert", cap = 225, skill = 125, level = 0, book = 16072,
       text = "Buy and read the Expert Cookbook (skill 125) from {H:Wulan, Shadowprey Village, Desolace}"
         .. "{A:Shandrina, Mystral Lake, Ashenvale}." },
-    { name = "Artisan", cap = 300, skill = 225, level = 35,
+    { name = "Artisan", cap = 300, skill = 225, level = 35, quest = true,
       items = { { GIANT_EGG, 12 }, { ZESTY_CLAM, 10 }, { ALTERAC_SWISS, 20 } },
       text = "Artisan is the reward of 'Clamlette Surprise' from Dirge Quikcleave in Gadgetzan (level 35, skill "
         .. "225). Get the lead quest {H:'To Gadgetzan You Go!' from Zamja in Orgrimmar}{A:'I Know A Guy...' from "

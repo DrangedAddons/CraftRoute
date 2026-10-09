@@ -1497,6 +1497,12 @@ function CR.CreateCraftPanel(parent)
   empty:SetPoint("TOP", leftArea, "TOP", 0, -160)
   empty:SetWidth(560)
 
+  -- A step that isn't a craft (train a rank, buy a book, learn a recipe, go fishing) stops the
+  -- route: this card takes the recipe's place until the game (or "Mark as done") ticks it off.
+  local TASK_W = 320
+  local taskCard = CR.CreateTaskCard(panel, TASK_W)
+  taskCard:SetPoint("TOP", leftArea, "TOP", MAIN_X, -64)
+
   -- Compact route (right): the upcoming steps, current one highlighted. Click a craft to view it.
   local routeTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   routeTitle:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -ROUTE_W + 50, -10)
@@ -1622,13 +1628,10 @@ function CR.CreateCraftPanel(parent)
   function panel:AutoOpen() end
   panel:SetScript("OnHide", function(self) self.autoOpened = nil; CR.HideBuyPop(panel); CR.HideSecureEnchantButtons() end)
 
-  -- Craft-able steps of the plan (current first), up to the goal picked on either tab.
+  -- What's left to do (current first), up to the goal picked on either tab: crafts, and the
+  -- tasks between them ({ task = ... }).
   local function CraftSteps(entry)
-    local list = {}
-    for _, st in ipairs(entry.plan.steps) do
-      if CRAFT_KINDS[st.kind] and st.recipe then table.insert(list, st) end
-    end
-    return list
+    return CR.ActionSteps(entry, db().profession)
   end
 
   local function Describe(st)
@@ -1654,12 +1657,17 @@ function CR.CreateCraftPanel(parent)
     local steps = entry and CraftSteps(entry) or {}
 
     -- compact route: everything ahead except the "choose ONE" blocks (the chosen path's steps show)
-    local lines, craftIndex = {}, 0
+    -- each line clicks to its place in `steps` (a craft whose recipe must be learned first goes
+    -- to the "learn it" task)
+    local indexOf = {}
+    for i, a in ipairs(steps) do
+      local key = a.task and a.planStep or a
+      if not indexOf[key] then indexOf[key] = i end
+    end
+    local lines = {}
     for _, s in ipairs(entry and entry.plan.steps or {}) do
       if s.kind ~= "fork" and s.kind ~= "option" then
-        local isCraft = CRAFT_KINDS[s.kind] and s.recipe
-        if isCraft then craftIndex = craftIndex + 1 end
-        table.insert(lines, { step = s, craftIndex = isCraft and craftIndex or nil })
+        table.insert(lines, { step = s, craftIndex = indexOf[s] })
       end
     end
     routeList.data = lines
@@ -1684,7 +1692,27 @@ function CR.CreateCraftPanel(parent)
     craftMats:Refresh()
     costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
+    -- Up next / After that
+    local function FillPreview(p, ps, floor)
+      if not ps then p:Hide() return end
+      local pr = ps.recipe
+      p:Show()
+      p.iconBtn.recipe, p.iconBtn.crafts = pr, ps.crafts
+      p.iconBtn.icon:SetTexture(CR.RecipeIcon(pr))
+      p.iconBtn:SetBackdropBorderColor(QualityRGB(pr.q))
+      p.name:SetText(pr.name)
+      p.name:SetTextColor(QualityRGB(pr.q))
+      local structure = CR.StructureText(pr)
+      p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts)
+        .. (structure and ("\n" .. structure) or ""))
+      FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
+      if p.lastSpell ~= pr.spell then p.scroll:ScrollTo(0) end
+      p.lastSpell = pr.spell
+      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, floor, 12 + 16, 90, 150)))
+    end
+
     if #steps == 0 then
+      taskCard:Hide()
       main:Hide(); nextFrame:Hide(); afterFrame:Hide(); controls:Hide(); enchantArea:Hide(); CR.HideSecureEnchantButtons(); status:SetText(""); prevBtn:Hide(); nextBtn:Hide()
       stepLine:SetText("")
       stepBar:SetValue(0)
@@ -1699,14 +1727,43 @@ function CR.CreateCraftPanel(parent)
     empty:Hide(); main:Show(); controls:Show()
     panel.viewOffset = math.min(panel.viewOffset, #steps - 1)
     local st = steps[1 + panel.viewOffset]
-    local nst = steps[2 + panel.viewOffset]
+    prevBtn:SetShown(true); nextBtn:SetShown(true)
+    prevBtn:SetEnabled(panel.viewOffset > 0)
+    nextBtn:SetEnabled(steps[2 + panel.viewOffset] ~= nil)
+    -- the next two crafts after this one, for the previews (tasks aren't previewed)
+    local ahead = {}
+    for i = 2 + panel.viewOffset, #steps do
+      if not steps[i].task then table.insert(ahead, steps[i]) end
+      if #ahead == 2 then break end
+    end
+
+    if st.task then
+      local t = st.task
+      main:Hide(); controls:Hide(); enchantArea:Hide(); CR.HideSecureEnchantButtons(); CR.HideBuyPop(panel)
+      status:SetText("")
+      if t.progress then
+        local p = t.progress
+        stepBar:SetValue(math.max(0, math.min(1, (p.cur - p.from) / math.max(1, p.to - p.from))))
+      else
+        stepBar:SetValue(0)
+      end
+      stepBar:SetStatusBarColor(0.25, 0.6, 1)
+      stepLine:SetText(CR.ColorText("Before you carry on: " .. (t.title or ""), "ffd100")
+        .. (panel.viewOffset > 0 and CR.ColorText("  ·  looking ahead", "aaaaaa") or ""))
+      taskCard:Fill(t, TASK_W)
+      FillPreview(nextFrame, ahead[1], cast)
+      FillPreview(afterFrame, ahead[2], cast)
+      profDD:Sync()
+      panel.lastSpell, panel.current = nil, nil
+      SyncSecureButtons(false)
+      return
+    end
+    taskCard:Hide()
+
     local r = st.recipe
     local enchantFits, enchantKind = CR.EnchantSlotFor(r)
     -- the reagent boxes stop above the enchant target when it's showing, else above the cast bar
     local floor = enchantFits and enchantArea or cast
-    prevBtn:SetShown(true); nextBtn:SetShown(true)
-    prevBtn:SetEnabled(panel.viewOffset > 0)
-    nextBtn:SetEnabled(nst ~= nil)
 
     -- step line: where this craft sits in the route
     local label, labelColor = Describe(st)
@@ -1836,26 +1893,8 @@ function CR.CreateCraftPanel(parent)
     end
     stepNeed:SetText(table.concat(lines, "\n"))
 
-    -- Up next / After that
-    local function FillPreview(p, ps)
-      if not ps then p:Hide() return end
-      local pr = ps.recipe
-      p:Show()
-      p.iconBtn.recipe, p.iconBtn.crafts = pr, ps.crafts
-      p.iconBtn.icon:SetTexture(CR.RecipeIcon(pr))
-      p.iconBtn:SetBackdropBorderColor(QualityRGB(pr.q))
-      p.name:SetText(pr.name)
-      p.name:SetTextColor(QualityRGB(pr.q))
-      local structure = CR.StructureText(pr)
-      p.sub:SetText(string.format("%s  ·  %s%dx", (Describe(ps)), ps.estimated and "~" or "", ps.crafts)
-        .. (structure and ("\n" .. structure) or ""))
-      FillReagents(p.box, p.rows, pr, ps.crafts, { perCraft = true })   -- same colour rule as the current recipe
-      if p.lastSpell ~= pr.spell then p.scroll:ScrollTo(0) end
-      p.lastSpell = pr.spell
-      p.box:SetHeight(12 + p.scroll:Fit(#pr.reagents * 30, RoomBelow(p.box, floor, 12 + 16, 90, 150)))
-    end
-    FillPreview(nextFrame, nst)
-    FillPreview(afterFrame, steps[3 + panel.viewOffset])
+    FillPreview(nextFrame, ahead[1], floor)
+    FillPreview(afterFrame, ahead[2], floor)
 
     -- Controls
     local open = CR.TradeSkillOpenFor(rprof.name)

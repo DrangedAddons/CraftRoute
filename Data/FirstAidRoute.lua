@@ -15,11 +15,11 @@ CR.RegisterRoute("First Aid", {
     { name = "Journeyman", cap = 150, skill = 50,  level = 0,
       text = "Train Journeyman First Aid at any First Aid trainer (skill 50). Learn Wool Bandage at 80, Heavy "
         .. "Wool Bandage at 115 and Silk Bandage before you leave - it's the last recipe trainers teach." },
-    { name = "Expert",     cap = 225, skill = 125, level = 0,
+    { name = "Expert",     cap = 225, skill = 125, level = 0, book = 16084,
       text = "Buy and read 'Expert First Aid - Under Wraps' (skill 125, no level needed) from "
         .. "{H:Balai Lok'Wein, Dustwallow Marsh}{A:Deneb Walker, Arathi Highlands}. Buy Manual: Heavy Silk "
         .. "Bandage and Manual: Mageweave Bandage there too (or on the AH)." },
-    { name = "Artisan",    cap = 300, skill = 225, level = 35,
+    { name = "Artisan",    cap = 300, skill = 225, level = 35, quest = true,
       text = "Complete the Triage quest (level 35, skill 225) from {H:Doctor Gregory Victor at Hammerfall, "
         .. "Arathi Highlands}{A:Doctor Gustaf VanHowzen at Theramore, Dustwallow Marsh}. Use the doctor's "
         .. "Triage Bandages, heal the critical patients first, and turn in as soon as 15 are saved." },

@@ -115,6 +115,7 @@ local CHAR_DEFAULTS = {
   manualSkill = {},         -- [prof] = number, used when the profession isn't learned yet
   includeAlts = false,      -- count materials sitting on alts (via Syndicator) as owned
   routeMode = {},           -- [prof] = route mode key (e.g. Cooking: "solo" or "combo")
+  tasksDone = {},           -- [prof] = { [taskKey] = true } (steps ticked off with "Mark as done")
   showUnlearned = true,     -- list professions this character hasn't learned in the profession picker
 }
 
@@ -157,12 +158,15 @@ SlashCmdList.CRAFTROUTE = function(msg)
     if CR.ProbeUnderMouse then CR.ProbeUnderMouse() end
   elseif msg == "view" then
     if CR.DebugCompactView then CR.DebugCompactView() end
+  elseif msg == "tasks reset" then
+    CR.ResetTasks(CraftRouteCharDB.profession)
+    CR.Print("Cleared the steps you marked as done for " .. tostring(CraftRouteCharDB.profession) .. ".")
   elseif msg == "rankbar" then
     if CR.DebugRankBar then CR.DebugRankBar() end
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
   elseif msg == "help" then
-    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet")
+    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession")
   else
     CR.SafeCall(CR.ToggleWindow)
   end
