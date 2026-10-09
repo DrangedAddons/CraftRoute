@@ -1,5 +1,18 @@
 # CraftRoute changelog
 
+## 0.23.0
+
+- Rank steps stop at the right moment. A book, quest or trainer rank whose skill you haven't reached yet no longer blocks the route. You keep fishing or crafting, and the route stops on it the moment your skill gets there: e.g. it stops mid-way through cooking catfish at Cooking 125 to read the Expert Cookbook, then carries on.
+- If there's something to buy for it first (the Expert Cookbook, the Alterac Swiss in Shadowprey Village), the route stops for just that now ("GET READY"), then the step waits for your skill.
+- Waiting steps show in the profession-window list as "At 125: ..." and on their card as "AT COOKING 125".
+- More objectives on task steps:
+  - Fishing + Cooking starting zones: "Fishing learned".
+  - Mystral Lake (Alliance): "Bought Expert Cookbook" (ticked once read).
+  - Nat Pagle, Angler Extreme: the four quest fish, in both Fishing guides.
+  - Cooking's Artisan rank: the three Gikkix recipes.
+  - First Aid's Expert rank: Manual: Heavy Silk Bandage and Manual: Mageweave Bandage.
+- Rank and book steps show quest items as handed in once the rank is learned, and the book's price is only counted until it's read.
+
 ## 0.22.6
 
 - More objectives on task steps, each with a tick or a cross:

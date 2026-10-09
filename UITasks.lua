@@ -124,7 +124,9 @@ function CR.CreateTaskCard(parent, width)
     w = w or self:GetWidth() or width
     self:SetWidth(w)
     self.icon:SetTexture(task.icon or "Interface\\Icons\\INV_Misc_Note_01")
-    self.kind:SetText((KIND_LABEL[task.kind] or "NEXT STEP") .. (task.done and "  -  DONE" or ""))
+    self.kind:SetText((KIND_LABEL[task.kind] or "NEXT STEP") .. (task.done and "  -  DONE"
+      or (task.waiting and string.format("  -  AT %s %d", (task.skillName or ""):upper(), task.waiting))
+      or (task.prep and "  -  GET READY" or "")))
     self.title:SetWidth(w - 54)
     self.title:SetText(task.title or "")
     local y = -math.max(48, 22 + (self.title:GetStringHeight() or 18)) - 10

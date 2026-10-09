@@ -371,7 +371,10 @@ local function ApplyRow(row, item)
     row.icon:Show()
     row.icon:ClearAllPoints()
     row.icon:SetPoint("LEFT", 6, 0)
-    if t.done then
+    if t.waiting then
+      row.name:SetText(CR.ColorText(string.format("At %d: ", t.waiting), "66aaff") .. (t.title or ""))
+      if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.7, 0.7, 0.7) end
+    elseif t.done then
       row.name:SetText(CR.ColorText("Done: ", "40c040") .. (t.title or ""))
       if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.6, 0.6, 0.6) end
     else
@@ -833,7 +836,7 @@ local function BuildItems()
   for _, a in ipairs(actions) do
     if a.task then taskOf[a.planStep] = a end
   end
-  -- finished task steps stay clickable (to look up where something was) but don't stop the route
+  -- finished task steps, and ranks waiting for your skill, stay clickable but don't stop the route
   local doneOf, doneList = {}, {}
   for _, st in ipairs(plan.steps) do
     if (st.kind == "guide" or st.kind == "train") and not taskOf[st] then
@@ -890,7 +893,7 @@ local function BuildItems()
       end
     end
   end
-  local ahead = selected and selected ~= actions[1] and not (selected.task and selected.task.done)
+  local ahead = selected and selected ~= actions[1] and not (selected.task and (selected.task.done or selected.task.waiting))
   return items, { profName = name, entry = entry, selected = selected, ahead = ahead }, nil
 end
 

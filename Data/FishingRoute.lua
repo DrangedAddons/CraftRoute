@@ -96,6 +96,7 @@ CR.RegisterRoute("Fishing", {
       text = "Buy and read 'Expert Fishing - The Bass and You' (skill 125, level 20) from Old Man Heming "
         .. "at the bottom of Booty Bay, near the fishing sign. Also on the Auction House." },
     { name = "Artisan", cap = 300, skill = 225, level = 35, quest = "Nat Pagle, Angler Extreme",
+      has = { { 16967, 1 }, { 16970, 1 }, { 16968, 1 }, { 16969, 1 } },   -- the four quest fish
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "skill 225). Catch Feralas Ahi (Feralas, use Bright Baubles), Misty Reed Mahi Mahi (Swamp of "
         .. "Sorrows), Sar'theris Striker (Desolace) and Savage Coast Blue Sailfin (Stranglethorn Vale)." },
@@ -111,3 +112,7 @@ CR.extraNames[NIGHTCRAWLERS] = "Nightcrawlers"
 CR.extraNames[BRIGHT_BAUBLES] = "Bright Baubles"
 CR.extraNames[6533] = "Aquadynamic Fish Attractor"
 CR.extraNames[8932] = "Alterac Swiss"
+CR.extraNames[16967] = "Feralas Ahi"
+CR.extraNames[16968] = "Sar'theris Striker"
+CR.extraNames[16969] = "Savage Coast Blue Sailfin"
+CR.extraNames[16970] = "Misty Reed Mahi Mahi"

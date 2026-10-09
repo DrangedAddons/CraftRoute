@@ -52,35 +52,35 @@ local route = {
 
   steps = {
     -- Fishing 1-75 in a starting zone
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "mulgore" }, items = START, recipes = { 7751, 7753 }, yields = STD_CATCH,
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "mulgore" }, items = START, learns = true, recipes = { 7751, 7753 }, yields = STD_CATCH,
       text = "Learn Fishing from Uthan Stillwater at Stonebull Lake. Buy Recipe: Brilliant Smallfish, Recipe: "
         .. "Longjaw Mud Snapper, a Fishing Pole and a Shiny Bauble from Harn Longcast in Bloodhoof Village. Fish "
         .. "Stonebull Lake until 75 (about 45 Smallfish, 30 Longjaw)." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "durotar" }, items = START, recipes = { 7752 },
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "durotar" }, items = START, learns = true, recipes = { 7752 },
       yields = { { MACKEREL, 70 } },
       text = "Learn Fishing from Lau'Tiki on the coast south of Sen'jin Village. Buy Recipe: Slitherskin "
         .. "Mackerel, a Fishing Pole and a Shiny Bauble from Zansoa in Sen'jin Village. Fish the coast next to "
         .. "Lau'Tiki until 75 (about 70 Slitherskin Mackerel)." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "tirisfal" }, items = START, recipes = { 7751 },
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "tirisfal" }, items = START, learns = true, recipes = { 7751 },
       yields = { { SMALLFISH, 30 }, { LONGJAW, 20 } },
       text = "Learn Fishing from Clyde Kellen at Brightwater Lake. Buy Recipe: Brilliant Smallfish, a Fishing "
         .. "Pole and a Shiny Bauble from Martine Tramblay at the Death's Watch Waystation, south-east of Brill. "
         .. "Fish Brightwater Lake until 75 (about 30 Smallfish, 20 Longjaw)." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = { "zephras_h", "zephras_a" } }, items = START, recipes = { 7751, 7753 },
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = { "zephras_h", "zephras_a" } }, items = START, learns = true, recipes = { 7751, 7753 },
       yields = STD_CATCH,
       text = "Learn Fishing from Fenn Fairweather (Shen'dar Village) or Baelann Swiftcurrent (Valanaar). Buy a "
         .. "Fishing Pole and a Shiny Bauble from Belandiel Farflight or Baelann Swiftcurrent. Fish any lake or "
         .. "river on Zephras Isle until 75 and keep every fish. In Valanaar, buy Recipe: Brilliant Smallfish "
         .. "and Recipe: Longjaw Mud Snapper from Nyalah Brightfire." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "elwynn" }, items = START, recipes = { 7751, 7753 }, yields = STD_CATCH,
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "elwynn" }, items = START, learns = true, recipes = { 7751, 7753 }, yields = STD_CATCH,
       text = "Learn Fishing from Lee Brown at Crystal Lake. Buy Recipe: Brilliant Smallfish, Recipe: Longjaw Mud "
         .. "Snapper, a Fishing Pole and a Shiny Bauble from Tharynn Bouden in Goldshire. Fish Crystal Lake, east "
         .. "of Goldshire, until 75 (about 45 Smallfish, 30 Longjaw)." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "dunmorogh" }, items = START, recipes = { 7751 },
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "dunmorogh" }, items = START, learns = true, recipes = { 7751 },
       yields = STD_CATCH,
       text = "Learn Fishing from Paxton Ganter at Iceflow Lake. Buy Recipe: Brilliant Smallfish, a Fishing Pole "
         .. "and a Shiny Bauble from Gretta Ganter at Iceflow Lake. Fish Iceflow Lake until 75." .. ATTRACTOR },
-    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "teldrassil" }, items = START, recipes = { 7751, 7753 },
+    { kind = "guide", skill = F, from = 1, to = 75, when = { zone = "teldrassil" }, items = START, learns = true, recipes = { 7751, 7753 },
       yields = STD_CATCH,
       text = "Learn Fishing from Astaia in Darnassus (there's no trainer in Dolanaar). Buy Recipe: Brilliant "
         .. "Smallfish and Recipe: Longjaw Mud Snapper from Nyoma in Dolanaar, and a Fishing Pole and a Shiny "
@@ -131,6 +131,7 @@ local route = {
         .. "eastern-most building) and read it at Cooking 125. Buy 20 Alterac Swiss from Innkeeper Sikewa "
         .. "for the Artisan Cooking quest." },
     { kind = "guide", skill = F, from = 130, to = 205, faction = "Alliance", items = { { NIGHTCRAWLERS, 5 } },
+      books = { { 16072, "Cooking", 225 } },   -- the Expert Cookbook, read later at Cooking 125
       yields = { { LONGJAW, 95 }, { CATFISH, 145 } },
       text = "Fly from Ratchet to Astranaar and ride south-east to Mystral Lake (Ashenvale). Buy the Expert "
         .. "Cookbook and 5 Nightcrawlers from Shandrina (keep 3 for Dustwallow). Fish Mystral Lake with a "
@@ -145,6 +146,7 @@ local route = {
       text = "No Nightcrawlers left? Buy 3 from Kilxx in Ratchet (nobody in Dustwallow sells them). Fish any "
         .. "inland open water in Dustwallow Marsh (not the ocean) until 225, Nightcrawler on." },
     { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300, quest = "Nat Pagle, Angler Extreme",
+      has = { { 16967, 1 }, { 16970, 1 }, { 16968, 1 }, { 16969, 1 } },   -- the four quest fish
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "Fishing 225). Catch Feralas Ahi (Feralas - use the Aquadynamic Fish Attractor or Bright Baubles from "
         .. "Sheendra Tallgrass / Vivianna), Misty Reed Mahi Mahi (Swamp of Sorrows), Sar'theris Striker "

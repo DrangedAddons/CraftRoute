@@ -329,7 +329,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
                 train = (st.trainCap or st.learnStep) and true or nil,
                 -- for the task cards (Tasks.lua)
                 trainCap = st.trainCap, learnStep = st.learnStep, book = st.book, quest = st.quest,
-                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has }
+                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has, learns = st.learns, books = st.books }
   if out.kind == "craft" then
     local r = rprof.recipes[st.spell]
     if not r then return nil end
@@ -515,7 +515,7 @@ function CR.BuildPlan(profName, cur, goal)
       table.insert(events, { kind = "train", from = at, sort = at - 0.7, text = text, ok = lvlOK,
                              items = tier.items, skill = profName, rankIndex = i, cap = tier.cap,
                              tierName = tier.name, need = tier.skill, level = tier.level,
-                             book = tier.book, quest = tier.quest })
+                             book = tier.book, quest = tier.quest, has = tier.has, recipes = tier.recipes })
     end
   end
 

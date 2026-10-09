@@ -298,7 +298,40 @@ function CR.StepTask(st, profName)
   local t = { step = st, key = KeyOf(st), skillName = skillName, text = text, checks = {}, places = {},
               profName = profName }
   local conds = {}   -- what the game can confirm; all true = done
+  local prep = {}    -- the part to do now (buy, learn) - for a rank you can't learn yet
   local function Cond(ok, label) table.insert(conds, ok and true or false); table.insert(t.checks, Check(ok, label)) end
+  local function Prep(ok, label) table.insert(prep, ok and true or false); Cond(ok, label) end
+  local need, trained   -- skill the rank needs; is it learned
+
+  -- The step's objectives: supplies to have on you (items: also on the shopping list; has: already
+  -- counted there as a later craft's reagents) and recipes to learn. Once the rank is trained,
+  -- quest items handed in are gone - they show ticked.
+  local rprofName = (CR.Route(profName) or {}).recipeProf or profName
+  local function Objectives(trainedNow)
+    local cost = 0
+    for _, list in ipairs({ st.items or {}, st.has or {} }) do
+      for _, it in ipairs(list) do
+        local total, have = Owned(it[1])
+        local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
+        if trainedNow then
+          table.insert(t.checks, Check(true, CR.ItemName(it[1]) .. " (handed in)"))
+        else
+          if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
+          Prep(have >= it[2], label)
+          local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
+          if price and total < it[2] then cost = cost + price * (it[2] - total) end
+        end
+      end
+    end
+    if cost > 0 then t.cost = (t.cost or 0) + cost end
+    for _, spell in ipairs(st.recipes or {}) do
+      local pr = CR.professions[rprofName]
+      local r = pr and pr.recipes[spell]
+      local known = KnowsRecipe(rprofName, spell)
+      Prep(known == true, "Learned " .. (r and r.name or ("recipe " .. spell))
+        .. (known == nil and CR.ColorText("  (open " .. rprofName .. " once to check)", "aaaaaa") or ""))
+    end
+  end
 
   if st.kind == "train" then
     local rank = st.rankIndex or 1
@@ -317,11 +350,14 @@ function CR.StepTask(st, profName)
         local lvl = UnitLevel("player") or 1
         table.insert(t.checks, Check(lvl >= st.level, string.format("Level %d (you: %d)", st.level, lvl)))
       end
+      need, trained = st.need, learned and maxRank >= st.cap
       if st.book then
         local _, bags = Owned(st.book)
-        table.insert(t.checks, Check(bags > 0 or maxRank >= st.cap, "Bought " .. CR.ItemName(st.book)))
+        local ok, label = bags > 0 or trained, "Bought " .. CR.ItemName(st.book)
+        if st.need and cur < st.need and not trained then Prep(ok, label) else table.insert(t.checks, Check(ok, label)) end
       end
       QuestCheck(t.checks, st.quest, learned and maxRank >= st.cap)
+      Objectives(trained)
       Cond(learned and maxRank >= st.cap, string.format("%s %s learned (max skill %d)", st.tierName or "", skillName, st.cap))
       if st.book or st.quest then
         t.places = Nearest(NpcsInText(text))
@@ -331,7 +367,7 @@ function CR.StepTask(st, profName)
       end
       if st.book then
         local price = CR.GetUnitPrice and CR.GetUnitPrice(st.book)
-        if price then t.cost = price end
+        if price and not trained then t.cost = (t.cost or 0) + price end
       end
     end
   else
@@ -340,45 +376,27 @@ function CR.StepTask(st, profName)
     t.icon = (skillName == "Fishing") and "Interface\\Icons\\Trade_Fishing" or "Interface\\Icons\\INV_Misc_Note_01"
     t.title = FirstSentence(text)
     if st.learnStep then Cond(learned, skillName .. " learned") end
+    if st.learns then Prep(learned, skillName .. " learned") end
     if st.trainCap then
-      Cond(learned and maxRank >= st.trainCap, string.format("%s trained to %d", skillName, st.trainCap))
-      QuestCheck(t.checks, st.quest, learned and maxRank >= st.trainCap)
+      trained = learned and maxRank >= st.trainCap
+      local tier = RankTier(skillName, st.trainCap)
+      need = tier and tier.skill
+      Cond(trained, string.format("%s trained to %d", skillName, st.trainCap))
+      QuestCheck(t.checks, st.quest, trained)
       if st.book then
         local _, bags = Owned(st.book)
-        table.insert(t.checks, Check(bags > 0 or maxRank >= st.trainCap, "Bought " .. CR.ItemName(st.book)))
+        local ok, label = bags > 0 or trained, "Bought " .. CR.ItemName(st.book)
+        if need and cur < need and not trained then Prep(ok, label) else table.insert(t.checks, Check(ok, label)) end
       end
     end
-    local cost = 0
-    -- supplies count once they're on you (bags or equipped) - one in the bank or on an alt
-    -- doesn't help at the anvil
-    for _, it in ipairs(st.items or {}) do
-      local total, have = Owned(it[1])
-      local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
-      if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
-      Cond(have >= it[2], label)
-      local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
-      if price and total < it[2] then cost = cost + price * (it[2] - total) end
+    -- books to buy now for a rank read later: { itemID, profession, cap it trains to }
+    for _, b in ipairs(st.books or {}) do
+      local _, bags = Owned(b[1])
+      local _, bmax = CR.GetSkill(b[2])
+      Prep(bags > 0 or (bmax or 0) >= b[3], "Bought " .. CR.ItemName(b[1])
+        .. ((bmax or 0) >= b[3] and CR.ColorText("  (read)", "aaaaaa") or ""))
     end
-    -- things to have on you that the materials list already counts (reagents of a later craft):
-    -- checked here, not added to the shopping again
-    for _, it in ipairs(st.has or {}) do
-      local total, have = Owned(it[1])
-      local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
-      if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
-      Cond(have >= it[2], label)
-      local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
-      if price and total < it[2] then cost = cost + price * (it[2] - total) end
-    end
-    if cost > 0 then t.cost = cost end
-    -- recipes to buy and learn on the way (st.recipes = spell IDs)
-    local rprofName = (CR.Route(profName) or {}).recipeProf or profName
-    for _, spell in ipairs(st.recipes or {}) do
-      local p = CR.professions[rprofName]
-      local r = p and p.recipes[spell]
-      local known = KnowsRecipe(rprofName, spell)
-      Cond(known == true, "Learned " .. (r and r.name or ("recipe " .. spell))
-        .. (known == nil and CR.ColorText("  (open " .. rprofName .. " once to check)", "aaaaaa") or ""))
-    end
+    Objectives(trained)
     -- leveling that isn't crafting (fishing): done at the skill
     -- (a training / learning step's range only says when it applies - it's done once trained)
     -- (the solo Fishing guide's tips and shopping steps sit beside a "fish here" step over the
@@ -427,6 +445,25 @@ function CR.StepTask(st, profName)
   t.done = t.auto
   for _, ok in ipairs(conds) do if not ok then t.done = false end end
   if not t.done and DoneTable(profName)[t.key] then t.done, t.manual = true, true end
+
+  -- A rank you can't learn yet (skill below what it needs) doesn't hold up the route: whatever
+  -- is to be done now (buy the book, the cheese, the recipes) stops it as its own task; then it
+  -- waits, and the route stops on it again the moment your skill reaches `need`.
+  if not t.done and need and cur < need and not trained then
+    local prepDone = true
+    for _, ok in ipairs(prep) do if not ok then prepDone = false end end
+    local wait = string.format("At %s %d the route stops here again to %s.", skillName, need,
+      st.book and "read the book" or (st.quest and "do the quest" or "train the rank"))
+    -- (only a book is bought ahead; a quest's items come once you have the quest)
+    if prepDone or not st.book or DoneTable(profName)[t.key .. ":prep"] then
+      t.waiting = need
+      t.text = t.text .. "\n\n" .. wait
+    else
+      t.key = t.key .. ":prep"
+      t.prep = true
+      t.text = t.text .. "\n\nGet these now. " .. wait
+    end
+  end
   return t
 end
 
@@ -472,7 +509,7 @@ function CR.ActionSteps(entry, profName)
       table.insert(list, st)
     elseif st.kind == "train" or st.kind == "guide" then
       local t = CR.StepTask(st, profName)
-      if t and not t.done then table.insert(list, { task = t, kind = "task", from = st.from, planStep = st }) end
+      if t and not t.done and not t.waiting then table.insert(list, { task = t, kind = "task", from = st.from, planStep = st }) end
     end
   end
   return list

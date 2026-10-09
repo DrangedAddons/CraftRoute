@@ -16,6 +16,7 @@ CR.RegisterRoute("First Aid", {
       text = "Train Journeyman First Aid at any First Aid trainer (skill 50). Learn Wool Bandage at 80, Heavy "
         .. "Wool Bandage at 115 and Silk Bandage before you leave - it's the last recipe trainers teach." },
     { name = "Expert",     cap = 225, skill = 125, level = 0, book = 16084,
+      recipes = { 7929, 10840 },   -- Manual: Heavy Silk Bandage, Manual: Mageweave Bandage
       text = "Buy and read 'Expert First Aid - Under Wraps' (skill 125, no level needed) from "
         .. "{H:Balai Lok'Wein, Dustwallow Marsh}{A:Deneb Walker, Arathi Highlands}. Buy Manual: Heavy Silk "
         .. "Bandage and Manual: Mageweave Bandage there too (or on the AH)." },

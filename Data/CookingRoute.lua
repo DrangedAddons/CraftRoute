@@ -90,6 +90,7 @@ CR.RegisterRoute("Cooking", {
       text = "Buy and read the Expert Cookbook (skill 125) from {H:Wulan, Shadowprey Village, Desolace}"
         .. "{A:Shandrina, Mystral Lake, Ashenvale}." },
     { name = "Artisan", cap = 300, skill = 225, level = 35, quest = "Clamlette Surprise",
+      recipes = { 18238, 18243, 18244 },   -- from Gikkix
       items = { { GIANT_EGG, 12 }, { ZESTY_CLAM, 10 }, { ALTERAC_SWISS, 20 } },
       text = "Artisan is the reward of 'Clamlette Surprise' from Dirge Quikcleave in Gadgetzan (level 35, skill "
         .. "225). Get the lead quest {H:'To Gadgetzan You Go!' from Zamja in Orgrimmar}{A:'I Know A Guy...' from "
