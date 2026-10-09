@@ -1095,7 +1095,8 @@ local function FillSchematic(info)
   if task then
     if not frame.crTaskCard then
       frame.crTaskCard = CR.CreateTaskScroll(frame.schematic, 300)
-      frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, -12)
+      -- starts below the Open CraftRoute button (top right), so its title doesn't run under it
+      frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, (RANK_DROP_Y + 1 - 22 - 8) - DIVIDER_TOP)
       frame.crTaskCard:SetPoint("BOTTOMLEFT", frame.schematic, "BOTTOMLEFT", 4, 8)
     end
     local sw = frame.schemW or frame.schematic:GetWidth() or 0

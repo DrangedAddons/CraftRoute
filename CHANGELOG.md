@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.23.3
+
+- Profession-window view: task cards start below the Open CraftRoute button, so the step's label and title no longer run under it.
+
 ## 0.23.2
 
 - Task cards scroll when there's more than fits (long guide text, many objectives): mouse wheel, with a slim bar on the right showing where you are. In both the Craft tab and the profession-window view; a new step starts at the top.
