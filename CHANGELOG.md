@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.2
+
+- Profession-window view: fixed stray square boxes over the recipe icon (and their hover highlight) after the latest WoW Forever update. The icon is now drawn by CraftRoute itself - round, masked, with its ring and tooltip - instead of from a Blizzard button template whose new square slot pieces showed through.
+
 ## 0.21.1
 
 - Profession-window view: the route cost bar no longer has a tooltip (it got in the way; the cost speaks for itself).

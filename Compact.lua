@@ -1789,8 +1789,11 @@ local function BuildOverlay()
   schematic:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
   frame.schematic = schematic
 
-  local iconOk, icon = pcall(CreateFrame, "Button", nil, schematic, "CircularGiantItemButtonTemplate")
-  if not (iconOk and icon and icon.Icon) then
+  -- The recipe icon is drawn here (round, masked) rather than from Blizzard's
+  -- CircularGiantItemButtonTemplate: after a client update that template brought its own square
+  -- slot and highlight pieces, which showed as stray boxes over the icon.
+  local icon
+  do
     icon = CreateFrame("Frame", nil, schematic)
     icon.texture = icon:CreateTexture(nil, "ARTWORK")
     icon.texture:SetSize(46, 46)
@@ -1807,8 +1810,6 @@ local function BuildOverlay()
         icon.texture:AddMaskTexture(mask)
       end)
     end
-  else
-    icon.texture = icon.Icon
   end
   frame.icon = icon
   frame.icon:SetSize(54, 54)
