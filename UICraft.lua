@@ -1501,8 +1501,9 @@ function CR.CreateCraftPanel(parent)
   -- A step that isn't a craft (train a rank, buy a book, learn a recipe, go fishing) stops the
   -- route: this card takes the recipe's place until the game (or "Mark as done") ticks it off.
   local TASK_W = 320
-  local taskCard = CR.CreateTaskCard(panel, TASK_W)
+  local taskCard = CR.CreateTaskScroll(panel, TASK_W)
   taskCard:SetPoint("TOP", leftArea, "TOP", MAIN_X, -64)
+  taskCard:SetPoint("BOTTOM", leftArea, "BOTTOM", MAIN_X, 12)
 
   -- Compact route (right): the upcoming steps, current one highlighted. Click a craft to view it.
   local routeTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")

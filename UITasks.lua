@@ -249,3 +249,62 @@ function CR.CreateTaskCard(parent, width)
 
   return card
 end
+
+-- The card in a scrolling box, for when there's more than fits (long guide text, many
+-- objectives). Anchor the box's top and bottom; :Fill(task, w) / :Hide() as on the card.
+-- Mouse wheel scrolls; a slim bar on the right shows where you are.
+function CR.CreateTaskScroll(parent, width)
+  local box = CreateFrame("Frame", nil, parent)
+  box:SetWidth(width + 12)
+  box:Hide()
+  local sf = CreateFrame("ScrollFrame", nil, box)
+  sf:SetPoint("TOPLEFT", 0, 0)
+  sf:SetPoint("BOTTOMRIGHT", -12, 0)
+  local card = CR.CreateTaskCard(sf, width)
+  card:SetPoint("TOPLEFT", 0, 0)
+  sf:SetScrollChild(card)
+  box.card = card
+
+  local track = CreateFrame("Frame", nil, box, "BackdropTemplate")
+  track:SetWidth(5)
+  track:SetPoint("TOPRIGHT", 0, 0)
+  track:SetPoint("BOTTOMRIGHT", 0, 0)
+  CR.Backdrop(track, 0.1, 0.1, 0.1, 0.8)
+  track.crOwnBorder = true
+  local thumb = track:CreateTexture(nil, "OVERLAY")
+  thumb:SetColorTexture(0.6, 0.6, 0.6, 0.9)
+  thumb:SetWidth(5)
+
+  local function MaxScroll() return math.max(0, (card:GetHeight() or 0) - (sf:GetHeight() or 0)) end
+  local function Update()
+    local max = MaxScroll()
+    if (sf:GetVerticalScroll() or 0) > max then sf:SetVerticalScroll(max) end
+    track:SetShown(max > 0)
+    if max <= 0 then return end
+    local vis, total = sf:GetHeight() or 1, card:GetHeight() or 1
+    local h = math.max(16, vis * vis / total)
+    thumb:SetHeight(h)
+    thumb:ClearAllPoints()
+    thumb:SetPoint("TOP", track, "TOP", 0, -(vis - h) * ((sf:GetVerticalScroll() or 0) / max))
+  end
+  sf:EnableMouseWheel(true)
+  sf:SetScript("OnMouseWheel", function(_, delta)
+    sf:SetVerticalScroll(math.max(0, math.min(MaxScroll(), (sf:GetVerticalScroll() or 0) - delta * 40)))
+    Update()
+  end)
+  sf:SetScript("OnSizeChanged", Update)
+
+  function box:Fill(task, w)
+    w = w or width
+    self:SetWidth(w + 12)
+    -- a different step starts at the top
+    if self.lastKey ~= task.key then sf:SetVerticalScroll(0) end
+    self.lastKey = task.key
+    card:Fill(task, w)
+    self:Show()
+    Update()
+    if C_Timer then C_Timer.After(0, Update) end   -- once the box has its size
+    return card:GetHeight()
+  end
+  return box
+end

@@ -1094,12 +1094,13 @@ local function FillSchematic(info)
   local recipe = st and not task and st.recipe or nil
   if task then
     if not frame.crTaskCard then
-      frame.crTaskCard = CR.CreateTaskCard(frame.schematic, 300)
+      frame.crTaskCard = CR.CreateTaskScroll(frame.schematic, 300)
       frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, -12)
+      frame.crTaskCard:SetPoint("BOTTOMLEFT", frame.schematic, "BOTTOMLEFT", 4, 8)
     end
     local sw = frame.schemW or frame.schematic:GetWidth() or 0
     if sw < 40 then sw = 300 end
-    frame.crTaskCard:Fill(task, math.max(200, math.min(420, sw - 16)))
+    frame.crTaskCard:Fill(task, math.max(200, math.min(420, sw - 28)))
   elseif frame.crTaskCard then
     frame.crTaskCard:Hide()
   end

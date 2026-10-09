@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.23.2
+
+- Task cards scroll when there's more than fits (long guide text, many objectives): mouse wheel, with a slim bar on the right showing where you are. In both the Craft tab and the profession-window view; a new step starts at the top.
+
 ## 0.23.1
 
 - Nat Pagle, Angler Extreme: each quest fish on the card has its own Pin button for where to catch it - Feralas Ahi at Verdantis River (Feralas), Misty Reed Mahi Mahi at Misty Reed Strand (Swamp of Sorrows), Sar'theris Striker at Sar'theris Strand (Desolace), Savage Coast Blue Sailfin on the Savage Coast (Stranglethorn Vale). With WaypointUI the waypoint is named after the fish.
