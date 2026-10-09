@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.5
+
+- /cr probe lists every frame of the profession window under the mouse (outside CraftRoute): where it hangs, its size and textures - to identify the stray boxes over the recipe icon, which /cr view showed aren't CraftRoute's.
+
 ## 0.21.4
 
 - /cr view reports what the profession-window view and Blizzard's window are showing (which page is up, whether the view thinks it should be open, and every piece of its recipe icon) - to track down the stray boxes over the recipe icon.

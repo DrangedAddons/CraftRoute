@@ -153,6 +153,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     CR.NotifyChanged()
   elseif msg == "popup" then
     CR.DebugPopups()
+  elseif msg == "probe" then
+    if CR.ProbeUnderMouse then CR.ProbeUnderMouse() end
   elseif msg == "view" then
     if CR.DebugCompactView then CR.DebugCompactView() end
   elseif msg == "rankbar" then

@@ -2484,6 +2484,42 @@ function CR.DebugCompactView()
   end
 end
 
+-- /cr probe: every frame of the profession window under the mouse - where it hangs, its size and
+-- what it draws - to identify something drawn there (hover it, then type the command).
+function CR.ProbeUnderMouse()
+  local P = CR.Print
+  local root = ProfessionsFrame
+  if not root then P("Open a profession first.") return end
+  local function n(v) return tonumber(v) or 0 end
+  local function KeyIn(parent, child)
+    for k, v in pairs(parent) do if v == child and type(k) == "string" then return k end end
+  end
+  local found = 0
+  local function Walk(f, path, depth)
+    if depth > 6 then return end
+    for _, c in ipairs({ f:GetChildren() }) do
+      local key = KeyIn(f, c) or c:GetName() or tostring(c):gsub("table: ", "")
+      local cpath = path .. "." .. key
+      if c:IsVisible() and c.IsMouseOver and c:IsMouseOver() and not cpath:find("CraftRoute") then
+        found = found + 1
+        local textures = {}
+        for _, r in ipairs({ c:GetRegions() }) do
+          if r.GetObjectType and r:GetObjectType() == "Texture" and r:IsShown() then
+            table.insert(textures, string.format("%s/%s %.0fx%.0f", tostring(r:GetTexture()),
+              tostring(r.GetAtlas and r:GetAtlas()), n(r:GetWidth()), n(r:GetHeight())))
+          end
+        end
+        P(string.format("%s  [%s%s] level=%d %.0fx%.0f  %s", cpath, c:GetObjectType(),
+          c:GetName() and (" " .. c:GetName()) or "", n(c:GetFrameLevel()), n(c:GetWidth()), n(c:GetHeight()),
+          #textures > 0 and ("tex: " .. table.concat(textures, ", ")) or ""))
+      end
+      Walk(c, cpath, depth + 1)
+    end
+  end
+  Walk(root, "ProfessionsFrame", 0)
+  if found == 0 then P("Nothing of the profession window (outside CraftRoute) is under the mouse.") end
+end
+
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:SetScript("OnEvent", function(_, _, addonName)
