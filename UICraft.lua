@@ -529,6 +529,7 @@ end
 -- mailbox, or alts (via Syndicator) - you have them, they're just not on hand.
 function CR.BagsAndElsewhere(itemID)
   local bags = GetItemCount(itemID, false) or 0
+  if CR.TOOLS and CR.TOOLS[itemID] then return bags, 0 end   -- tools only count on you
   local _, total = CR.GetLocations(itemID)
   return bags, math.max(0, (total or 0) - bags)
 end

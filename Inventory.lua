@@ -56,8 +56,23 @@ end
 
 function CR.InvalidateLocations() wipe(cache) end
 
+-- Crafting equipment: it has to be on the character doing the crafting (bags or equipped), so
+-- one in the bank or on an alt doesn't count - unlike materials, which can be fetched or mailed.
+CR.TOOLS = {
+  [5956] = true,                                        -- Blacksmith Hammer
+  [2901] = true,                                        -- Mining Pick
+  [7005] = true,                                        -- Skinning Knife
+  [6256] = true, [6365] = true, [6366] = true, [6367] = true,   -- fishing poles
+  [6219] = true,                                        -- Arclight Spanner
+  [10498] = true,                                       -- Gyromatic Micro-Adjustor
+  [6218] = true, [6339] = true, [11130] = true, [11145] = true, [16207] = true,   -- Runed rods
+  [9149] = true,                                        -- Philosopher's Stone
+}
+function CR.IsTool(itemID) return CR.TOOLS[itemID] or false end
+
 -- Materials "have": this character's bags + bank + mail, and alts too if the setting is on.
 function CR.HaveCount(itemID)
+  if CR.TOOLS[itemID] then return GetItemCount(itemID, false) or 0 end
   local list = CR.GetLocations(itemID)
   local n = 0
   for _, e in ipairs(list) do

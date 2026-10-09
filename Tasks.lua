@@ -186,9 +186,11 @@ end
 
 local function DoneTable(profName) return CR.ProfTable("tasksDone", profName) end
 
+-- (total anywhere, for "more in your bank / on alts"; and on you)
 local function Owned(itemID)
-  local bags, elsewhere = CR.BagsAndElsewhere(itemID)
-  return bags + elsewhere, bags
+  local bags = CR.BagsAndElsewhere(itemID)
+  local _, total = CR.GetLocations(itemID)
+  return math.max(bags, total or 0), bags
 end
 
 -- First sentence of a step's text, for a title.
