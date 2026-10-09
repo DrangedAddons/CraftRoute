@@ -1381,6 +1381,19 @@ local function SetEntryChecked(on)
   if entry.glow then entry.glow:SetShown(on) end
 end
 
+-- Is one of Blizzard's own pages (recipes, specializations...) showing?
+local function BlizzardPageShown()
+  local frame = ProfessionsFrame
+  if not frame then return false end
+  if frame.Pages then
+    for _, page in ipairs(frame.Pages) do
+      if page.IsShown and page:IsShown() then return true end
+    end
+    return false
+  end
+  return (frame.CraftingPage and frame.CraftingPage:IsShown()) or (frame.BookPage and frame.BookPage:IsShown()) or false
+end
+
 local function HidePages()
   local frame = ProfessionsFrame
   if not frame then return end
@@ -2329,6 +2342,14 @@ local function BuildOverlay()
 
   local watch = 0
   frame:SetScript("OnUpdate", function(_, elapsed)
+    -- One of Blizzard's own pages is showing - you went to one of its tabs. This view steps
+    -- aside even if that tab change wasn't seen (a client update changed how the window switches
+    -- tabs, and this view stayed up, empty, over Blizzard's page). Not while a profession switch
+    -- from this view is loading, when Blizzard briefly shows its recipes page.
+    if not Keeping() and GetTime() - openedAt > 0.3 and BlizzardPageShown() then
+      CloseCompact(false)
+      return
+    end
     SyncEnchantSecure()
     watch = watch + elapsed
     if watch < 0.4 then return end

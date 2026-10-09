@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.21.3
+
+- Profession-window view: it now closes whenever one of Blizzard's own pages is showing. After the latest client update, going to one of Blizzard's tabs no longer closed it, so it stayed up - mostly empty - over Blizzard's page, which is where the stray boxes over Blizzard's recipe icon came from.
+
 ## 0.21.2
 
 - Profession-window view: fixed stray square boxes over the recipe icon (and their hover highlight) after the latest WoW Forever update. The icon is now drawn by CraftRoute itself - round, masked, with its ring and tooltip - instead of from a Blizzard button template whose new square slot pieces showed through.
