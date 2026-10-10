@@ -14,7 +14,7 @@ local _, CR = ...
 local ROW_H = 32
 local TAB_ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"
 local BOOK = "Interface\\Icons\\INV_Misc_Book_09"
-local REAGENT_SLOTS = 8
+local REAGENT_SLOTS = 12
 -- Skill bar sits under the native title. Dropdowns, then the list, follow it.
 -- Positions follow Blizzard's own recipe page (measured from it), so flicking between the two
 -- barely moves anything: the header band with a centred skill bar, the pickers where its search
@@ -1114,6 +1114,7 @@ local function FillSchematic(info)
   frame.buttons:SetShown(recipe ~= nil)
   if not recipe then
     for i = 1, REAGENT_SLOTS do frame.reagents[i]:Hide() end
+    if frame.rscroll then frame.rscroll:Hide() end
     if frame.shopBtn then frame.shopBtn:Hide() end
     if task then
       frame.detailEmpty:Hide()
@@ -1151,36 +1152,21 @@ local function FillSchematic(info)
   frame.rStructure:SetText(structure or "")
 
   local reagents = recipe.reagents or {}
-  local sw = frame.schemW or frame.schematic:GetWidth() or 0
-  if sw < 40 then sw = 240 end
-  -- Leave the icon, the cost block, the status line, and the craft buttons clear of each other.
-  local schemH = frame.schemH or frame.schematic:GetHeight() or 0
-  local cap = REAGENT_SLOTS
-  -- Measured: from under the "Reagents:" label down to the Shopping List button (above the craft
-  -- buttons), less the enchant target when it shows and the cost lines under the rows. (The
-  -- estimate below undercounted the room - lists of 4+ were cut to 3 with space to spare.)
-  local labelBottom = frame.reagentsLabel:GetBottom()
-  local buttonsTop = frame.buttons:GetTop()
-  if labelBottom and buttonsTop and labelBottom > buttonsTop then
-    local floorY = buttonsTop + 28
-    if CR.EnchantSlotFor(recipe) then floorY = floorY + 58 end
-    local usable = labelBottom - floorY - 70
-    cap = math.max(1, math.min(REAGENT_SLOTS, math.floor((usable + 4) / 46)))
-  elseif schemH >= 120 then
-    -- Icon, reagent label, cost block, craft buttons, and the enchant target when this recipe needs one.
-    local bottom = 130
-    if CR.EnchantSlotFor(recipe) then bottom = bottom + 58 end
-    local usable = schemH - 195 - bottom   -- reagents start at Blizzard's height (~195 down)
-    cap = math.floor(usable / 46)
-    if cap < 1 then cap = 1 end
-    if cap > REAGENT_SLOTS then cap = REAGENT_SLOTS end
+  -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
+  -- this recipe has one, else above the Shopping List button.
+  local rscroll, rcontent = frame.rscroll, frame.rcontent
+  rscroll:ClearAllPoints()
+  rscroll:SetPoint("TOPLEFT", frame.reagentsLabel, "BOTTOMLEFT", 0, -2)
+  if CR.EnchantSlotFor(recipe) and frame.enchant then
+    rscroll:SetPoint("BOTTOMRIGHT", frame.enchant, "TOPRIGHT", -4, 4)
+  else
+    rscroll:SetPoint("BOTTOMRIGHT", frame.shopBtn, "TOPRIGHT", -4, 4)
   end
-  local shown = math.min(#reagents, cap)
-  local anchor = frame.reagentsLabel
+  local y = -6
   for i = 1, REAGENT_SLOTS do
     local row = frame.reagents[i]
     local rg = reagents[i]
-    if i <= shown and rg then
+    if rg then
       row:Show()
       row.icon:SetTexture(CR.GetItemIcon(rg[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
       local text, bags, need = HaveNeed(rg[1], rg[2], st.crafts or 1)
@@ -1196,22 +1182,23 @@ local function FillSchematic(info)
         end, overlay)
       end or nil)
       row:ClearAllPoints()
-      row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, i == 1 and -6 or -4)
-      -- the right edge (and its Buy button) stays inside the column
-      row:SetPoint("RIGHT", frame.schematic, "RIGHT", -12, 0)
-      anchor = row
+      row:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y)
+      -- the right edge (and its Buy button) stays inside the column, clear of the scroll bar
+      row:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
+      y = y - 46
     else
       row:Hide()
     end
   end
-  if #reagents > shown then
-    frame.cost:SetText("+" .. (#reagents - shown) .. " more on the list\n" .. CostLines(recipe, st.crafts or 1))
-  else
-    frame.cost:SetText(CostLines(recipe, st.crafts or 1))
-  end
+  frame.cost:SetText(CostLines(recipe, st.crafts or 1))
   frame.cost:ClearAllPoints()
-  frame.cost:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -12)
-  frame.cost:SetWidth(math.max(40, sw - 8))
+  frame.cost:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8)
+  frame.cost:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
+  rcontent:SetHeight(-(y - 8) + (frame.cost:GetStringHeight() or 48) + 6)
+  if frame.lastSpell ~= recipe.spell then rscroll:SetVerticalScroll(0) end
+  rscroll:Show()
+  rscroll:UpdateBar()
+  if C_Timer then C_Timer.After(0, function() rscroll:UpdateBar() end) end
 
   local learned = RecipeLearned(profName, recipe)
   local enchantFits = CR.EnchantSlotFor(recipe)
@@ -1964,10 +1951,50 @@ local function BuildOverlay()
 
   frame.reagentsLabel = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
+
+  -- Every reagent always shows: the reagents and the cost lines under them sit in a scroll area
+  -- from the label down to the Shopping List button (or the enchant target), with a slim bar on
+  -- the right when they're taller than that. Its bottom is set in FillSchematic.
+  local rscroll = CreateFrame("ScrollFrame", nil, schematic)
+  rscroll:SetPoint("TOPLEFT", frame.reagentsLabel, "BOTTOMLEFT", 0, -2)
+  local rcontent = CreateFrame("Frame", nil, rscroll)
+  rcontent:SetSize(240, 40)
+  rscroll:SetScrollChild(rcontent)
+  local rtrack = CreateFrame("Frame", nil, rscroll, "BackdropTemplate")
+  rtrack:SetWidth(5)
+  rtrack:SetPoint("TOPRIGHT", rscroll, "TOPRIGHT", 0, 0)
+  rtrack:SetPoint("BOTTOMRIGHT", rscroll, "BOTTOMRIGHT", 0, 0)
+  CR.Backdrop(rtrack, 0.1, 0.1, 0.1, 0.8)
+  rtrack.crOwnBorder = true
+  local rthumb = rtrack:CreateTexture(nil, "OVERLAY")
+  rthumb:SetColorTexture(0.6, 0.6, 0.6, 0.9)
+  rthumb:SetWidth(5)
+  local function RMax() return math.max(0, (rcontent:GetHeight() or 0) - (rscroll:GetHeight() or 0)) end
+  function rscroll:UpdateBar()
+    local max = RMax()
+    if (self:GetVerticalScroll() or 0) > max then self:SetVerticalScroll(max) end
+    rtrack:SetShown(max > 0)
+    if max <= 0 then return end
+    local vis, total = self:GetHeight() or 1, rcontent:GetHeight() or 1
+    local h = math.max(16, vis * vis / total)
+    rthumb:SetHeight(h)
+    rthumb:ClearAllPoints()
+    rthumb:SetPoint("TOP", rtrack, "TOP", 0, -(vis - h) * ((self:GetVerticalScroll() or 0) / max))
+  end
+  rscroll:EnableMouseWheel(true)
+  rscroll:SetScript("OnMouseWheel", function(self, delta)
+    self:SetVerticalScroll(math.max(0, math.min(RMax(), (self:GetVerticalScroll() or 0) - delta * 46)))
+    self:UpdateBar()
+  end)
+  rscroll:SetScript("OnSizeChanged", function(self, w)
+    if w and w > 0 then rcontent:SetWidth(w) end
+    self:UpdateBar()
+  end)
+  frame.rscroll, frame.rcontent = rscroll, rcontent
   frame.reagentsLabel:SetText("Reagents:")
   frame.reagents = {}
   for i = 1, REAGENT_SLOTS do
-    local row = CreateFrame("Button", nil, schematic)
+    local row = CreateFrame("Button", nil, rcontent)
     row:SetSize(280, 42)
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(42, 42)
@@ -2011,7 +2038,7 @@ local function BuildOverlay()
     frame.reagents[i] = row
   end
 
-  frame.cost = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  frame.cost = rcontent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   frame.cost:SetJustifyH("LEFT")
   frame.cost:SetJustifyV("TOP")
   frame.cost:SetWordWrap(true)

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.24.0
+
+- Recipe learn skills now come from the TrainerSpells addon's Forever data - what the trainer asks for (GitHub issue #5). They used to come from ahledger.com, whose "skill" is mostly the recipe's yellow point minus 40, an estimate: Enchant Boots - Lesser Agility said 140 where the trainer wants 160. About 360 recipes across Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking and Tailoring change; ahledger now only fills recipes TrainerSpells doesn't list. (While Forever is in beta, a few guide steps may now start before the recipe's listed skill - the data follows TrainerSpells as its developers update it.)
+- Profession-window view: a recipe's reagents are never cut off. All of them show, with the cost lines under them, in an area that scrolls (mouse wheel, slim bar on the right) when there are more than fit. The "+N more on the list" line is gone.
+
 ## 0.23.4
 
 - Profession-window view (GitHub issues #1, #3, #4):

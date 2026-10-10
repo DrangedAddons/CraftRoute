@@ -4,8 +4,8 @@
 
 Inputs:
 - `sources/endgametools_<prof>.html`: https://endgametools.com/en/wow-forever/professions/<prof>. Provides reagents, yellow/green/grey thresholds, stats, categories and crafted item IDs.
-- `sources/ahledger_<prof>.html`: https://ahledger.com/wow-forever/professions/<prof>. Provides learn (orange) skill and yields. There is no First Aid page, so leave that argument off for it.
-- The TrainerSpells addon's `data/forever` folder. Provides recipe sources and each vendor's faction. Its skill keys are stale Classic Era values for some recipes, so they're only a last resort.
+- The TrainerSpells addon's `data/forever` folder. Provides the learn skill (what the trainer asks), recipe sources and each vendor's faction. It's the reference for learn skills: an addon its developers keep updating, where the alternative is a formula.
+- `sources/ahledger_<prof>.html`: https://ahledger.com/wow-forever/professions/<prof>. Provides yields, and the learn skill only for recipes TrainerSpells doesn't list - its "skill" is mostly the yellow point minus 40, an estimate. There is no First Aid page, so leave that argument off for it.
 
 The saved pages in `sources/` are not committed; they're third-party pages. To refresh the data after a Forever patch, download the two pages for each profession into `sources/` and run, e.g.:
 

@@ -76,7 +76,7 @@ for sp, locs in parse_locations(os.path.join(tsdir, prof.replace(' ', '') + 'Rec
         source[sp] = fs
 
 # ---- ahledger profession table (optional 5th arg): spellID -> learn skill, yield.
-# Preferred learn source: TrainerSpells carries some stale Classic Era skill values.
+# Fallback learn source (TrainerSpells first - see below); also yields.
 ahl_learn, ahl_yield = {}, {}
 if len(sys.argv) > 5 and os.path.exists(sys.argv[5]):
     a = open(sys.argv[5], encoding='utf8').read()
@@ -124,9 +124,15 @@ for sec in re.finditer(r"<section id='c-\d+' class='recipe-category'.*?</section
                 if m: pattern, pskill = text(m.group(1)), int(m.group(2))
             else:
                 stats = (stats + ' · ' if stats else '') + text(p)
-        # A pattern can demand more skill to read than the recipe's orange point - take the higher.
-        known = [v for v in (ahl_learn.get(spell), pskill) if v is not None]
-        ls = max(known) if known else learn.get(spell)
+        # Learn skill: TrainerSpells first - it's datamined from the Forever client and matches what
+        # the trainer asks (ahledger's "skill" is mostly the yellow point minus 40, an estimate:
+        # Enchant Boots - Lesser Agility shows 140 there, the trainer wants 160). ahledger only fills
+        # recipes TrainerSpells doesn't list. A pattern can demand more skill to read than that -
+        # take the higher.
+        base = learn.get(spell)
+        if base is None: base = ahl_learn.get(spell)
+        known = [v for v in (base, pskill) if v is not None]
+        ls = max(known) if known else None
         src = source.get(spell) or (pattern and 'Pattern') or 'Unknown'
         recipes.append(dict(spell=spell, item=item, q=q, name=name, cat=cat, stats=stats, reagents=reagents,
                             learn=ls, y=y, g=g, x=x, src=src, pattern=pattern, makes=ahl_yield.get(spell, title_yield)))
