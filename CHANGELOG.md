@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.25.1
+
+- Keybind works while you're dead: it opens the profession window directly from the key press (as other addons' profession buttons do) instead of casting the profession, which the game refuses while dead.
+- It's listed as "CraftRoute Profession Tab" in the Keybindings menu (the old name was cut off). A key set on the 0.25.0 binding moves over automatically.
+
 ## 0.25.0
 
 - Keybind: Shift+K opens the profession picked in CraftRoute straight onto CraftRoute's tab in the profession window. With the window already open it switches to CraftRoute's tab, and pressing it there closes the window. For Fishing (no profession window) or a profession this character hasn't learned, it opens the main CraftRoute window. Change the key under Options > Keybindings > AddOns > CraftRoute. Doesn't open a profession in combat (the game doesn't allow it).

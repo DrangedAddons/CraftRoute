@@ -1601,14 +1601,14 @@ local function ToggleCompact()
   if overlay and overlay:IsShown() then CloseCompact(true) else OpenCompact() end
 end
 
--- The keybind (Keybind.lua). It casts the profession when the window has to open - then this
--- view should come up once it has. With the window already open: shows this view, or closes the
+-- The keybind (Keybind.lua). It opens the profession window when it has to - then this view
+-- should come up once it has. With the window already open: shows this view, or closes the
 -- window when this view is what's showing.
 function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
 function CR.KeybindToggleView()
   if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return false end
   if overlay and overlay:IsShown() then
-    HideUIPanel(ProfessionsFrame)
+    if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() else HideUIPanel(ProfessionsFrame) end
   else
     OpenCompact()
   end
