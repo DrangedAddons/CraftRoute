@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.23.4
+
+- Profession-window view (GitHub issues #1, #3, #4):
+  - The recipe's reagent list shows every reagent that fits instead of stopping at 3 with "+1 more on the list" - it now measures the room between the "Reagents:" label and the Shopping List button.
+  - Reagent rows and their Buy buttons stay inside the right column.
+  - Create All sets the quantity box to the number it queued.
+
 ## 0.23.3
 
 - Profession-window view: task cards start below the Open CraftRoute button, so the step's label and title no longer run under it.

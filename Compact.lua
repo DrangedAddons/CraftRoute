@@ -1153,11 +1153,20 @@ local function FillSchematic(info)
   local reagents = recipe.reagents or {}
   local sw = frame.schemW or frame.schematic:GetWidth() or 0
   if sw < 40 then sw = 240 end
-  local rowW = math.max(80, sw - 4)
   -- Leave the icon, the cost block, the status line, and the craft buttons clear of each other.
   local schemH = frame.schemH or frame.schematic:GetHeight() or 0
   local cap = REAGENT_SLOTS
-  if schemH >= 120 then
+  -- Measured: from under the "Reagents:" label down to the Shopping List button (above the craft
+  -- buttons), less the enchant target when it shows and the cost lines under the rows. (The
+  -- estimate below undercounted the room - lists of 4+ were cut to 3 with space to spare.)
+  local labelBottom = frame.reagentsLabel:GetBottom()
+  local buttonsTop = frame.buttons:GetTop()
+  if labelBottom and buttonsTop and labelBottom > buttonsTop then
+    local floorY = buttonsTop + 28
+    if CR.EnchantSlotFor(recipe) then floorY = floorY + 58 end
+    local usable = labelBottom - floorY - 70
+    cap = math.max(1, math.min(REAGENT_SLOTS, math.floor((usable + 4) / 46)))
+  elseif schemH >= 120 then
     -- Icon, reagent label, cost block, craft buttons, and the enchant target when this recipe needs one.
     local bottom = 130
     if CR.EnchantSlotFor(recipe) then bottom = bottom + 58 end
@@ -1173,7 +1182,6 @@ local function FillSchematic(info)
     local rg = reagents[i]
     if i <= shown and rg then
       row:Show()
-      row:SetWidth(rowW)
       row.icon:SetTexture(CR.GetItemIcon(rg[1]) or "Interface\\Icons\\INV_Misc_QuestionMark")
       local text, bags, need = HaveNeed(rg[1], rg[2], st.crafts or 1)
       row.text:SetText(text)
@@ -1189,6 +1197,8 @@ local function FillSchematic(info)
       end or nil)
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, i == 1 and -6 or -4)
+      -- the right edge (and its Buy button) stays inside the column
+      row:SetPoint("RIGHT", frame.schematic, "RIGHT", -12, 0)
       anchor = row
     else
       row:Hide()
@@ -2406,7 +2416,10 @@ local function BuildOverlay()
     if not st or not st.recipe or RecipeLearned(frame.craftProf, st.recipe) == false then return end
     if CR.EnchantSlotFor(st.recipe) then return end
     local n = CraftsReady(frame.craftProf, st.recipe)
-    if n > 0 then CraftSpell(st.recipe.spell, n, frame.craftProf) end
+    if n > 0 then
+      frame.countBox:SetText(tostring(n))   -- the quantity box shows what was just queued
+      CraftSpell(st.recipe.spell, n, frame.craftProf)
+    end
   end)
   frame.openBtn:SetScript("OnClick", function()
     if frame.craftProf then CR.OpenTradeSkill(frame.craftProf) end
