@@ -71,7 +71,8 @@ CR.TOOLS = {
 }
 function CR.IsTool(itemID) return CR.TOOLS[itemID] or false end
 
--- Materials "have": this character's bags + bank + mail, and alts too if the setting is on.
+-- Materials "have": this character's bags + bank + mail, and alts too if the setting is on
+-- ("Count alts' materials" on the Plan tab, the Craft tab and the profession-window tab).
 function CR.HaveCount(itemID)
   if CR.TOOLS[itemID] then return GetItemCount(itemID, false) or 0 end
   local list = CR.GetLocations(itemID)

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.26.0
+
+- "Count alts' materials" tickbox on the Craft tab and the profession-window tab (next to Open CraftRoute), as well as the Plan tab - one setting, per character, kept in sync. Unticked (the default), only this character's bags, bank and mail count; ticked, materials on your alts (via Syndicator) count too.
+- The setting now applies everywhere: reagent colours, have/need counts, "can make" and component counts on the Craft tab and in the profession window, and task-step checks. Before, only the Plan tab's materials list followed it, and the other views always counted alts.
+
 ## 0.25.5
 
 - The keybind always opens the profession window on CraftRoute's tab, never the main CraftRoute window. If the profession picked in CraftRoute has no crafting window (Fishing) or isn't learned on this character, it opens the nearest one that has: Cooking for Fishing, otherwise your first crafting profession. The while-dead fallback to the Craft tab from 0.25.4 is gone (the game doesn't switch to crafting pages while dead - a known client issue).

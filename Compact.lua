@@ -1437,6 +1437,7 @@ function CR.RefreshCompact()
     if overlay.goalDD:IsShown() then overlay.goalDD:Sync() end
     if overlay.modeDD:IsShown() then overlay.modeDD:Sync() end
     if overlay.profDD then overlay.profDD:Sync() end
+    if overlay.altsCB then overlay.altsCB:Sync() end
     if overlay.customBox:IsShown() and not overlay.customBox:HasFocus() then
       overlay.customBox:SetText(tostring(DB().customGoal or ""))
     end
@@ -1843,6 +1844,9 @@ local function BuildOverlay()
   frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
   frame.mainBtn:SetText("Open CraftRoute")
   CR.ThemeRegisterButton(frame.mainBtn)
+  -- only this character's materials, or alts' too (the same setting as the main window's)
+  frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
+  frame.altsCB:SetPoint("RIGHT", frame.mainBtn, "LEFT", -76, 0)
   frame.mainBtn:SetScript("OnClick", function(self)
     CR.SafeCall(CR.ToggleWindow)
     self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")

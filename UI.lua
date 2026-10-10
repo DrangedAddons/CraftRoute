@@ -20,6 +20,38 @@ local function Backdrop(f, r, g, b, a)
 end
 CR.Backdrop = Backdrop
 
+-- "Count alts' materials" tickbox: one per-character setting (includeAlts), shown on the Plan
+-- tab, the Craft tab and the profession-window tab. Unticked, only this character's bags, bank
+-- and mail count anywhere in CraftRoute. :Sync() after a change elsewhere.
+function CR.CreateAltsCheck(parent, label)
+  local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+  cb:SetSize(20, 20)
+  cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+  cb.label:SetText(label or "Count alts' materials")
+  cb:SetHitRectInsets(0, -(tonumber(cb.label:GetStringWidth()) or 80) - 4, 0, 0)   -- the label clicks too
+  cb:SetScript("OnClick", function(self)
+    CraftRouteCharDB.includeAlts = self:GetChecked() and true or false
+    CR.InvalidateLocations()
+    CR.NotifyChanged()
+  end)
+  cb:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Count alts' materials")
+    GameTooltip:AddLine("Ticked: materials on your other characters (bags, bank, mail) count as owned - in the "
+      .. "materials list, the route cost, reagent colours and task steps.", 1, 1, 1, true)
+    GameTooltip:AddLine("Unticked: only this character's bags, bank and mail count.", 1, 1, 1, true)
+    if not CR.HasSyndicator() then
+      GameTooltip:AddLine("Needs Syndicator (installed with Baganator) to see alts.", 1, 0.5, 0.3, true)
+    end
+    GameTooltip:Show()
+  end)
+  cb:SetScript("OnLeave", GameTooltip_Hide)
+  function cb:Sync() self:SetChecked(CraftRouteCharDB and CraftRouteCharDB.includeAlts and true or false) end
+  cb:Sync()
+  return cb
+end
+
 -- A material line (Plan tab and the Craft tab's compact list): icon, name, have/need, cost.
 function CR.CreateMaterialRow(row, costW, countW)
   row.icon = row:CreateTexture(nil, "ARTWORK")
@@ -935,27 +967,8 @@ function CR.CreatePlanPanel(parent)
     if e then CR.CreateShoppingList(e.plan) end
   end)
 
-  local altsCB = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-  altsCB:SetSize(20, 20)
+  local altsCB = CR.CreateAltsCheck(panel)
   altsCB:SetPoint("BOTTOMLEFT", shop, "TOPLEFT", 0, 2)
-  altsCB.label = altsCB:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  altsCB.label:SetPoint("LEFT", altsCB, "RIGHT", 2, 0)
-  altsCB.label:SetText("Count items on alts as owned")
-  altsCB:SetScript("OnClick", function(self)
-    db().includeAlts = self:GetChecked() and true or false
-    CR.NotifyChanged()
-  end)
-  altsCB:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Count items on alts")
-    GameTooltip:AddLine("When ticked, materials on your other characters (bags, bank, mail) count towards 'have'.", 1, 1, 1, true)
-    GameTooltip:AddLine("Unticked, only this character's bags, bank and mail count. Hover a material to see where everything is either way.", 1, 1, 1, true)
-    if not CR.HasSyndicator() then
-      GameTooltip:AddLine("Needs Syndicator (installed with Baganator) to see alts.", 1, 0.5, 0.3, true)
-    end
-    GameTooltip:Show()
-  end)
-  altsCB:SetScript("OnLeave", GameTooltip_Hide)
 
   local beyond = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   beyond:SetPoint("BOTTOMLEFT", totals, "TOPLEFT", 0, 4)
@@ -997,7 +1010,7 @@ function CR.CreatePlanPanel(parent)
 
     totals:SetText(CR.MissingCostText(e.plan))
     shop:SetEnabled(CR.HasAuctionator())
-    altsCB:SetChecked(db().includeAlts)
+    altsCB:Sync()
     unlearnedCB:SetChecked(db().showUnlearned)
 
     if #e.plan.beyond > 0 then

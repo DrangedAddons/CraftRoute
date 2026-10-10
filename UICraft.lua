@@ -526,12 +526,11 @@ local function RoomBelow(box, floorFrame, reserve, minH, fallback)
 end
 
 -- How many of an item are in your bags (craftable now) and how many are elsewhere: your bank,
--- mailbox, or alts (via Syndicator) - you have them, they're just not on hand.
+-- mailbox, and - with "Count alts' materials" ticked - alts (via Syndicator). You have them,
+-- they're just not on hand. (Tools only count on you - CR.HaveCount.)
 function CR.BagsAndElsewhere(itemID)
   local bags = GetItemCount(itemID, false) or 0
-  if CR.TOOLS and CR.TOOLS[itemID] then return bags, 0 end   -- tools only count on you
-  local _, total = CR.GetLocations(itemID)
-  return bags, math.max(0, (total or 0) - bags)
+  return bags, math.max(0, CR.HaveCount(itemID) - bags)
 end
 
 -- Colour for "have/need" (need = the whole step, perCraft = one craft):
@@ -909,6 +908,9 @@ function CR.CreateCraftPanel(parent)
     GameTooltip:Show()
   end)
   unlearnedCB:SetScript("OnLeave", GameTooltip_Hide)
+  -- only this character's materials, or alts' too (shared with the Plan tab)
+  local altsCB = CR.CreateAltsCheck(panel)
+  altsCB:SetPoint("LEFT", unlearnedCB.label, "RIGHT", 14, 0)
   bar:SetPoint("LEFT", profDD, "RIGHT", 12, 0)
   bar:SetPoint("RIGHT", leftArea, "RIGHT", -10, 0)
 
@@ -1645,6 +1647,7 @@ function CR.CreateCraftPanel(parent)
   function panel:Refresh()
     local profName = db().profession
     unlearnedCB:SetChecked(db().showUnlearned)
+    altsCB:Sync()
     local entry = CR.GetPlans(profName)
     local cur, maxRank, detected = CR.GetSkill(profName)
     local prof = CR.professions[profName]
