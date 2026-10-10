@@ -1514,7 +1514,9 @@ local function IsTrainerTab(tab)
   return type(name) == "string" and name:find("TrainerSpellsProfessions", 1, true) ~= nil
 end
 
+local HookNativeTabs   -- (defined below)
 local function PositionEntry()
+  if HookNativeTabs then pcall(HookNativeTabs) end
   if not entry or not ProfessionsFrame then return end
   if entry.systemTab and ProfessionsFrame.TabSystem then
     entry:ClearAllPoints()
@@ -1635,10 +1637,39 @@ local function ReopenSoon()
   end
 end
 
+-- Only a click on one of Blizzard's tabs means "show Blizzard's page". The window also brings
+-- its recipes page back by itself (a craft finishing refreshes it) - then this view stays and
+-- that page is hidden again.
+local lastNativeClick = 0   -- when one of Blizzard's tabs was last clicked
+local function MarkNativeClick() lastNativeClick = GetTime() end
+local function UserChoseNative() return GetTime() - lastNativeClick < 0.6 end
+local function HookTab(tab)
+  if not tab or tab == entry or tab.crClickHooked or not tab.HookScript then return end
+  tab.crClickHooked = true
+  pcall(tab.HookScript, tab, "OnClick", MarkNativeClick)
+  pcall(tab.HookScript, tab, "OnMouseDown", MarkNativeClick)
+end
+function HookNativeTabs()
+  local frame = ProfessionsFrame
+  if frame then
+    HookTab(frame.ProfessionsOverviewTab)
+    for _, tab in ipairs(frame.rightProfessionTabs or {}) do HookTab(tab) end
+    local sys = frame.TabSystem
+    if sys then
+      for _, tab in ipairs(sys.tabs or {}) do HookTab(tab) end
+      for _, tab in ipairs({ sys:GetChildren() }) do HookTab(tab) end
+    end
+  end
+  HookTab(_G.TrainerSpellsProfessionsTab)
+  for i = 1, 8 do HookTab(_G["TrainerSpellsProfessionsViewTab" .. i]) end
+end
+
 local function OnNativeTab()
   if Keeping() then KeepNow() ReopenSoon() return end
   if GetTime() - openedAt < 0.05 then return end
-  if overlay and overlay:IsShown() then CloseCompact(true) end
+  if overlay and overlay:IsShown() then
+    if UserChoseNative() then CloseCompact(true) else pcall(HidePages) end
+  end
 end
 
 local function TipEntry(tab)
@@ -2480,8 +2511,11 @@ local function BuildOverlay()
     -- tabs, and this view stayed up, empty, over Blizzard's page). Not while a profession switch
     -- from this view is loading, when Blizzard briefly shows its recipes page.
     if not Keeping() and GetTime() - openedAt > 0.3 and BlizzardPageShown() then
-      CloseCompact(false)
-      return
+      if UserChoseNative() then
+        CloseCompact(false)
+        return
+      end
+      pcall(HidePages)   -- not your choice (a craft finished, the list refreshed): stay here
     end
     SyncEnchantSecure()
     watch = watch + elapsed

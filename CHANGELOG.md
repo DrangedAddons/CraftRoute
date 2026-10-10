@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.25.2
+
+- Profession-window view stays on CraftRoute's tab after crafting. When a craft (single or Create All) finished, Blizzard's window refreshed and brought its own recipes page back, and the view took that as you choosing Blizzard's tab. Now only a click on one of Blizzard's tabs leaves CraftRoute's tab; anything else that brings Blizzard's page back is hidden again.
+
 ## 0.25.1
 
 - Keybind works while you're dead: it opens the profession window directly from the key press (as other addons' profession buttons do) instead of casting the profession, which the game refuses while dead.
