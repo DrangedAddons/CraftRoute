@@ -28,11 +28,26 @@ def to_text(page):
     s = html.unescape(s)
     s = re.sub(r'[ \t]+', ' ', s)
     s = re.sub(r'\n\s*\n+', '\n', s)
-    i, j = s.find('Table of Contents'), s.find('(Return to Top)')
-    return s[i if i >= 0 else 0:j if j > 0 else None]
+    return normalize(s)
+
+
+def normalize(s):
+    """The guide's own text, comparable across site redesigns: from the intro line ("This WoW
+    Forever ... leveling guide will show you") on - before it is the site's navigation - minus
+    invisible characters (ranges are written 1-<word joiner>55)."""
+    s = re.sub('[⁠​­]', '', s)
+    i = s.find('This WoW Forever')
+    if i >= 0:
+        s = s[i:]
+    j = s.find('(Return to Top)')
+    if j > 0:
+        s = s[:j]
+    return '\n'.join(l.strip() for l in s.splitlines() if l.strip())
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # guide text has emoji
     save = '--save' in sys.argv
     os.makedirs(SNAP, exist_ok=True)
     for name, url, routes in guides():
@@ -43,7 +58,7 @@ def main():
             print(f'{name}: could not fetch ({e})')
             continue
         path = os.path.join(SNAP, name + '.txt')
-        old = open(path, encoding='utf8').read() if os.path.exists(path) else None
+        old = normalize(open(path, encoding='utf8').read()) if os.path.exists(path) else None
         if old is None:
             print(f'{name}: no snapshot yet')
         elif old == text:

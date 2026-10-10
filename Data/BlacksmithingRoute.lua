@@ -77,14 +77,15 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep them, you might need them later" },
     { from = 112, to = 125, spell = 2672, crafts = 13 },
     { from = 125, to = 140, spell = 2742, crafts = 24,
-      note = "Weak Flux (and Strong Flux for the next step) from the Blacksmithing Supply vendor in any "
-        .. "capital" },
+      note = "Weak Flux (and Strong Flux for the Bronze Warhammers, 140-165) from the Blacksmithing Supply "
+        .. "vendor in any capital" },
     { from = 140, to = 150, spell = 9985, crafts = 10 },
 
     -- Expert
-    { from = 150, to = 175, spell = 3501, crafts = 30,
+    { from = 150, to = 165, spell = 9985, crafts = 19 },
+    { from = 165, to = 175, spell = 3501, crafts = 15,
       note = "Green Dye from {H:Tamar (Orgrimmar), Millie Gregorian (Undercity) or Mahu (Thunder Bluff)}"
-        .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)} - yellow at 165" },
+        .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)}" },
     { from = 175, to = 185, spell = 9920, crafts = 40, when = { e175 = "stones" },
       note = "Make all 40 - for the helms at 200" },
     { from = 175, to = 185, spell = 7223, crafts = 10, when = { e175 = "bracers" },

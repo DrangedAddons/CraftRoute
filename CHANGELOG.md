@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.24.1
+
+- Blacksmithing follows the guide's update (Oct 10): 150-165 is now 19 Bronze Warhammers, then 15 Green Iron Bracers for 165-175 (was 30 Green Iron Bracers for 150-175). Green Iron Bracers can't be learned before 165, which the guide now matches. Strong Flux for the Bronze Warhammers comes from the Blacksmithing Supply vendor in any capital.
+- tools/check_guides.py works with wow-professions.com's redesigned pages (compares from the guide's intro line, ignores invisible characters in ranges, prints emoji on Windows).
+
 ## 0.24.0
 
 - Recipe learn skills now come from the TrainerSpells addon's Forever data - what the trainer asks for (GitHub issue #5). They used to come from ahledger.com, whose "skill" is mostly the recipe's yellow point minus 40, an estimate: Enchant Boots - Lesser Agility said 140 where the trainer wants 160. About 360 recipes across Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking and Tailoring change; ahledger now only fills recipes TrainerSpells doesn't list. (While Forever is in beta, a few guide steps may now start before the recipe's listed skill - the data follows TrainerSpells as its developers update it.)
