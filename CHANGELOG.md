@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.25.4
+
+- Keybind while dead: the game doesn't open profession windows while you're dead or a ghost, so the key opens CraftRoute's Craft tab instead (same route, reagents and tasks), and closes it again on the next press.
+
 ## 0.25.3
 
 - Profession-window view really stays on CraftRoute's tab after crafting. It only leaves on your click - one of Blizzard's tabs, a TrainerSpells tab, CraftRoute's own tab - or when the window closes. If Blizzard's page (or TrainerSpells' frame) comes up any other way it's hidden again straight away, and if anything else hides the view it comes straight back.
