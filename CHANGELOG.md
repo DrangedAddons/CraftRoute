@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.25.0
+
+- Keybind: Shift+K opens the profession picked in CraftRoute straight onto CraftRoute's tab in the profession window. With the window already open it switches to CraftRoute's tab, and pressing it there closes the window. For Fishing (no profession window) or a profession this character hasn't learned, it opens the main CraftRoute window. Change the key under Options > Keybindings > AddOns > CraftRoute. Doesn't open a profession in combat (the game doesn't allow it).
+
 ## 0.24.1
 
 - Blacksmithing follows the guide's update (Oct 10): 150-165 is now 19 Bronze Warhammers, then 15 Green Iron Bracers for 165-175 (was 30 Green Iron Bracers for 150-175). Green Iron Bracers can't be learned before 165, which the guide now matches. Strong Flux for the Bronze Warhammers comes from the Blacksmithing Supply vendor in any capital.

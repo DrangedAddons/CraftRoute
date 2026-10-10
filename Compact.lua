@@ -1601,6 +1601,20 @@ local function ToggleCompact()
   if overlay and overlay:IsShown() then CloseCompact(true) else OpenCompact() end
 end
 
+-- The keybind (Keybind.lua). It casts the profession when the window has to open - then this
+-- view should come up once it has. With the window already open: shows this view, or closes the
+-- window when this view is what's showing.
+function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
+function CR.KeybindToggleView()
+  if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return false end
+  if overlay and overlay:IsShown() then
+    HideUIPanel(ProfessionsFrame)
+  else
+    OpenCompact()
+  end
+  return true
+end
+
 -- A profession switch started from this view (dropdown, Open): Blizzard's window flips back to its
 -- own recipes page as the new profession loads. This view isn't closed meanwhile, and the page
 -- Blizzard shows is hidden again straight away, in the same frame - before anything is drawn, so

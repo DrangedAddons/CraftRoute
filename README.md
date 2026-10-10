@@ -39,7 +39,7 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 
 ## Getting started
 
-Type `/cr` to open CraftRoute.
+Type `/cr` to open CraftRoute. Press **Shift+K** to open your profession straight onto CraftRoute's tab, and again to close it. You can change the key under Options > Keybindings > AddOns > CraftRoute.
 
 Optional companions:
 - [Auctionator](https://www.curseforge.com/wow/addons/auctionator) for prices and shopping lists.

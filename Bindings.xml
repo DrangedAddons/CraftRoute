@@ -1,0 +1,5 @@
+<Bindings>
+  <!-- Opens the profession window on CraftRoute's tab (Keybind.lua). Change it under Options >
+       Keybindings > AddOns > CraftRoute. -->
+  <Binding name="CLICK CraftRouteKeybindButton:LeftButton" header="CRAFTROUTE" category="ADDONS" default="SHIFT-K"/>
+</Bindings>
