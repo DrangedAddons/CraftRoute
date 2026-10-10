@@ -1,43 +1,47 @@
--- Keybind (default Shift+K, set in Bindings.xml): open the profession picked in CraftRoute on
--- CraftRoute's tab. Like other addons' profession openers (EllesmereUI's data bar), it calls
--- C_TradeSkillUI.OpenTradeSkill from the key press itself - a real key press may - rather than
--- casting the profession. While dead the game opens no profession window at all, so then it
--- falls back to CraftRoute's own Craft tab. The profession-window view switches to
--- its tab once the window is up (Compact.lua). With the window already open on that profession
--- it shows CraftRoute's tab, or closes the window when that's what's showing. Fishing (no
--- window) or a profession this character hasn't learned opens the main CraftRoute window.
+-- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab.
+-- Always the tab - never the main CraftRoute window. It opens the profession picked in
+-- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
+-- nearest one that has (Cooking for Fishing, else your first crafting profession). Like other
+-- addons' profession openers (EllesmereUI's data bar) it calls C_TradeSkillUI.OpenTradeSkill from
+-- the key press itself - a real key press may - rather than casting the profession. With the
+-- window already open it shows CraftRoute's tab, or closes the window when that's showing.
+-- (While dead the game won't switch to a crafting page at all - a known client issue.)
 local _, CR = ...
 
 BINDING_HEADER_CRAFTROUTE = "CraftRoute"
 BINDING_NAME_CRAFTROUTE_PROFESSION_TAB = "CraftRoute Profession Tab"
 
-function CraftRoute_KeybindPressed()
-  if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
+local function SkillLine(name)
+  local s = name and name ~= "Fishing" and CR.skill[name]
+  return s and s.skillLine
+end
+
+-- The profession to open: the picked one, else the nearest that has a crafting window.
+local function Target()
   local prof = CraftRouteCharDB and CraftRouteCharDB.profession
   local route = prof and CR.Route(prof)
   prof = route and route.recipeProf or prof
-  local s = prof and CR.skill[prof]
-  if not (s and s.skillLine) or prof == "Fishing" then
-    CR.SafeCall(CR.ToggleWindow)   -- nothing to open a profession window for
-    return
+  if SkillLine(prof) then return prof end
+  if prof == "Fishing" and SkillLine("Cooking") then return "Cooking" end
+  for _, name in ipairs(CR.SupportedProfessions()) do
+    if SkillLine(name) then return name end
   end
-  if CR.TradeSkillOpenFor(prof) and CR.KeybindToggleView and CR.KeybindToggleView() then return end
-  -- dead, with the Craft tab fallback already up: the key closes it again
-  if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") and CR.IsWindowShown and CR.IsWindowShown() then
-    CR.SafeCall(CR.ToggleWindow)
+end
+
+function CraftRoute_KeybindPressed()
+  if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
+  -- the window's already up (any profession): show CraftRoute's tab, or close the window
+  if ProfessionsFrame and ProfessionsFrame:IsShown() and CR.KeybindToggleView then
+    local prof = Target()
+    if not prof or CR.TradeSkillOpenFor(prof) then CR.KeybindToggleView() return end
+  end
+  local prof = Target()
+  if not prof then
+    CR.Print("No crafting profession learned on this character to open.")
     return
   end
   if CR.KeybindWillOpen then CR.KeybindWillOpen() end
-  C_TradeSkillUI.OpenTradeSkill(s.skillLine)
-  -- The game won't open a profession window while you're dead (or a ghost). If it didn't
-  -- open, show CraftRoute's own Craft tab instead - the same route, reagents and tasks.
-  if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then
-    C_Timer.After(0.4, function()
-      if ProfessionsFrame and ProfessionsFrame:IsShown() then return end
-      CR.SafeCall(CR.ShowWindow, "craft")
-      CR.Print("The game doesn't open professions while you're dead - showing CraftRoute's Craft tab instead.")
-    end)
-  end
+  C_TradeSkillUI.OpenTradeSkill(SkillLine(prof))
 end
 
 -- 0.25.0 bound Shift+K to a hidden button ("CLICK CraftRouteKeybindButton:LeftButton"); move a

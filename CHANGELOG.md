@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.25.5
+
+- The keybind always opens the profession window on CraftRoute's tab, never the main CraftRoute window. If the profession picked in CraftRoute has no crafting window (Fishing) or isn't learned on this character, it opens the nearest one that has: Cooking for Fishing, otherwise your first crafting profession. The while-dead fallback to the Craft tab from 0.25.4 is gone (the game doesn't switch to crafting pages while dead - a known client issue).
+
 ## 0.25.4
 
 - Keybind while dead: the game doesn't open profession windows while you're dead or a ghost, so the key opens CraftRoute's Craft tab instead (same route, reagents and tasks), and closes it again on the next press.
