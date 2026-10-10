@@ -1541,21 +1541,54 @@ local function PositionEntry()
   end
 end
 
+local lastNativeClick = 0   -- when one of Blizzard's tabs was last clicked
+local function MarkNativeClick() lastNativeClick = GetTime() end
+local function UserChoseNative() return GetTime() - lastNativeClick < 0.6 end
+
+-- /cr trace: report in chat whatever shows one of Blizzard's pages or hides this view, with where
+-- it came from - for tracking down a switch away from CraftRoute's tab you didn't ask for.
+local function Trace(what)
+  if not CR.compactTrace then return end
+  local stack = debugstack and debugstack(3, 4, 0) or ""
+  stack = stack:gsub("Interface/AddOns/", ""):gsub("\n", " | ")
+  CR.Print(string.format("|cffffd100trace|r %.2f %s  <- %s", GetTime(), what, stack:sub(1, 300)))
+end
+function CR.ToggleCompactTrace()
+  CR.compactTrace = not CR.compactTrace
+  CR.Print("Profession view trace " .. (CR.compactTrace and "on - craft, then copy the trace lines" or "off") .. ".")
+end
+
+-- This view only goes away on purpose: your click (one of Blizzard's tabs, TrainerSpells' tabs,
+-- CraftRoute's own tab) or the window closing. Anything else that hides it - the window
+-- refreshing after a craft, another addon - puts it straight back.
+local deliberate = false
+local function HideOverlay(why)
+  if not overlay then return end
+  Trace("view closed: " .. why)
+  deliberate = true
+  overlay:Hide()
+  deliberate = false
+end
+
 local function WatchTrainerSpells()
   local ts = _G.TrainerSpellsProfessionFrame
   if not ts or ts.crCompactHook then return end
   ts.crCompactHook = true
-  ts:HookScript("OnShow", function()
-    if overlay and overlay:IsShown() then
-      overlay:Hide()
+  ts:HookScript("OnShow", function(self)
+    if not (overlay and overlay:IsShown()) then return end
+    if UserChoseNative() then
+      HideOverlay("TrainerSpells tab clicked")
       SetEntryChecked(false)
+    elseif not InCombatLockdown() then
+      Trace("TrainerSpells' frame shown without a click - hidden again")
+      self:Hide()
     end
   end)
 end
 
 local function CloseCompact(restore)
   if not overlay then return end
-  overlay:Hide()
+  HideOverlay(restore and "your click" or "Blizzard tab clicked")
   SetEntryChecked(false)
   if restore and not InCombatLockdown() then pcall(RestorePages) end
 end
@@ -1640,9 +1673,6 @@ end
 -- Only a click on one of Blizzard's tabs means "show Blizzard's page". The window also brings
 -- its recipes page back by itself (a craft finishing refreshes it) - then this view stays and
 -- that page is hidden again.
-local lastNativeClick = 0   -- when one of Blizzard's tabs was last clicked
-local function MarkNativeClick() lastNativeClick = GetTime() end
-local function UserChoseNative() return GetTime() - lastNativeClick < 0.6 end
 local function HookTab(tab)
   if not tab or tab == entry or tab.crClickHooked or not tab.HookScript then return end
   tab.crClickHooked = true
@@ -2547,6 +2577,16 @@ local function BuildOverlay()
   end
   overlay = frame
   CR.compactFrame = frame
+  frame:HookScript("OnHide", function()
+    if deliberate then return end
+    Trace("view hidden by something else")
+    C_Timer.After(0, function()
+      if overlay:IsShown() or InCombatLockdown() or UserChoseNative() then return end
+      if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end   -- the window closed
+      Trace("view put back")
+      OpenCompact()
+    end)
+  end)
   LayoutColumns()
   LayoutHeader()
 end
@@ -2590,7 +2630,7 @@ local function Install()
     if Keeping() then return end   -- switching profession from this view: it stays open
     local wasOpen = overlay and overlay:IsShown()
     if wasOpen then
-      overlay:Hide()
+      HideOverlay("window closed")
       SetEntryChecked(false)
     end
     if wasOpen and not InCombatLockdown() then pcall(RestorePages) end
@@ -2601,7 +2641,11 @@ local function Install()
   for _, page in pairs(pages) do
     if type(page) == "table" and page.HookScript then
       page:HookScript("OnShow", function(self)
-        if Keeping() and overlay and overlay:IsShown() and not InCombatLockdown() then self:Hide() end
+        if not (overlay and overlay:IsShown()) or InCombatLockdown() then return end
+        if Keeping() or not UserChoseNative() then
+          Trace("Blizzard page shown without a tab click - hidden again")
+          self:Hide()
+        end
       end)
     end
   end

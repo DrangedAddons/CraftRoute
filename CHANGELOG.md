@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.25.3
+
+- Profession-window view really stays on CraftRoute's tab after crafting. It only leaves on your click - one of Blizzard's tabs, a TrainerSpells tab, CraftRoute's own tab - or when the window closes. If Blizzard's page (or TrainerSpells' frame) comes up any other way it's hidden again straight away, and if anything else hides the view it comes straight back.
+- /cr trace: reports in chat whatever brings Blizzard's page up or hides the view, and where from - type it, craft, and send the lines if the tab still switches.
+
 ## 0.25.2
 
 - Profession-window view stays on CraftRoute's tab after crafting. When a craft (single or Create All) finished, Blizzard's window refreshed and brought its own recipes page back, and the view took that as you choosing Blizzard's tab. Now only a click on one of Blizzard's tabs leaves CraftRoute's tab; anything else that brings Blizzard's page back is hidden again.

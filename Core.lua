@@ -156,6 +156,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     CR.DebugPopups()
   elseif msg == "probe" then
     if CR.ProbeUnderMouse then CR.ProbeUnderMouse() end
+  elseif msg == "trace" then
+    if CR.ToggleCompactTrace then CR.ToggleCompactTrace() end
   elseif msg == "view" then
     if CR.DebugCompactView then CR.DebugCompactView() end
   elseif msg == "tasks reset" then
