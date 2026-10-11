@@ -55,7 +55,10 @@ function CR.CountStepCraft(spellID)
       if cur >= (st.stepFrom or st.from or 0) and cur < (st.stepTo or st.to or 0) then
         db.stepCrafts = db.stepCrafts or {}
         db.stepCrafts[prof] = db.stepCrafts[prof] or {}
-        db.stepCrafts[prof][st.routeKey] = (db.stepCrafts[prof][st.routeKey] or 0) + 1
+        -- the first craft counted: start from where your skill says you are in the step
+        local base = db.stepCrafts[prof][st.routeKey]
+          or math.max(0, (st.guideCrafts or 0) - (st.crafts or 0))
+        db.stepCrafts[prof][st.routeKey] = base + 1
       end
       return
     end

@@ -141,11 +141,12 @@ local function ScaleCrafts(r, guideCrafts, from, to, lo, hi)
   return math.max(1, ceil(guideCrafts * CraftWeight(r, lo, hi) / full - 0.01))
 end
 
--- Crafts made of a guide step's recipe while you're in its range (any window): the step's count
--- goes down by each one, whether it gave a skill point or not. [route id:step index] = count.
+-- Crafts made of a guide step's recipe while you're in its range (any window), or nil before the
+-- first one. [route id:step index] = count. (The first craft starts it from where your skill
+-- says you are in the step - CraftBatch.lua.)
 local function StepCrafted(route, index, profName)
   local t = CraftRouteCharDB and CraftRouteCharDB.stepCrafts and CraftRouteCharDB.stepCrafts[profName]
-  return t and t[(route.id or "?") .. ":" .. index] or 0
+  return t and t[(route.id or "?") .. ":" .. index]
 end
 
 -- Selected targets that aren't owned yet: { {recipe, qty, owned} }
@@ -350,13 +351,21 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     if st.crafts then
       out.crafts = (lo == st.from and hi == st.to) and st.crafts
         or ScaleCrafts(r, st.crafts, st.from, st.to, lo, hi)
-      -- crafts you've made in this step bring its count down too (a craft without a skill point
-      -- still used its reagents) - until the guide's count is made; then the skill decides
-      local made = StepCrafted(route, index, profName)
-      if made > 0 and made < st.crafts and hi == st.to then
-        out.crafts = math.max(1, math.min(out.crafts, st.crafts - made))
-      end
+      -- The step's objective is the guide's count: it goes down by one per craft you make, skill
+      -- point or not, so the reagents for the rest stay matched. All made but the skill isn't
+      -- there yet: repeat the step - an estimate of the crafts (and materials) still needed.
+      out.guideCrafts = st.crafts
       out.routeKey = (route.id or "?") .. ":" .. index
+      local made = StepCrafted(route, index, profName)
+      if made and hi == st.to then
+        if made < st.crafts then
+          out.crafts = st.crafts - made
+        else
+          out.crafts, out.estimated, out.repeatStep = EstimateCrafts(r, lo, hi), true, true
+          out.note = string.format("Repeat this step: the guide's %d are done, but you're at %d - about %d more "
+            .. "to reach %d", st.crafts, c, out.crafts, st.to)
+        end
+      end
     else
       out.crafts, out.estimated = EstimateCrafts(r, lo, hi), true
     end

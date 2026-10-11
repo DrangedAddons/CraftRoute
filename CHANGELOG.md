@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.28.3
+
+- A guide step's objective is its count: 50 Mithril Headed Trout goes 50/50, 49/49, 48/48... with each craft - skill point or not - so the reagents stay matched (green) all the way through.
+- Made the guide's count but not at the step's skill yet? The step stays: "Repeat this step: the guide's 50 are done, but you're at 218 - about 9 more to reach 225", with the materials (and shopping list) for those extra crafts, estimated from the recipe's skill colours. Reach the skill first and the step's done.
+- Already part-way through a step when you update: the count picks up from where your skill says you are.
+
 ## 0.28.2
 
 - A guide step's craft count goes down with every craft. It used to be re-estimated from your skill and always rounded up, so e.g. 50 Mithril Headed Trout stayed at 50 after the first craft while your fish went to 49 - and the reagent turned yellow. Now the estimate rounds properly, and each craft of the step's recipe you make while in its range (from CraftRoute or Blizzard's window) counts too - so a craft that gave no skill point still brings the count down with the reagents it used.

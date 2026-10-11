@@ -1854,7 +1854,12 @@ function CR.CreateCraftPanel(parent)
     stepBar:SetValue(inStep and math.max(0, math.min(1, (cur - sFrom) / (sTo - sFrom))) or 0)
     stepBar:SetStatusBarColor(0.25, 0.6, 1)
     local progress
-    if st.finish then
+    if st.repeatStep then
+      -- the guide's count is made but the skill isn't there yet: an estimate of what's left
+      stepBar:SetValue(math.max(0, math.min(1, (cur - sFrom) / math.max(1, sTo - sFrom))))
+      progress = string.format("Step %d-%d  ·  the guide's %d done  ·  repeat: ~%d more to reach %d",
+        sFrom, sTo, st.guideCrafts or 0, st.crafts, sTo)
+    elseif st.finish then
       -- skill reached, but the step's crafts are kept for a later step: finish them first
       stepBar:SetValue(1)
       progress = string.format("Step %d-%d  ·  skill reached  ·  %d more to make", sFrom, sTo, st.crafts)
