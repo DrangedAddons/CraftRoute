@@ -2027,10 +2027,12 @@ function CR.CreateCraftPanel(parent)
     end
     if not countBox:HasFocus() then
       local want = math.max(1, math.min(st.crafts, (available or 0) > 0 and available or st.crafts))
-      if panel.lastSpell ~= r.spell then
+      -- follows the step's count (while crafting: the step's count left) unless you typed your own
+      local running = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell)
+      if running then want = st.crafts end
+      if panel.lastSpell ~= r.spell or running or countBox:GetNumber() == panel.autoCount then
         countBox:SetNumber(want)
-      elseif CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) then
-        countBox:SetNumber(st.crafts)   -- counts down with the step while you craft
+        panel.autoCount = want
       end
     end
     panel.lastSpell = r.spell

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.5
+
+- The quantity box follows the step's count as it changes (e.g. when a step switches to "repeat: ~4 more"), not only when you switch recipe or while crafting - it could be left showing an old number (6 against a step of 4). A number you type yourself stays until the recipe changes.
+
 ## 0.28.4
 
 - While a batch you started is crafting, the quantity box counts down with what the step still needs (50, 49, 48...), on the Craft tab and in the profession window. Typing in the box stops it updating until you're done.

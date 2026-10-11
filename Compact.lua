@@ -1280,11 +1280,17 @@ local function FillSchematic(info)
   end
   frame.openBtn:SetText("Open " .. profName)
   frame.openBtn:SetEnabled(not InCombatLockdown())
-  if not frame.countBox:HasFocus() and frame.lastSpell ~= recipe.spell then
-    local want = math.max(1, math.min(st.crafts or 1, ready > 0 and ready or (st.crafts or 1)))
-    frame.countBox:SetText(tostring(want))
-  elseif not frame.countBox:HasFocus() and CR.CraftBatchRunning and CR.CraftBatchRunning(recipe.spell) then
-    frame.countBox:SetText(tostring(st.crafts or 1))   -- counts down with the step while you craft
+  -- The quantity follows the step's count (as many as you can make, while crafting the step's
+  -- count left) - unless you've typed your own number in, which stays until the recipe changes.
+  if not frame.countBox:HasFocus() then
+    local running = CR.CraftBatchRunning and CR.CraftBatchRunning(recipe.spell)
+    local want = running and (st.crafts or 1)
+      or math.max(1, math.min(st.crafts or 1, ready > 0 and ready or (st.crafts or 1)))
+    local typed = tonumber(frame.countBox:GetText())
+    if frame.lastSpell ~= recipe.spell or running or typed == frame.autoCount then
+      frame.countBox:SetText(tostring(want))
+      frame.autoCount = want
+    end
   end
   frame.lastSpell = recipe.spell
   frame.current = st
