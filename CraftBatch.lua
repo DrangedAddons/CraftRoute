@@ -36,6 +36,11 @@ function CR.CraftBatchState()
   }
 end
 
+-- Is a batch of this recipe running (not finished or stopped)?
+function CR.CraftBatchRunning(spell)
+  return batch and not batch.endedAt and batch.spell == spell or false
+end
+
 -- "Crafting Minor Mana Oil  3/50" / "Made 50/50 Minor Mana Oil" / "Stopped at 12/50".
 function CR.CraftBatchText(s)
   if s.finished then return string.format("Made %d/%d %s", s.done, s.total, s.name) end

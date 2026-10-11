@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.4
+
+- While a batch you started is crafting, the quantity box counts down with what the step still needs (50, 49, 48...), on the Craft tab and in the profession window. Typing in the box stops it updating until you're done.
+
 ## 0.28.3
 
 - A guide step's objective is its count: 50 Mithril Headed Trout goes 50/50, 49/49, 48/48... with each craft - skill point or not - so the reagents stay matched (green) all the way through.

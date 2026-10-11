@@ -1283,6 +1283,8 @@ local function FillSchematic(info)
   if not frame.countBox:HasFocus() and frame.lastSpell ~= recipe.spell then
     local want = math.max(1, math.min(st.crafts or 1, ready > 0 and ready or (st.crafts or 1)))
     frame.countBox:SetText(tostring(want))
+  elseif not frame.countBox:HasFocus() and CR.CraftBatchRunning and CR.CraftBatchRunning(recipe.spell) then
+    frame.countBox:SetText(tostring(st.crafts or 1))   -- counts down with the step while you craft
   end
   frame.lastSpell = recipe.spell
   frame.current = st
