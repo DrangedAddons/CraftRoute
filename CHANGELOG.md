@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.2
+
+- A guide step's craft count goes down with every craft. It used to be re-estimated from your skill and always rounded up, so e.g. 50 Mithril Headed Trout stayed at 50 after the first craft while your fish went to 49 - and the reagent turned yellow. Now the estimate rounds properly, and each craft of the step's recipe you make while in its range (from CraftRoute or Blizzard's window) counts too - so a craft that gave no skill point still brings the count down with the reagents it used.
+
 ## 0.28.1
 
 - A reagent you're short of that vendors sell (Hot Spices, Fine Thread, flux...) shows a "Vendor" button next to its count - a reminder it's not on the Auctionator shopping list. Talk to a vendor that has it and it turns into the usual Buy button. In the profession window (recipe and route list) and on the Craft tab. CraftRoute knows an item is a vendor item once you've seen it on a merchant (remembered for all characters) or from Auctionator's vendor prices.

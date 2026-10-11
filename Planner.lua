@@ -131,8 +131,21 @@ end
 -- the last yellow points of a step take more crafts than its first orange ones.
 local function ScaleCrafts(r, guideCrafts, from, to, lo, hi)
   local full = CraftWeight(r, from, to)
+  if hi == to then
+    -- the rest of the step: the guide's count less the crafts the skill you've gained stands for
+    -- (rounded - always rounding up kept 50 at 50 after a craft: 49.2 -> 50)
+    local done = full > 0 and CraftWeight(r, from, lo) / full or (lo - from) / (to - from)
+    return math.max(1, guideCrafts - floor(guideCrafts * done + 0.5))
+  end
   if full <= 0 then return ceil(guideCrafts * (hi - lo) / (to - from) - 0.01) end
   return math.max(1, ceil(guideCrafts * CraftWeight(r, lo, hi) / full - 0.01))
+end
+
+-- Crafts made of a guide step's recipe while you're in its range (any window): the step's count
+-- goes down by each one, whether it gave a skill point or not. [route id:step index] = count.
+local function StepCrafted(route, index, profName)
+  local t = CraftRouteCharDB and CraftRouteCharDB.stepCrafts and CraftRouteCharDB.stepCrafts[profName]
+  return t and t[(route.id or "?") .. ":" .. index] or 0
 end
 
 -- Selected targets that aren't owned yet: { {recipe, qty, owned} }
@@ -337,6 +350,13 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     if st.crafts then
       out.crafts = (lo == st.from and hi == st.to) and st.crafts
         or ScaleCrafts(r, st.crafts, st.from, st.to, lo, hi)
+      -- crafts you've made in this step bring its count down too (a craft without a skill point
+      -- still used its reagents) - until the guide's count is made; then the skill decides
+      local made = StepCrafted(route, index, profName)
+      if made > 0 and made < st.crafts and hi == st.to then
+        out.crafts = math.max(1, math.min(out.crafts, st.crafts - made))
+      end
+      out.routeKey = (route.id or "?") .. ":" .. index
     else
       out.crafts, out.estimated = EstimateCrafts(r, lo, hi), true
     end

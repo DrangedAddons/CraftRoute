@@ -43,6 +43,25 @@ function CR.CraftBatchText(s)
   return string.format("Crafting %s  %d/%d", s.name, s.current, s.total)
 end
 
+-- A craft of the current guide step's recipe, made while you're in that step's range (from any
+-- window): counted for the step, so its count goes down by one per craft (Planner.lua).
+function CR.CountStepCraft(spellID)
+  local db = CraftRouteCharDB
+  local prof = db and db.profession
+  local entry = prof and CR.GetPlans and CR.GetPlans(prof)
+  for _, st in ipairs(entry and entry.plan.steps or {}) do
+    if st.routeKey and st.spell == spellID and not st.finish then
+      local cur = CR.GetSkill(st.skill or prof)
+      if cur >= (st.stepFrom or st.from or 0) and cur < (st.stepTo or st.to or 0) then
+        db.stepCrafts = db.stepCrafts or {}
+        db.stepCrafts[prof] = db.stepCrafts[prof] or {}
+        db.stepCrafts[prof][st.routeKey] = (db.stepCrafts[prof][st.routeKey] or 0) + 1
+      end
+      return
+    end
+  end
+end
+
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
@@ -50,7 +69,9 @@ for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "
   end
 end
 ev:SetScript("OnEvent", function(_, event, unit, _, spellID)
-  if unit ~= "player" or not batch or batch.endedAt or spellID ~= batch.spell then return end
+  if unit ~= "player" then return end
+  if event == "UNIT_SPELLCAST_SUCCEEDED" and spellID then CR.SafeCall(CR.CountStepCraft, spellID) end
+  if not batch or batch.endedAt or spellID ~= batch.spell then return end
   if event == "UNIT_SPELLCAST_SUCCEEDED" then
     batch.done = batch.done + 1
     if batch.done >= batch.total then batch.endedAt = GetTime() end
