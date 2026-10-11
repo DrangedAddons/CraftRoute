@@ -1155,6 +1155,7 @@ local function FillSchematic(info)
   frame.icon:SetShown(recipe ~= nil)
   frame.rName:SetShown(recipe ~= nil)
   frame.rSub:SetShown(recipe ~= nil)
+  frame.rBand:SetShown(recipe ~= nil)
   frame.rStructure:SetShown(recipe ~= nil)
   frame.reagentsLabel:SetShown(recipe ~= nil)
   frame.cost:SetShown(recipe ~= nil)
@@ -1193,9 +1194,14 @@ local function FillSchematic(info)
   else range = "" end
   local sub = (st.estimated and "~" or "") .. (st.crafts or 0) .. "x"
   if range ~= "" then sub = range .. "   " .. sub end
-  if diffWord then sub = sub .. "   " .. CR.ColorText(diffWord, CR.DIFF_COLORS[diff] or "ffffff") end
+  -- the colour band follows the text; "too soon" (can't learn it yet) stays as a word too
+  if diff == "red" then sub = sub .. "   " .. CR.ColorText(diffWord, CR.DIFF_COLORS[diff] or "ff4040") end
   if info.ahead then sub = sub .. CR.ColorText("   looking ahead", "aaaaaa") end
   frame.rSub:SetText(sub)
+  frame.rBand:ClearAllPoints()
+  frame.rBand:SetPoint("LEFT", frame.rSub, "LEFT", (tonumber(frame.rSub:GetStringWidth()) or 70) + 8, 0)
+  frame.rBand:Fill(recipe, cur)
+  frame.rBand:Show()
   local structure = CR.StructureText(recipe)
   frame.rStructure:SetText(structure or "")
 
@@ -2087,6 +2093,55 @@ local function BuildOverlay()
   frame.rSub:SetWidth(180)
   frame.rSub:SetJustifyH("LEFT")
   frame.rSub:SetWordWrap(false)
+
+  -- skill-up colours, compact: the recipe's orange / yellow / green / grey ranges with a white
+  -- marker at your skill (the Craft tab's band, small), right after the step and count
+  local BAND_W = 90
+  local band = CreateFrame("Frame", nil, schematic, "BackdropTemplate")
+  band:SetSize(BAND_W, 8)
+  CR.Backdrop(band, 0, 0, 0, 0.6)
+  band.crOwnBorder = true
+  band:SetBackdropBorderColor(0, 0, 0, 1)
+  band.segs = {}
+  for i, key in ipairs({ "orange", "yellow", "green", "grey" }) do
+    local t = band:CreateTexture(nil, "ARTWORK")
+    local hex = CR.DIFF_COLORS[key]
+    t:SetColorTexture(tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255,
+      tonumber(hex:sub(5, 6), 16) / 255, 0.9)
+    t:SetHeight(6)
+    band.segs[i] = t
+  end
+  band.marker = band:CreateTexture(nil, "OVERLAY")
+  band.marker:SetSize(2, 12)
+  band.marker:SetColorTexture(1, 1, 1, 1)
+  function band:Fill(r, skill)
+    local lo, hi = r.learn or 1, (r.x or 1) + 10   -- from learn to a little past grey
+    if hi <= lo then hi = lo + 1 end
+    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * (BAND_W - 2) + 1 end
+    local edges = { lo, r.y, r.g, r.x, hi }
+    for i, t in ipairs(self.segs) do
+      local a, b = X(math.max(lo, edges[i])), X(math.max(lo, edges[i + 1]))
+      t:ClearAllPoints()
+      t:SetPoint("LEFT", self, "LEFT", a, 0)
+      t:SetWidth(math.max(0.01, b - a))
+      t:SetShown(b - a > 0.5)
+    end
+    self.marker:ClearAllPoints()
+    self.marker:SetPoint("CENTER", self, "LEFT", X(skill), 0)
+    self.r, self.skill = r, skill
+  end
+  band:EnableMouse(true)
+  band:SetScript("OnEnter", function(self)
+    if not self.r then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Skill-up colours")
+    GameTooltip:AddLine(string.format("|cffff8040%d|r learn  ·  |cffffff00%d|r yellow  ·  |cff40bf40%d|r green  ·  "
+      .. "|cff808080%d|r grey  ·  you: |cffffffff%d|r", self.r.learn or 1, self.r.y, self.r.g, self.r.x, self.skill), 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  band:SetScript("OnLeave", GameTooltip_Hide)
+  band:Hide()
+  frame.rBand = band
   frame.rStructure = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.rStructure:SetPoint("TOPLEFT", frame.rSub, "BOTTOMLEFT", 0, -1)
   frame.rStructure:SetWidth(180)

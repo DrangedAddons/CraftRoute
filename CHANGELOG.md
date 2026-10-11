@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.6
+
+- Profession-window view: a compact skill-up colour bar next to the recipe's step and count, in place of the coloured word - orange, yellow, green and grey, with a white marker at your skill (the Craft tab's band, small). Hover it for the exact skill points. A recipe you can't learn yet still says "too soon".
+
 ## 0.28.5
 
 - The quantity box follows the step's count as it changes (e.g. when a step switches to "repeat: ~4 more"), not only when you switch recipe or while crafting - it could be left showing an old number (6 against a step of 4). A number you type yourself stays until the recipe changes.
