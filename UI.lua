@@ -74,6 +74,13 @@ function CR.CreateMaterialRow(row, costW, countW)
   row:SetScript("OnEnter", function(self)
     if not self.mat then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if self.mat.header then
+      GameTooltip:SetText("You'll make")
+      GameTooltip:AddLine("The route crafts these itself from the materials above - they're not on the "
+        .. "shopping list.", 1, 1, 1, true)
+      GameTooltip:Show()
+      return
+    end
     GameTooltip:SetItemByID(self.mat.id) -- CraftRoute lines are added by the tooltip hook
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
@@ -82,15 +89,36 @@ function CR.CreateMaterialRow(row, costW, countW)
   end)
   row:SetScript("OnLeave", GameTooltip_Hide)
   row:SetScript("OnClick", function(self)
-    if IsModifiedClick("CHATLINK") and self.mat then
+    if IsModifiedClick("CHATLINK") and self.mat and self.mat.id then
       local _, link = GetItemInfo(self.mat.id)
       if link then ChatEdit_InsertLink(link) end
     end
   end)
 end
 
+-- The materials list in two parts: what to buy, then "You'll make" - things the plan crafts itself
+-- (bolts, cured hides...) from what you buy, so they don't read like shopping.
+function CR.MaterialsView(materials)
+  local buy, make = {}, {}
+  for _, m in ipairs(materials or {}) do
+    table.insert((m.crafted or 0) > 0 and make or buy, m)
+  end
+  if #make == 0 then return buy end
+  table.insert(buy, { header = "You'll make" })
+  for _, m in ipairs(make) do table.insert(buy, m) end
+  return buy
+end
+
 function CR.UpdateMaterialRow(row, m)
   row.mat = m
+  if m.header then
+    row.icon:Hide()
+    row.name:SetText(CR.ColorText(m.header, "ffd100"))
+    row.count:SetText("")
+    row.cost:SetText("")
+    return
+  end
+  row.icon:Show()
   row.icon:SetTexture(GetItemIcon(m.id))
   row.name:SetText(m.name)
   local covered = m.have + m.crafted
@@ -99,7 +127,7 @@ function CR.UpdateMaterialRow(row, m)
   if m.crafted > 0 then count = count .. CR.ColorText(" +" .. m.crafted, "33ccff") end
   row.count:SetText(count)
   if m.crafted > 0 then
-    row.cost:SetText(CR.ColorText("crafted", "33ccff"))
+    row.cost:SetText(CR.ColorText("make " .. m.crafted, "33ccff"))
   elseif m.missing == 0 then
     row.cost:SetText(CR.ColorText("done", "40ff40"))
   else
@@ -1005,7 +1033,7 @@ function CR.CreatePlanPanel(parent)
     steps.onResize()
     steps.data = StepLines(e.plan, route)
     steps:Refresh()
-    mats.data = e.plan.materials
+    mats.data = CR.MaterialsView(e.plan.materials)
     mats:Refresh()
 
     totals:SetText(CR.MissingCostText(e.plan))

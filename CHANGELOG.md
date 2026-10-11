@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.28.11
+
+- The Auctionator shopping list no longer includes things the route makes itself - e.g. Bolts of Woolen Cloth for a tailor: the list has the Wool Cloth to make them from. (The whole-route list counted them as missing; the materials list already showed them as crafted.)
+- A step's shopping list (profession window) buys what a component you make is made from, not the component: for Double-stitched Woolen Shoulders, the wool for the bolts you're short of.
+- The materials list (Plan tab, Craft tab) is split: what to buy first, then "You'll make" - bolts, cured hides and other things the route crafts itself, with how many ("make 276").
+
 ## 0.28.10
 
 - The early stop only happens when it's certain the craft about to go finishes the step: the last craft of a count-based step, or the final point while the recipe is still orange (orange always gives a point) - no extra craft. When it's a guess (yellow / green, one point to go), the queue keeps going and stops on the skill-up instead - at most one extra craft, rather than stopping before every craft that might be the last.

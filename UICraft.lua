@@ -1765,7 +1765,7 @@ function CR.CreateCraftPanel(parent)
     end
     routeGoal:SetShown(seq and true or false)
     routeGoal:SetText(entry and string.format("to %d (%s)", entry.goal, entry.route and entry.route.label or "") or "")
-    craftMats.data = entry and entry.plan.materials or {}
+    craftMats.data = CR.MaterialsView(entry and entry.plan.materials)
     craftMats:Refresh()
     costText:SetText(entry and CR.MissingCostText(entry.plan, true) or "")
 
