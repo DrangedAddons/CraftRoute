@@ -496,18 +496,16 @@ local function ApplyRow(row, item)
       end
       rightmost = a
     end
-    -- Buy, while a vendor that sells it is open and your bags are short
-    if item.short and CR.MerchantSells and CR.MerchantSells(item.itemID) then
-      row.buy:Show()
+    -- bags short: "Buy" while a vendor that sells it is open, "Vendor" when vendors do but none is
+    if item.short and CR.SetBuyButton then
       row.buy:ClearAllPoints()
       row.buy:SetPoint("RIGHT", toggle and rightmost or row, toggle and "LEFT" or "RIGHT", toggle and -2 or -6, 0)
       local need, id = item.need, item.itemID
-      row.buy:SetScript("OnClick", function(self)
+      if CR.SetBuyButton(row.buy, id, function(self)
         CR.OpenBuy(id, need - (CR.BagsAndElsewhere(id)), self, function(i)
           return math.max(0, need - (CR.BagsAndElsewhere(i)))
         end, overlay)
-      end)
-      rightmost = row.buy
+      end) > 0 then rightmost = row.buy end
     end
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
@@ -1222,15 +1220,19 @@ local function FillSchematic(info)
       local text, bags, need = HaveNeed(rg[1], rg[2], st.crafts or 1)
       row.text:SetText(text)
       row.itemID = rg[1]
-      local canBuy = bags < need and CR.MerchantSells and CR.MerchantSells(rg[1])
-      row.buy:SetShown(canBuy and true or false)
-      row.text:SetPoint("RIGHT", row, "RIGHT", canBuy and -44 or -4, 0)
+      -- bags short: "Buy" while a vendor that sells it is open, "Vendor" when vendors do but none is
       local id, needAll = rg[1], need
-      row.buy:SetScript("OnClick", canBuy and function(self)
-        CR.OpenBuy(id, needAll - (CR.BagsAndElsewhere(id)), self, function(i)
-          return math.max(0, needAll - (CR.BagsAndElsewhere(i)))
-        end, overlay)
-      end or nil)
+      local buyW = 0
+      if bags < need and CR.SetBuyButton then
+        buyW = CR.SetBuyButton(row.buy, id, function(self)
+          CR.OpenBuy(id, needAll - (CR.BagsAndElsewhere(id)), self, function(i)
+            return math.max(0, needAll - (CR.BagsAndElsewhere(i)))
+          end, overlay)
+        end)
+      else
+        row.buy:Hide()
+      end
+      row.text:SetPoint("RIGHT", row, "RIGHT", buyW > 0 and -(buyW + 4) or -4, 0)
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y)
       -- the right edge (and its Buy button) stays inside the column, clear of the scroll bar

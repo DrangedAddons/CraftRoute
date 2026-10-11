@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.1
+
+- A reagent you're short of that vendors sell (Hot Spices, Fine Thread, flux...) shows a "Vendor" button next to its count - a reminder it's not on the Auctionator shopping list. Talk to a vendor that has it and it turns into the usual Buy button. In the profession window (recipe and route list) and on the Craft tab. CraftRoute knows an item is a vendor item once you've seen it on a merchant (remembered for all characters) or from Auctionator's vendor prices.
+
 ## 0.28.0
 
 - Recipe facts come live from TrainerSpells: at login CraftRoute reads each recipe's learn skill, trainer cost and who sells it (vendors by faction, quests) from TrainerSpells, by recipe. When TrainerSpells updates - a trainer teaches something new, a recipe moves to another vendor, a skill changes - CraftRoute follows straight away, with no CraftRoute update. Its built-in recipe data is the fallback for recipes TrainerSpells doesn't list, or when it isn't installed.

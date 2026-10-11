@@ -612,11 +612,59 @@ local function ScanMerchant()
   for i = 1, GetMerchantNumItems() do
     local id = GetMerchantItemID(i)
     local price, _, _, extended = MerchantSlotInfo(i)
-    if id and price and price > 0 and not extended then merchantIndex[id] = i end   -- gold only
+    if id and price and price > 0 and not extended then
+      merchantIndex[id] = i   -- gold only
+      -- remembered (all characters): "Vendor" on reagents you're short of, away from a vendor
+      if CraftRouteDB then
+        CraftRouteDB.vendorItems = CraftRouteDB.vendorItems or {}
+        CraftRouteDB.vendorItems[id] = true
+      end
+    end
   end
 end
 
 function CR.MerchantSells(itemID) return merchantOpen and merchantIndex[itemID] or nil end
+
+-- Sold by vendors? (seen on a merchant, or Auctionator knows a vendor price for it)
+function CR.IsVendorItem(itemID)
+  if CraftRouteDB and CraftRouteDB.vendorItems and CraftRouteDB.vendorItems[itemID] then return true end
+  local _, src = CR.GetUnitPrice(itemID)
+  return src == "vendor"
+end
+
+local function VendorTip(self)
+  GameTooltip:SetOwner(self, "ANCHOR_TOP")
+  GameTooltip:SetText("Buy from a vendor")
+  GameTooltip:AddLine("Vendors sell this - it's not on the Auctionator shopping list. Talk to one that has it "
+    .. "and this becomes a Buy button.", 1, 1, 1, true)
+  GameTooltip:Show()
+end
+
+-- A short reagent's button: "Buy" while a vendor that sells it is open (onClick opens the buy box),
+-- "Vendor" (same look, a reminder) when it's a vendor item but no such vendor is open. Returns
+-- the width it takes, 0 when hidden.
+function CR.SetBuyButton(btn, itemID, onClick)
+  btn.crBuyW = btn.crBuyW or tonumber(btn:GetWidth()) or 40
+  if CR.MerchantSells(itemID) then
+    btn:SetText("Buy")
+    btn:SetWidth(btn.crBuyW)
+    btn:SetScript("OnClick", onClick)
+    btn:SetScript("OnEnter", nil)
+    btn:SetScript("OnLeave", nil)
+    btn:Show()
+    return btn.crBuyW
+  elseif CR.IsVendorItem(itemID) then
+    btn:SetText("Vendor")
+    btn:SetWidth(58)
+    btn:SetScript("OnClick", VendorTip)
+    btn:SetScript("OnEnter", VendorTip)
+    btn:SetScript("OnLeave", GameTooltip_Hide)
+    btn:Show()
+    return 58
+  end
+  btn:Hide()
+  return 0
+end
 
 -- What buying `count` would actually get you: purchases, items, cost (capped by stock and gold).
 local function BuyPlan(itemID, count)
@@ -675,13 +723,16 @@ local function FillReagents(box, rows, r, crafts, opts)
       row.expanded = open
       row.make:SetText(open and "-" or "+")
       row.make:SetShown(canMake and true or false)
-      -- "Buy" when the open vendor sells it and your bags are short
-      local canBuy = opts.onBuy and bags < need and CR.MerchantSells(id)
+      -- bags short: "Buy" when the open vendor sells it, "Vendor" when vendors do but none is open
       row.buy:ClearAllPoints()
       row.buy:SetPoint("RIGHT", canMake and -28 or -2, 0)
-      row.buy:SetShown(canBuy and true or false)
-      row.buy:SetScript("OnClick", canBuy and function(self) opts.onBuy(id, need - bags, self) end or nil)
-      row.text:SetPoint("RIGHT", -((canMake and 28 or 0) + (canBuy and 46 or 0)), 0)
+      local buyW = 0
+      if opts.onBuy and bags < need then
+        buyW = CR.SetBuyButton(row.buy, id, function(self) opts.onBuy(id, need - bags, self) end)
+      else
+        row.buy:Hide()
+      end
+      row.text:SetPoint("RIGHT", -((canMake and 28 or 0) + (buyW > 0 and buyW + 4 or 0)), 0)
       row:Show()
     else
       row.onMake = nil
