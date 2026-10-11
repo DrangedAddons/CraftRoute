@@ -650,16 +650,27 @@ function CR.BuildPlan(profName, cur, goal)
     for _, st in ipairs(route.steps) do
       local r = st.spell and st.crafts and StepActive(route, st) and (st.from or 0) <= cur and prof.recipes[st.spell]
       if r and r.item and r.item > 0 then
-        -- how many later steps (still ahead) use
-        local later = 0
+        -- how many later steps (still ahead) use, and where the first of them starts
+        local later, started = 0, false
+        local tally = CraftRouteCharDB and CraftRouteCharDB.stepCrafts and CraftRouteCharDB.stepCrafts[profName] or {}
         for _, e in ipairs(events) do
           local er = e.spell and prof.recipes[e.spell]
           if er and e.spell ~= st.spell and (e.from or 0) >= (st.to or 0) then
             for _, rg in ipairs(er.reagents) do
-              if rg[1] == r.item then later = later + rg[2] * (e.crafts or 0) end
+              if rg[1] == r.item then
+                later = later + rg[2] * (e.crafts or 0)
+                -- started on it: skill past its start, or crafted some of it
+                if cur > (e.stepFrom or e.from or 0) or (e.routeKey and (tally[e.routeKey] or 0) > 0) then
+                  started = true
+                end
+              end
             end
           end
         end
+        -- once you've started a step that uses them, you're spending them - this step's count isn't
+        -- owed any more (that step was green to start; a real shortfall is made just before the
+        -- step that needs it). Only until then does this step hold you to its count.
+        if started then later = 0 end
         local want = math.min(st.crafts * r.makes, later)
         local short = want - Bags(r.item)
         if short > 0 then

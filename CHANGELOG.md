@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.12
+
+- Starting a step no longer pulls an earlier "make and keep these" step back in front of it. E.g. with the 45 Bolts of Woolen Cloth made, the Woolen Cape step said go - but the first cape used a bolt, you held fewer than 45, and the bolt step jumped back in. An earlier step's count now only holds you until you've started a step that uses its items (skill past that step's start, or crafted some of it); after that you're spending them, and any real shortfall is made just before the step that needs it, as the route lists it.
+
 ## 0.28.11
 
 - The Auctionator shopping list no longer includes things the route makes itself - e.g. Bolts of Woolen Cloth for a tailor: the list has the Wool Cloth to make them from. (The whole-route list counted them as missing; the materials list already showed them as crafted.)
