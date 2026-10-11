@@ -102,6 +102,27 @@ function CR.CraftBatchState()
   }
 end
 
+-- Time left on a running batch, in seconds (nil when not running or before the first cast):
+-- what's left of the craft in progress plus the crafts after it, at the measured cast time.
+function CR.CraftBatchTimeLeft()
+  if not batch or batch.endedAt then return nil end
+  local _, _, _, startMS, endMS, isTradeSkill, _, _, castSpell = UnitCastingInfo("player")
+  local casting = isTradeSkill and startMS and endMS and endMS > startMS and (castSpell == nil or castSpell == batch.spell)
+  if casting then batch.castDur = (endMS - startMS) / 1000 end
+  if not batch.castDur then return nil end
+  local after = batch.total - batch.done - (casting and 1 or 0)
+  if batch.lastCraft then after = 0 end   -- the queue ends after this one
+  local now = casting and math.max(0, endMS / 1000 - GetTime()) or 0
+  return now + math.max(0, after) * batch.castDur, batch.total - batch.done
+end
+
+-- "1m 23s" / "45s"
+function CR.FormatDuration(sec)
+  sec = math.max(0, math.floor(sec + 0.5))
+  if sec >= 60 then return string.format("%dm %02ds", math.floor(sec / 60), sec % 60) end
+  return sec .. "s"
+end
+
 -- Is a batch of this recipe running (not finished or stopped)?
 function CR.CraftBatchRunning(spell)
   return batch and not batch.endedAt and batch.spell == spell or false

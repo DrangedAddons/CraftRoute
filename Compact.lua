@@ -2284,6 +2284,10 @@ local function BuildOverlay()
   batchBar.text:SetPoint("CENTER")
   batchBar:Hide()
   frame.batchBar = batchBar
+  -- time left for the whole batch, just above the bar
+  batchBar.eta = schematic:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  batchBar.eta:SetPoint("BOTTOMLEFT", batchBar, "TOPLEFT", 0, 3)
+  batchBar.eta:SetJustifyH("LEFT")
 
   frame.create = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.create:SetSize(96, 22)
@@ -2695,7 +2699,16 @@ local function BuildOverlay()
       elseif bs.finished then frame.batchBar:SetStatusBarColor(0.2, 0.9, 0.2)
       else frame.batchBar:SetStatusBarColor(1, 0.7, 0) end
       frame.batchBar.text:SetText(CR.CraftBatchText(bs))
+      local left, togo
+      if CR.CraftBatchTimeLeft then left, togo = CR.CraftBatchTimeLeft() end
+      if left then
+        frame.batchBar.eta:SetText(string.format("About %s left  (%d to go)", CR.FormatDuration(left), togo))
+        frame.batchBar.eta:Show()
+      else
+        frame.batchBar.eta:Hide()
+      end
     elseif frame.batchBar:IsShown() then
+      frame.batchBar.eta:Hide()
       frame.batchBar:Hide()
       frame.status:Show()
     end

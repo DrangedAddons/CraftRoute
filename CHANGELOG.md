@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.13
+
+- Profession-window view: time left for a crafting batch, just above its progress bar - "About 1m 23s left (37 to go)" - from the cast time of your crafts and what's left of the batch, counting down as you go.
+
 ## 0.28.12
 
 - Starting a step no longer pulls an earlier "make and keep these" step back in front of it. E.g. with the 45 Bolts of Woolen Cloth made, the Woolen Cape step said go - but the first cape used a bolt, you held fewer than 45, and the bolt step jumped back in. An earlier step's count now only holds you until you've started a step that uses its items (skill past that step's start, or crafted some of it); after that you're spending them, and any real shortfall is made just before the step that needs it, as the route lists it.
