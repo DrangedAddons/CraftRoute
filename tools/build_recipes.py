@@ -134,7 +134,7 @@ for sec in re.finditer(r"<section id='c-\d+' class='recipe-category'.*?</section
         known = [v for v in (base, pskill) if v is not None]
         ls = max(known) if known else None
         src = source.get(spell) or (pattern and 'Pattern') or 'Unknown'
-        recipes.append(dict(spell=spell, item=item, q=q, name=name, cat=cat, stats=stats, reagents=reagents,
+        recipes.append(dict(spell=spell, item=item, q=q, name=name, cat=cat, stats=stats, reagents=reagents, ps=pskill,
                             learn=ls, y=y, g=g, x=x, src=src, pattern=pattern, makes=ahl_yield.get(spell, title_yield)))
 
 # Hand fixes for gaps in the sources (verified against the wow-professions guides).
@@ -169,10 +169,13 @@ with open(out, 'w', encoding='utf8', newline='\n') as f:
     for r in sorted(recipes, key=lambda r: ((r['learn'] if r['learn'] is not None else r['y']), r['name'])):
         reag = ', '.join('{%d, %d}' % rg for rg in r['reagents'])
         learn_v = r['learn'] if r['learn'] is not None else 'nil'
-        f.write('  [%d] = { name = %s, item = %d, q = %d, cat = %s, learn = %s, y = %d, g = %d, x = %d, src = %s,%s%s%s reagents = { %s } },\n' % (
+        f.write('  [%d] = { name = %s, item = %d, q = %d, cat = %s, learn = %s, y = %d, g = %d, x = %d, src = %s,%s%s%s%s reagents = { %s } },\n' % (
             r['spell'], lua_str(r['name']), r['item'], r['q'], lua_str(r['cat']), learn_v, r['y'], r['g'], r['x'], lua_str(r['src']),
             (' makes = %d,' % r['makes']) if r['makes'] > 1 else '',
             (' pattern = %s,' % lua_str(r['pattern'])) if r['pattern'] else '',
+            # ps: the skill reading the pattern needs - learn stays at least this when CraftRoute
+            # takes the learn skill from TrainerSpells at login (TrainerSpells.lua)
+            (' ps = %d,' % r['ps']) if r.get('ps') else '',
             (' stats = %s,' % lua_str(r['stats'])) if r['stats'] else '', reag))
     f.write('}, {\n')
     for iid in sorted(names):

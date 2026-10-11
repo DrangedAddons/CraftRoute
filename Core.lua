@@ -156,6 +156,14 @@ SlashCmdList.CRAFTROUTE = function(msg)
     CR.DebugPopups()
   elseif msg == "probe" then
     if CR.ProbeUnderMouse then CR.ProbeUnderMouse() end
+  elseif msg == "data" then
+    local st = CR.tsStats or {}
+    if (st.recipes or 0) > 0 then
+      CR.Print(string.format("Recipe data: %d recipes read live from TrainerSpells (learn skill, source, vendors); "
+        .. "%d differ from CraftRoute's built-in values. The rest use the built-in data.", st.recipes, st.changed or 0))
+    else
+      CR.Print("Recipe data: TrainerSpells not loaded - using CraftRoute's built-in recipe data.")
+    end
   elseif msg == "trace" then
     if CR.ToggleCompactTrace then CR.ToggleCompactTrace() end
   elseif msg == "view" then

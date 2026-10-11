@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.28.0
+
+- Recipe facts come live from TrainerSpells: at login CraftRoute reads each recipe's learn skill, trainer cost and who sells it (vendors by faction, quests) from TrainerSpells, by recipe. When TrainerSpells updates - a trainer teaches something new, a recipe moves to another vendor, a skill changes - CraftRoute follows straight away, with no CraftRoute update. Its built-in recipe data is the fallback for recipes TrainerSpells doesn't list, or when it isn't installed.
+- /cr data: how many recipes came from TrainerSpells, and how many differ from the built-in values.
+
 ## 0.27.7
 
 - Fixed a Lua error opening the profession window with TrainerSpells installed ("Cannot anchor to a region dependent on it"). Both addons put a tab down the window's side under the lowest tab they find, so each could end up placed under the other. CraftRoute's tab now goes only under Blizzard's tabs, and TrainerSpells' tabs stack under it.

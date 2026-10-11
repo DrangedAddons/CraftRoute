@@ -7,6 +7,8 @@ Inputs:
 - The TrainerSpells addon's `data/forever` folder. Provides the learn skill (what the trainer asks), recipe sources and each vendor's faction. It's the reference for learn skills: an addon its developers keep updating, where the alternative is a formula.
 - `sources/ahledger_<prof>.html`: https://ahledger.com/wow-forever/professions/<prof>. Provides yields, and the learn skill only for recipes TrainerSpells doesn't list - its "skill" is mostly the yellow point minus 40, an estimate. There is no First Aid page, so leave that argument off for it.
 
+At login CraftRoute also reads TrainerSpells' data live (`TrainerSpellsData.lua`): each recipe's learn skill, trainer cost and vendors/quests, keyed by recipe, so a TrainerSpells update reaches CraftRoute without a rebuild. The built values (and `ps`, the skill a pattern needs to read, which learn never drops below) are the fallback for recipes TrainerSpells doesn't list. A recipe that's entirely new still needs a rebuild to exist in CraftRoute at all. `/cr data` says how many recipes came from TrainerSpells.
+
 The saved pages in `sources/` are not committed; they're third-party pages. To refresh the data after a Forever patch, download the two pages for each profession into `sources/` and run, e.g.:
 
 ```
