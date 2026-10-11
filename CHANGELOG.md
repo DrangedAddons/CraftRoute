@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.27.4
+
+- Steps with two objectives - reach the skill, and make the guide's count of something later steps use (e.g. 130-140: 20 Cured Heavy Hide) - now check both, against the step's own count. Past the step's range with too few, it stays the current step: "Finish this step: 11 more Cured Heavy Hide - 20 for later steps (you have 9)". Still in range, its crafts cover the count even if the skill would come sooner. (0.27.0-0.27.3 used the total all later steps need instead, and could ask for far more than the step does - 37 here.) Any further amount later steps need is still made just before them, as the guide has it.
+
 ## 0.27.3
 
 - Fixed the same step showing several times (e.g. three "Cured Heavy Hide 130-140" lines - 26x, 10x and 1x) when a step you'd passed was short of items for more than one later step. It's now one step with the total - "Finish this step: 37 more to keep for Barbaric Shoulders and Guardian Gloves".

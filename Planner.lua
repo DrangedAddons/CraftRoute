@@ -532,23 +532,6 @@ function CR.BuildPlan(profName, cur, goal)
   local pool, bagsLeft, need, crafted, usage, made = {}, {}, {}, {}, {}, {}
   local Consume
 
-  -- The guide step (on the route you follow) that crafts `spell` and that you've reached:
-  -- { st = route step, event = its entry in plan.steps if you're still within its range }.
-  -- A step that makes something kept for later isn't finished until you have them all.
-  local function OwnStep(spell)
-    if route.sequential then return nil end
-    for _, st in ipairs(route.steps) do
-      if st.spell == spell and StepActive(route, st) and (st.from or 0) <= cur then
-        for _, ps in ipairs(plan.steps) do
-          if ps.kind == "craft" and ps.spell == spell and not ps.finish and (ps.stepFrom or ps.from) == st.from then
-            return { st = st, event = ps }
-          end
-        end
-        if (st.to or 0) <= cur then return { st = st } end
-      end
-    end
-  end
-
   local function Bags(id)
     if bagsLeft[id] == nil then bagsLeft[id] = CR.HaveCount(id) end
     return bagsLeft[id]
@@ -599,41 +582,8 @@ function CR.BuildPlan(profName, cur, goal)
       if short > 0 then
         local n = ceil(short / producer.makes)
         crafted[id] = (crafted[id] or 0) + short
-        local own = OwnStep(producer.spell)
-        if own and own.event then
-          -- the guide step that makes it is the one you're on: it asks for these too
-          own.event.crafts = own.event.crafts + n
-          own.event.keepFor = label
-        elseif own then
-          -- you've passed that step's skill range without making enough: it stays the current
-          -- step until you have them, rather than turning up again just before they're needed.
-          -- One step, however many later steps the items are for.
-          local fin
-          for _, ps in ipairs(plan.steps) do
-            if ps.finish and ps.spell == producer.spell then fin = ps break end
-          end
-          if not fin then
-            local at = #plan.steps + 1
-            for i, ps in ipairs(plan.steps) do
-              if ps.kind == "craft" or ps.kind == "extra" or ps.kind == "target" then at = i break end
-            end
-            fin = { kind = "craft", from = own.st.from, to = own.st.to, stepFrom = own.st.from, stepTo = own.st.to,
-                    spell = producer.spell, crafts = 0, recipe = producer, skill = profName, finish = true,
-                    keepFor = {} }
-            table.insert(plan.steps, at, fin)
-          end
-          fin.crafts = fin.crafts + n
-          local what = label:match("%((.-)%)$") or label   -- "Leatherworking 165-175 (Guardian Gloves)"
-          local seen = false
-          for _, w in ipairs(fin.keepFor) do if w == what then seen = true end end
-          if not seen then table.insert(fin.keepFor, what) end
-          local list = #fin.keepFor > 1 and (table.concat(fin.keepFor, ", ", 1, #fin.keepFor - 1) .. " and "
-            .. fin.keepFor[#fin.keepFor]) or fin.keepFor[1]
-          fin.note = string.format("Finish this step: %d more to keep for %s", fin.crafts * producer.makes, list)
-        else
-          table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
-                                     recipe = producer, text = "for " .. label })
-        end
+        table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
+                                   recipe = producer, text = "for " .. label })
         Craft(producer, n, "Extra " .. producer.name .. " (" .. label .. ")", skillAt, depth + 1)
         pool[id] = pool[id] - short -- Craft() added n*makes; any rounding leftover stays pooled
       end
@@ -659,6 +609,53 @@ function CR.BuildPlan(profName, cur, goal)
         pool[id] = (pool[id] or 0) + (n * smelter.makes - got)
       end
     end
+  end
+
+  -- A step with two objectives - reach its skill, and make its count of something later steps
+  -- use (e.g. 130-140: 20 Cured Heavy Hide, kept for the gloves) - is done only when both are.
+  -- Count = the guide's number for the step, as far as later steps still need them; what you
+  -- have counts. Still in the step's range: its crafts cover it. Past its range without enough:
+  -- it stays the current step ("Finish this step: 11 more ...") until you have them.
+  if not route.sequential then
+    local finishes = {}   -- passed steps still short, in guide order
+    for _, st in ipairs(route.steps) do
+      local r = st.spell and st.crafts and StepActive(route, st) and (st.from or 0) <= cur and prof.recipes[st.spell]
+      if r and r.item and r.item > 0 then
+        -- how many later steps (still ahead) use
+        local later = 0
+        for _, e in ipairs(events) do
+          local er = e.spell and prof.recipes[e.spell]
+          if er and e.spell ~= st.spell and (e.from or 0) >= (st.to or 0) then
+            for _, rg in ipairs(er.reagents) do
+              if rg[1] == r.item then later = later + rg[2] * (e.crafts or 0) end
+            end
+          end
+        end
+        local want = math.min(st.crafts * r.makes, later)
+        local short = want - Bags(r.item)
+        if short > 0 then
+          local n = ceil(short / r.makes)
+          local inRange
+          for _, e in ipairs(events) do
+            if e.kind == "craft" and e.spell == st.spell and (e.stepFrom or e.from) == st.from then inRange = e end
+          end
+          if inRange then
+            inRange.crafts = math.max(inRange.crafts, n)
+          elseif (st.to or 0) <= cur then
+            table.insert(finishes, { kind = "craft", from = st.from, to = st.to, stepFrom = st.from, stepTo = st.to,
+              spell = st.spell, crafts = n, skill = profName, finish = true,
+              note = string.format("Finish this step: %d more %s - %d for later steps (you have %d)",
+                n * r.makes, r.name, want, Bags(r.item)) })
+          end
+        end
+      end
+    end
+    -- they come first, at the current craft (after any training / task stop)
+    local at = #events + 1
+    for i, e in ipairs(events) do
+      if e.kind == "craft" or e.kind == "target" then at = i break end
+    end
+    for i, f in ipairs(finishes) do table.insert(events, at + i - 1, f) end
   end
 
   -- Extra intermediate crafts get listed before the step that needs them.
