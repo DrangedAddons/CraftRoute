@@ -1555,15 +1555,13 @@ local function BottomTab()
       for _, tab in ipairs(ProfessionsFrame.rightProfessionTabs) do Consider(tab) end
     end
   end
-  Consider(_G.TrainerSpellsProfessionsTab)
-  for i = 1, 8 do Consider(_G["TrainerSpellsProfessionsViewTab" .. i]) end
+  -- Only Blizzard's own tabs. TrainerSpells stacks its tabs under any other addon's side tab
+  -- (this one included), so going under theirs as well could make each depend on the other -
+  -- the game refuses that ("Cannot anchor to a region dependent on it"). Blizzard's, then
+  -- CraftRoute's, then TrainerSpells'.
   return best
 end
 
-local function IsTrainerTab(tab)
-  local name = tab and tab.GetName and tab:GetName()
-  return type(name) == "string" and name:find("TrainerSpellsProfessions", 1, true) ~= nil
-end
 
 local HookNativeTabs   -- (defined below)
 local function PositionEntry()
@@ -1582,9 +1580,8 @@ local function PositionEntry()
   if not entry.sideTab then return end
   local anchor = BottomTab()
   entry:ClearAllPoints()
-  if anchor then
-    local gap = IsTrainerTab(anchor) and -6 or -16
-    entry:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, gap)
+  if anchor and pcall(entry.SetPoint, entry, "TOPLEFT", anchor, "BOTTOMLEFT", 0, -16) then
+    -- placed under Blizzard's lowest tab
   elseif ProfessionsFrame.ProfessionsOverviewTab then
     entry:SetPoint("TOPLEFT", ProfessionsFrame.ProfessionsOverviewTab, "BOTTOMLEFT", 0, -16)
   else

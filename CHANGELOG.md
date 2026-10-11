@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.27.7
+
+- Fixed a Lua error opening the profession window with TrainerSpells installed ("Cannot anchor to a region dependent on it"). Both addons put a tab down the window's side under the lowest tab they find, so each could end up placed under the other. CraftRoute's tab now goes only under Blizzard's tabs, and TrainerSpells' tabs stack under it.
+
 ## 0.27.6
 
 - Profession-window view: "Choose one" blocks with more than two options show only the one you've chosen, with a "+ Show N more options" row to open the rest (and "- Hide the other options" to close them). Blocks of two show both as before.
