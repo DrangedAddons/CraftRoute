@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.27.2
+
+- Profession-window view: "Count alts" moved down to just above the Shopping List button.
+
 ## 0.27.1
 
 - Crafting stations always read "Anvil required" (for example) - just green while you're at it and red when you're not.

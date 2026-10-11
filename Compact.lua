@@ -1117,6 +1117,7 @@ local function FillSchematic(info)
   frame.reagentsLabel:SetShown(recipe ~= nil)
   frame.cost:SetShown(recipe ~= nil)
   frame.buttons:SetShown(recipe ~= nil)
+  if frame.altsCB then frame.altsCB:SetShown(recipe ~= nil) end
   if not recipe then
     for i = 1, REAGENT_SLOTS do frame.reagents[i]:Hide() end
     if frame.rscroll then frame.rscroll:Hide() end
@@ -1165,7 +1166,7 @@ local function FillSchematic(info)
   if CR.EnchantSlotFor(recipe) and frame.enchant then
     rscroll:SetPoint("BOTTOMRIGHT", frame.enchant, "TOPRIGHT", -4, 4)
   else
-    rscroll:SetPoint("BOTTOMRIGHT", frame.shopBtn, "TOPRIGHT", -4, 4)
+    rscroll:SetPoint("BOTTOMRIGHT", frame.shopBtn, "TOPRIGHT", -4, 28)   -- clear of "Count alts" too
   end
   local y = -6
   for i = 1, REAGENT_SLOTS do
@@ -1851,7 +1852,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.mainBtn)
   -- only this character's materials, or alts' too (the same setting as the main window's)
   frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
-  frame.altsCB:SetPoint("RIGHT", frame.mainBtn, "LEFT", -76, 0)
+  -- (placed above the Shopping List button once that exists, below)
   frame.mainBtn:SetScript("OnClick", function(self)
     CR.SafeCall(CR.ToggleWindow)
     self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
@@ -2197,6 +2198,7 @@ local function BuildOverlay()
   frame.shopBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.shopBtn:SetSize(130, 22)
   frame.shopBtn:SetPoint("BOTTOMRIGHT", frame.buttons, "TOPRIGHT", 0, 6)
+  frame.altsCB:SetPoint("BOTTOMLEFT", frame.shopBtn, "TOPLEFT", 0, 4)   -- "Count alts", just above it
   frame.shopBtn:SetText("Shopping List")
   CR.ThemeRegisterButton(frame.shopBtn)
   frame.shopBtn:SetScript("OnClick", function()
