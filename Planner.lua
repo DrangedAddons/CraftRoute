@@ -670,6 +670,7 @@ function CR.BuildPlan(profName, cur, goal)
           end
           if inRange then
             inRange.crafts = math.max(inRange.crafts, n)
+            inRange.keepNeed = n   -- crafts the step still owes later steps (not just for skill)
           elseif (st.to or 0) <= cur then
             table.insert(finishes, { kind = "craft", from = st.from, to = st.to, stepFrom = st.from, stepTo = st.to,
               spell = st.spell, crafts = n, skill = profName, finish = true,

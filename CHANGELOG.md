@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.9
+
+- The step-done stop no longer lets one extra craft through. The game starts the next craft the moment one finishes, before the skill-up arrives, so stopping on the skill-up was one craft late. Now the queue is ended as the step's last craft starts: exactly the last one on a count-based step; on a level-based step, the craft that can give the final point - if it does, the step's done with nothing wasted, and if it doesn't (yellow / green) CraftRoute says "No skill point on that ... - press Create to carry on". Steps whose items are kept for later steps still keep going until enough are made.
+
 ## 0.28.8
 
 - A batch started from CraftRoute stops by itself once its step is done - skill reached (and, for a step whose items are kept for later steps, enough made) - so an estimate on the high side doesn't make you over-craft and waste materials. The progress bar says "Step done - stopped at 12/50" and a chat line says so. Crafts started from Blizzard's own buttons aren't touched.
