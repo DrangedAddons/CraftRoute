@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.27.5
+
+- Cooking's campfire step names who actually sells Flint and Tinder, from the guide - e.g. Erika Tate next to the trainer in Stormwind (Stephen Ryback is only the trainer) - with map pins to them. It used to pin the Cooking trainers.
+- The Blacksmith Hammer steps (Blacksmithing, Engineering) name the guide's hammer vendors too, e.g. Sumi in Orgrimmar and Kaita Deepforge in Stormwind, with pins.
+- When a step's vendor has no known position, its pins fall back to the nearest trainer, now labelled as such ("Stephen Ryback (Cooking trainer)") - the vendor stands next to them.
+
 ## 0.27.4
 
 - Steps with two objectives - reach the skill, and make the guide's count of something later steps use (e.g. 130-140: 20 Cured Heavy Hide) - now check both, against the step's own count. Past the step's range with too few, it stays the current step: "Finish this step: 11 more Cured Heavy Hide - 20 for later steps (you have 9)". Still in range, its crafts cover the count even if the skill would come sooner. (0.27.0-0.27.3 used the total all later steps need instead, and could ask for far more than the step does - 37 here.) Any further amount later steps need is still made just before them, as the guide has it.

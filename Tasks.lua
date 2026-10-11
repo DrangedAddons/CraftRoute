@@ -417,12 +417,16 @@ function CR.StepTask(st, profName)
       t.kind = "buy"
     end
     t.places = Nearest(NpcsInText(text))
-    -- sold by supply vendors who stand next to these trainers
-    if st.nearTrainer then
+    -- sold by supply vendors who stand next to these trainers - only when none of the vendors the
+    -- step names has a known position (then the pins are the trainers, and say so)
+    if st.nearTrainer and #t.places == 0 then
       local list = {}
       for _, p in ipairs(t.places) do table.insert(list, p) end
       for _, prof in ipairs(st.nearTrainer) do
-        for _, p in ipairs(Trainers(prof, 1)) do table.insert(list, p) end
+        for _, p in ipairs(Trainers(prof, 1)) do
+          p.name = p.name .. " (" .. prof .. " trainer)"   -- the vendor is next to them, not them
+          table.insert(list, p)
+        end
       end
       t.places = Nearest(list)
       if #t.places > 0 then t.text = t.text .. "\n\nThe supply vendor stands next to the trainer." end

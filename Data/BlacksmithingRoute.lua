@@ -59,10 +59,15 @@ CR.RegisterRoute("Blacksmithing", {
   steps = {
     -- Apprentice
     { kind = "guide", from = 1, to = 75, items = { { HAMMER, 1 } }, nearTrainer = { "Blacksmithing" },
-      text = "Buy a Blacksmith Hammer from the Blacksmithing Supply vendor next to your trainer - most recipes "
-        .. "need it.{H: Undead: nobody near Angus Hammerhand sells one, buy it from Walter Mason in Deathknell "
-        .. "or Abigail Shiel in Brill.}{A: Night Elves: the closest trainer is Delfrum Flintbeard in Auberdine, "
-        .. "Darkshore.}" },
+      -- hammer vendors as the guide lists them (Oct 2026); the named ones get map pins
+      text = "Buy a Blacksmith Hammer - most recipes need it. Sold by "
+        .. "{H:Sumi (Orgrimmar), Samuel Van Brunt (Undercity) and Taur Stonehoof (Thunder Bluff), each right next "
+        .. "to the trainer; Flakk in Razor Hill; Walter Mason in Deathknell or Abigail Shiel in Brill (nobody near "
+        .. "Angus Hammerhand sells one); on Zephras Isle Halavuul Cragwind in Valanaar or Aedi Thriceforged in "
+        .. "Shen'dar Village}"
+        .. "{A:Kaita Deepforge (Stormwind City) and Thurgrum Deepforge (Ironforge), each right next to the "
+        .. "trainer; Tharynn Bouden in Goldshire; Thrawn Boltar in Kharanos; Elisa Steelhand in Auberdine; on "
+        .. "Zephras Isle Halavuul Cragwind in Valanaar or Aedi Thriceforged in Shen'dar Village}." },
     { from = 1,   to = 25,  spell = 2660, crafts = 30 },
     { from = 25,  to = 50,  spell = 3320, crafts = 30, note = "Keep 26 - for the gauntlets and Silver Rods" },
     { from = 50,  to = 67,  spell = 3326, crafts = 36, note = "Make all 36 - for the bracers at 95" },

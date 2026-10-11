@@ -18,9 +18,16 @@ local function Band(key, label, from, to, opts, note)
   table.insert(choices, c)
 end
 
-table.insert(steps, { kind = "guide", from = 1, to = 50, items = { { 4471, 1 } }, nearTrainer = { "Cooking" },
-  text = "You need a fire to cook. In Forever the campfire is an item: craft Basic Campfire Kits from Simple "
-    .. "Wood and a Flint and Tinder (sold next to the Cooking trainer), or use a fire already burning there. "
+-- Flint and Tinder vendors as the guide lists them (Oct 2026); the named ones get map pins.
+table.insert(steps, { kind = "guide", from = 1, to = 50, items = { { 4471, 1 } },
+  text = "You need a fire to cook - there's often one burning next to the Cooking trainer. In Forever the "
+    .. "campfire is an item: craft Basic Campfire Kits from Simple Wood and a Flint and Tinder (only needed to "
+    .. "make the kits). Flint and Tinder is sold by "
+    .. "{H:Xen'to (Orgrimmar), Ronald Burch (Undercity) and Naal Mistrunner (Thunder Bluff), each next to the "
+    .. "trainer; Jark in the Razor Hill barracks, Moorat Longstride in Bloodhoof Village, Mrs. Winters in Brill, "
+    .. "and on Zephras Isle Antelariaa Cloudgaze in Valanaar or Zerril Softbreeze in Shen'dar Village}"
+    .. "{A:Erika Tate (Stormwind City), Emrul Riknussun (Ironforge) and Fyldan (Darnassus), each next to the "
+    .. "trainer; Brog Hamfist in Goldshire, Kreg Bilmn in the Thunderbrew Distillery, or Nyoma in Dolanaar}. "
     .. "Buy spices and Refreshing Spring Water from the Cooking Supply vendor, not the AH." })
 
 Band("c1", "1-50", 1, 50, {

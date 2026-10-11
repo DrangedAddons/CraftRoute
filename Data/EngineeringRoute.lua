@@ -49,7 +49,9 @@ CR.RegisterRoute("Engineering", {
     { kind = "guide", from = 1, to = 30, items = { { HAMMER, 1 } }, nearTrainer = { "Engineering", "Blacksmithing" },
       text = "Buy a Blacksmith Hammer - most recipes need it. Most trainers have a Blacksmithing or Engineering "
         .. "Supply vendor nearby{A:; in Dun Morogh buy it from Thrawn Boltar in Kharanos}; on Zephras Isle buy "
-        .. "it from Aedi Thriceforged in Shen'dar Village." },
+        .. "it from Aedi Thriceforged in Shen'dar Village. In the capitals (the Blacksmithing guide's list): "
+        .. "{H:Sumi (Orgrimmar), Samuel Van Brunt (Undercity), Taur Stonehoof (Thunder Bluff)}"
+        .. "{A:Kaita Deepforge (Stormwind City), Thurgrum Deepforge (Ironforge)}." },
     { from = 1,   to = 30,  spell = 3918,  crafts = 60, note = "Keep all 60 for the bombs" },
     { from = 30,  to = 50,  spell = 3922,  crafts = 30, note = "Keep these for the bombs too" },
     { from = 50,  to = 51,  spell = 7430,  crafts = 1,  note = "Keep the spanner - recipes need it" },
