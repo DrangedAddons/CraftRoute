@@ -66,6 +66,7 @@ end
 
 local function Craft(r, count)
   if InCombatLockdown() then CR.Print("Can't craft in combat.") return end
+  if CR.StartCraftBatch then CR.StartCraftBatch(r.spell, r.name, count) end   -- "3/50" progress
   if TS.CraftRecipe then
     local ok, err = pcall(TS.CraftRecipe, r.spell, count)
     if not ok then CR.Print("|cffff4040Couldn't craft:|r " .. tostring(err)) end
@@ -1452,6 +1453,19 @@ function CR.CreateCraftPanel(parent)
     cast.icon:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
     cast.icon:SetDesaturated(true)
     cast.text:SetText(CR.ColorText("Not crafting", "999999"))
+    -- a batch from CraftRoute: between its crafts, and for a few seconds after, show how far it got
+    local s = CR.CraftBatchState and CR.CraftBatchState()
+    if s and s.total > 1 then
+      cast:SetAlpha(1)
+      cast:SetValue(s.frac)
+      if s.stopped then cast:SetStatusBarColor(0.9, 0.15, 0.15)
+      elseif s.finished then cast:SetStatusBarColor(0.2, 0.9, 0.2)
+      else cast:SetStatusBarColor(1, 0.7, 0) end
+      cast.text:SetText(CR.CraftBatchText(s))
+      if s.finished or s.stopped then
+        C_Timer.After(6.1, function() if not cast.casting then CastIdle() end end)
+      end
+    end
   end
 
   -- Called on spell-cast events; only profession casts are shown.
@@ -1489,12 +1503,19 @@ function CR.CreateCraftPanel(parent)
     local start, dur = startMS / 1000, (endMS - startMS) / 1000
     cast:SetScript("OnUpdate", function(bar)
       local v = math.max(0, math.min(1, (GetTime() - start) / dur))
+      -- a batch from CraftRoute: the bar fills over the whole batch - "Crafting Minor Mana Oil 3/50"
+      local s = CR.CraftBatchState and CR.CraftBatchState()
+      if s and s.total > 1 and not s.finished and not s.stopped then
+        v = s.frac
+        bar.text:SetText(CR.CraftBatchText(s))
+      end
       bar:SetValue(v)
       bar.spark:ClearAllPoints()
       bar.spark:SetPoint("CENTER", bar, "LEFT", v * bar:GetWidth(), 0)
     end)
   end
   CastIdle()
+  if CR.OnCraftBatch then CR.OnCraftBatch(function() if panel:IsShown() then panel:UpdateCast() end end) end
 
   local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
   empty:SetPoint("TOP", leftArea, "TOP", 0, -160)
@@ -1782,7 +1803,11 @@ function CR.CreateCraftPanel(parent)
     stepBar:SetValue(inStep and math.max(0, math.min(1, (cur - sFrom) / (sTo - sFrom))) or 0)
     stepBar:SetStatusBarColor(0.25, 0.6, 1)
     local progress
-    if inStep and cur >= sFrom then
+    if st.finish then
+      -- skill reached, but the step's crafts are kept for a later step: finish them first
+      stepBar:SetValue(1)
+      progress = string.format("Step %d-%d  ·  skill reached  ·  %d more to make", sFrom, sTo, st.crafts)
+    elseif inStep and cur >= sFrom then
       progress = string.format("Step %d-%d  ·  %d points to go  ·  %s%d crafts left", sFrom, sTo,
         math.max(0, sTo - cur), "~", st.crafts)   -- remaining crafts are always an estimate
     elseif inStep then
@@ -1978,6 +2003,16 @@ function CR.CreateCraftPanel(parent)
     plain = true,
     wanted = function() return openBtn:IsVisible() and CR.OpenProfessionMacro(db().profession) ~= nil end,
   })
+
+  -- "Anvil required" turns green as you walk up to one (the game says so while the profession
+  -- window is open)
+  local structureTick = 0
+  panel:HookScript("OnUpdate", function(_, elapsed)
+    structureTick = structureTick + elapsed
+    if structureTick < 0.5 then return end
+    structureTick = 0
+    if panel.current and main:IsShown() then structureText:SetText(CR.StructureText(panel.current) or "") end
+  end)
 
   CR.craftPanel = panel
   return panel

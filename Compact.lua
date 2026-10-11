@@ -186,6 +186,11 @@ local function CraftSpell(spell, count, profName)
     return
   end
   if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe then
+    if CR.StartCraftBatch then   -- "3/50" progress at the bottom of the recipe page
+      local name
+      for _, p in pairs(CR.professions) do if p.recipes[spell] then name = p.recipes[spell].name break end end
+      CR.StartCraftBatch(spell, name, count)
+    end
     local ok, err = pcall(C_TradeSkillUI.CraftRecipe, spell, count)
     if not ok then CR.Print("Couldn't craft: " .. tostring(err)) end
   else
@@ -2140,6 +2145,21 @@ local function BuildOverlay()
   frame.status:SetJustifyH("LEFT")
   frame.status:SetWordWrap(false)
 
+  -- Crafting progress for a batch started here (Create All / Create / a typed amount): fills over
+  -- the whole batch, "Crafting Minor Mana Oil 3/50". In the status line's place while it runs and
+  -- for a few seconds after (OnUpdate below).
+  local batchBar = CreateFrame("StatusBar", nil, schematic, "BackdropTemplate")
+  batchBar:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 0, 6)
+  batchBar:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)
+  batchBar:SetHeight(18)
+  batchBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  batchBar:SetMinMaxValues(0, 1)
+  CR.Backdrop(batchBar, 0, 0, 0, 0.6)
+  batchBar.text = batchBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  batchBar.text:SetPoint("CENTER")
+  batchBar:Hide()
+  frame.batchBar = batchBar
+
   frame.create = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.create:SetSize(96, 22)
   frame.create:SetPoint("RIGHT", 0, 0)
@@ -2540,6 +2560,19 @@ local function BuildOverlay()
 
   local watch = 0
   frame:SetScript("OnUpdate", function(_, elapsed)
+    local bs = CR.CraftBatchState and CR.CraftBatchState()
+    if bs and frame.icon:IsShown() then
+      frame.batchBar:Show()
+      frame.status:Hide()
+      frame.batchBar:SetValue(bs.frac)
+      if bs.stopped then frame.batchBar:SetStatusBarColor(0.9, 0.15, 0.15)
+      elseif bs.finished then frame.batchBar:SetStatusBarColor(0.2, 0.9, 0.2)
+      else frame.batchBar:SetStatusBarColor(1, 0.7, 0) end
+      frame.batchBar.text:SetText(CR.CraftBatchText(bs))
+    elseif frame.batchBar:IsShown() then
+      frame.batchBar:Hide()
+      frame.status:Show()
+    end
     -- One of Blizzard's own pages is showing - you went to one of its tabs. This view steps
     -- aside even if that tab change wasn't seen (a client update changed how the window switches
     -- tabs, and this view stayed up, empty, over Blizzard's page). Not while a profession switch
@@ -2557,6 +2590,11 @@ local function BuildOverlay()
     watch = 0
     -- the main window can be closed from its own X: keep the button's label right
     frame.mainBtn:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
+    -- "Anvil required" turns green as you walk up to one
+    local sel = frame.info and frame.info.selected
+    if sel and sel.recipe and not sel.task and frame.rStructure:IsShown() then
+      frame.rStructure:SetText(CR.StructureText(sel.recipe) or "")
+    end
     local before = ui.openProf
     SyncOpenProfession()
     if ui.openProf ~= before then

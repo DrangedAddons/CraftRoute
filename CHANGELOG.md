@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.27.0
+
+- A step whose crafts are kept for a later step isn't done until you've made them. Reach its skill with too few (e.g. 40 of the 60 Rough Blasting Powder kept for the bombs) and it stays the current step - "Finish this step: 20 more to keep for ..." - instead of the shortfall turning up again just before the later step. While you're still in the step's range, its count already covers what the later step needs.
+- Crafting station requirements are back for the everyday stations too: Anvil, Forge and Cooking Fire (as well as Tanning Rack, Sewing Machine, Loom and the rest). Each turns green as you stand at it, the way Blizzard's own "Requires" line does - read from the game while the profession window is open (red otherwise).
+- Crafting progress: a batch started from CraftRoute (Create All, Create, a typed amount) shows "Crafting Minor Mana Oil 3/50" with a bar that fills over the whole batch - on the Craft tab's cast bar, and at the bottom of the recipe page in the profession window. It says "Made 50/50" (or "Stopped at 12/50" if interrupted) for a few seconds after.
+
 ## 0.26.0
 
 - "Count alts' materials" tickbox on the Craft tab and the profession-window tab (next to Open CraftRoute), as well as the Plan tab - one setting, per character, kept in sync. Unticked (the default), only this character's bags, bank and mail count; ticked, materials on your alts (via Syndicator) count too.

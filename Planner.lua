@@ -532,6 +532,23 @@ function CR.BuildPlan(profName, cur, goal)
   local pool, bagsLeft, need, crafted, usage, made = {}, {}, {}, {}, {}, {}
   local Consume
 
+  -- The guide step (on the route you follow) that crafts `spell` and that you've reached:
+  -- { st = route step, event = its entry in plan.steps if you're still within its range }.
+  -- A step that makes something kept for later isn't finished until you have them all.
+  local function OwnStep(spell)
+    if route.sequential then return nil end
+    for _, st in ipairs(route.steps) do
+      if st.spell == spell and StepActive(route, st) and (st.from or 0) <= cur then
+        for _, ps in ipairs(plan.steps) do
+          if ps.kind == "craft" and ps.spell == spell and not ps.finish and (ps.stepFrom or ps.from) == st.from then
+            return { st = st, event = ps }
+          end
+        end
+        if (st.to or 0) <= cur then return { st = st } end
+      end
+    end
+  end
+
   local function Bags(id)
     if bagsLeft[id] == nil then bagsLeft[id] = CR.HaveCount(id) end
     return bagsLeft[id]
@@ -582,8 +599,26 @@ function CR.BuildPlan(profName, cur, goal)
       if short > 0 then
         local n = ceil(short / producer.makes)
         crafted[id] = (crafted[id] or 0) + short
-        table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
-                                   recipe = producer, text = "for " .. label })
+        local own = OwnStep(producer.spell)
+        if own and own.event then
+          -- the guide step that makes it is the one you're on: it asks for these too
+          own.event.crafts = own.event.crafts + n
+          own.event.keepFor = label
+        elseif own then
+          -- you've passed that step's skill range without making enough: it stays the current
+          -- step until you have them, rather than turning up again just before they're needed
+          local at = #plan.steps + 1
+          for i, ps in ipairs(plan.steps) do
+            if ps.kind == "craft" or ps.kind == "extra" or ps.kind == "target" then at = i break end
+          end
+          table.insert(plan.steps, at, { kind = "craft", from = own.st.from, to = own.st.to, stepFrom = own.st.from,
+            stepTo = own.st.to, spell = producer.spell, crafts = n, recipe = producer, skill = profName,
+            finish = true, keepFor = label,
+            note = string.format("Finish this step: %d more to keep for %s", n * producer.makes, label) })
+        else
+          table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
+                                     recipe = producer, text = "for " .. label })
+        end
         Craft(producer, n, "Extra " .. producer.name .. " (" .. label .. ")", skillAt, depth + 1)
         pool[id] = pool[id] - short -- Craft() added n*makes; any rounding leftover stays pooled
       end

@@ -3,13 +3,15 @@ local _, CR = ...
 local GetItemInfo, GetItemCount, GetItemIcon, IsEquippedItem = CR.GetItemInfo, CR.GetItemCount, CR.GetItemIcon, CR.IsEquippedItem
 
 -- Recipe details appended to an item tooltip (used by both tabs).
--- Special crafting stations a recipe needs you to stand next to (from its "Needs ..." text).
--- Everyday ones (Anvil, Forge, Cooking Fire) and tools you carry (rods, spanners, Philosopher's
--- Stone...) are left out; these are the ones worth warning about, mostly new in Forever.
+-- Crafting stations a recipe needs you to stand next to (from its "Needs ..." text): everyday
+-- ones (Anvil, Forge, Cooking Fire) and the special ones, mostly new in Forever. Tools you carry
+-- (rods, spanners, Philosopher's Stone...) aren't stations and are left out.
 local STRUCTURES = {
+  ["Anvil"] = true, ["Forge"] = true, ["Cooking Fire"] = true, -- everyday
   ["Tanning Rack"] = true, ["Sewing Machine"] = true,          -- Leatherworking
   ["Spinning Wheel"] = true, ["Loom"] = true, ["Moonwell"] = true, -- Tailoring
   ["Master Forge"] = true, ["Black Anvil"] = true, ["Icebellow Anvil"] = true, -- Blacksmithing
+  ["Molten Foundry"] = true,
   ["Black Forge"] = true, ["Arcane Forge"] = true,             -- Enchanting
   ["Alchemy Lab"] = true, ["Fermenter"] = true,                -- Alchemy
   ["Anarchist's Workbench"] = true,                            -- Engineering
@@ -28,11 +30,33 @@ function CR.RequiredStructures(r)
   return list
 end
 
--- "Tanning Rack required" in red, or nil.
+-- Are you at it? The game's own check (what turns Blizzard's "Requires" line from red to white),
+-- read while the profession window is open: { [name] = true/false }, or nil if it can't tell.
+local function StructuresMet(r)
+  local TS = C_TradeSkillUI
+  if not (TS and TS.GetRecipeRequirements) then return nil end
+  local ok, reqs = pcall(TS.GetRecipeRequirements, r.spell)
+  if not ok or type(reqs) ~= "table" then return nil end
+  local met = {}
+  for _, q in ipairs(reqs) do
+    if type(q) == "table" and q.name then met[q.name] = q.met and true or false end
+  end
+  return next(met) and met or nil
+end
+
+-- "Anvil required": red, each station green once you're standing at it (profession window open).
 function CR.StructureText(r)
   local list = CR.RequiredStructures(r)
   if #list == 0 then return nil end
-  return CR.ColorText(table.concat(list, ", ") .. " required", "ff4040")
+  local met = StructuresMet(r) or {}
+  local parts, all = {}, true
+  for _, name in ipairs(list) do
+    local here = met[name] == true
+    all = all and here
+    table.insert(parts, CR.ColorText(name, here and "40ff40" or "ff4040"))
+  end
+  return table.concat(parts, CR.ColorText(", ", all and "40ff40" or "ff4040"))
+    .. CR.ColorText(all and " - you're at it" or " required", all and "40ff40" or "ff4040")
 end
 
 function CR.RecipeTooltip(tt, r, crafts)
