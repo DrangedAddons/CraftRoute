@@ -44,7 +44,8 @@ local function StructuresMet(r)
   return next(met) and met or nil
 end
 
--- "Anvil required": red, each station green once you're standing at it (profession window open).
+-- "Anvil required" - always that text: red, each station green while you're standing at it
+-- (profession window open).
 function CR.StructureText(r)
   local list = CR.RequiredStructures(r)
   if #list == 0 then return nil end
@@ -56,7 +57,7 @@ function CR.StructureText(r)
     table.insert(parts, CR.ColorText(name, here and "40ff40" or "ff4040"))
   end
   return table.concat(parts, CR.ColorText(", ", all and "40ff40" or "ff4040"))
-    .. CR.ColorText(all and " - you're at it" or " required", all and "40ff40" or "ff4040")
+    .. CR.ColorText(" required", all and "40ff40" or "ff4040")
 end
 
 function CR.RecipeTooltip(tt, r, crafts)

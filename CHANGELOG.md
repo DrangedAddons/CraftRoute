@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.27.1
+
+- Crafting stations always read "Anvil required" (for example) - just green while you're at it and red when you're not.
+
 ## 0.27.0
 
 - A step whose crafts are kept for a later step isn't done until you've made them. Reach its skill with too few (e.g. 40 of the 60 Rough Blasting Powder kept for the bombs) and it stays the current step - "Finish this step: 20 more to keep for ..." - instead of the shortfall turning up again just before the later step. While you're still in the step's range, its count already covers what the later step needs.
