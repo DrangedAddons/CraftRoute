@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.10
+
+- The early stop only happens when it's certain the craft about to go finishes the step: the last craft of a count-based step, or the final point while the recipe is still orange (orange always gives a point) - no extra craft. When it's a guess (yellow / green, one point to go), the queue keeps going and stops on the skill-up instead - at most one extra craft, rather than stopping before every craft that might be the last.
+
 ## 0.28.9
 
 - The step-done stop no longer lets one extra craft through. The game starts the next craft the moment one finishes, before the skill-up arrives, so stopping on the skill-up was one craft late. Now the queue is ended as the step's last craft starts: exactly the last one on a count-based step; on a level-based step, the craft that can give the final point - if it does, the step's done with nothing wasted, and if it doesn't (yellow / green) CraftRoute says "No skill point on that ... - press Create to carry on". Steps whose items are kept for later steps still keep going until enough are made.

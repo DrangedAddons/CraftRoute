@@ -44,11 +44,12 @@ local function OpenStep()
 end
 local function StepStillOpen() return OpenStep() ~= nil end
 
--- A craft is starting: could it be the step's last? Then end the queue now - the game starts the
--- next craft the moment one finishes, before the skill-up arrives, so stopping after the last
--- one would be one craft too late. Count-based: exactly the last one. Level-based, one point to
--- go: if this one gives the point the step's done with nothing wasted; if not, you press Create
--- again (never an extra craft).
+-- A craft is starting: is it certainly the step's last? Then end the queue now - the game starts
+-- the next craft the moment one finishes, before the skill-up arrives, so stopping on the
+-- skill-up is one craft late. Certain = a count-based step's last craft, or the final point on a
+-- level-based step while the recipe is orange (orange always gives a point). When it's a guess
+-- (yellow / green), the queue runs on and stops on the skill-up instead - at most one extra craft
+-- rather than stopping before every craft that might be the last (CheckStepDone).
 local function CheckLastCraft()
   if not batch or batch.endedAt or batch.lastCraft or not batch.stepKind then return end
   if batch.done + 1 >= batch.total then return end   -- the batch ends after this one anyway
@@ -56,12 +57,18 @@ local function CheckLastCraft()
   if not st then return end
   local cur = CR.GetSkill(st.skill or prof)
   local byCount = st.finish or st.keepNeed
-  local last = (st.crafts or 99) <= 1
-    or (not byCount and cur >= (st.stepTo or st.to or 0) - 1)
+  local last
+  if byCount then
+    last = (st.crafts or 99) <= 1
+  else
+    -- where the step ends for you (the guide's step, or your goal if that comes first)
+    last = cur >= (st.to or st.stepTo or 0) - 1 and CR.Difficulty(st.recipe, cur) == "orange"
+  end
   if not last then return end
   local TS = C_TradeSkillUI
   if TS and TS.StopRecipeRepeat then pcall(TS.StopRecipeRepeat) end
   batch.lastCraft = true
+  batch.lastTarget, batch.lastSkill, batch.lastByCount = st.to, st.skill or prof, byCount
   Fire()
 end
 
@@ -159,7 +166,9 @@ ev:SetScript("OnEvent", function(_, event, unit, _, spellID)
       C_Timer.After(0.3, function()
         if not batch or batch.endedAt then return end
         batch.stopped, batch.endedAt = true, GetTime()
-        if StepStillOpen() then
+        local reached = not batch.lastByCount and batch.lastTarget
+          and CR.GetSkill(batch.lastSkill) >= batch.lastTarget
+        if not reached and StepStillOpen() then
           batch.shortOne = true
           CR.Print(string.format("No skill point on that %s - press Create to carry on.", batch.name))
         else
