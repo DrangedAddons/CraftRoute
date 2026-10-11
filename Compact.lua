@@ -1155,7 +1155,7 @@ local function FillSchematic(info)
   frame.icon:SetShown(recipe ~= nil)
   frame.rName:SetShown(recipe ~= nil)
   frame.rSub:SetShown(recipe ~= nil)
-  frame.rBand:SetShown(recipe ~= nil)
+  if not recipe then frame.rBand:Hide() end
   frame.rStructure:SetShown(recipe ~= nil)
   frame.reagentsLabel:SetShown(recipe ~= nil)
   frame.cost:SetShown(recipe ~= nil)
@@ -1198,10 +1198,19 @@ local function FillSchematic(info)
   if diff == "red" then sub = sub .. "   " .. CR.ColorText(diffWord, CR.DIFF_COLORS[diff] or "ff4040") end
   if info.ahead then sub = sub .. CR.ColorText("   looking ahead", "aaaaaa") end
   frame.rSub:SetText(sub)
-  frame.rBand:ClearAllPoints()
-  frame.rBand:SetPoint("LEFT", frame.rSub, "LEFT", (tonumber(frame.rSub:GetStringWidth()) or 70) + 8, 0)
-  frame.rBand:Fill(recipe, cur)
-  frame.rBand:Show()
+  -- only for a recipe you can craft now (no point before you can learn it), and only in the room
+  -- the line has left: narrower if needed, hidden if it wouldn't fit at all
+  local textW = tonumber(frame.rSub:GetStringWidth()) or 70
+  local room = (tonumber(frame.rSub:GetWidth()) or 180) - textW - 8
+  if diff ~= "red" and room >= 40 then
+    frame.rBand:SetWidth(math.min(90, room))
+    frame.rBand:ClearAllPoints()
+    frame.rBand:SetPoint("LEFT", frame.rSub, "LEFT", textW + 8, 0)
+    frame.rBand:Fill(recipe, cur)
+    frame.rBand:Show()
+  else
+    frame.rBand:Hide()
+  end
   local structure = CR.StructureText(recipe)
   frame.rStructure:SetText(structure or "")
 
@@ -2117,7 +2126,8 @@ local function BuildOverlay()
   function band:Fill(r, skill)
     local lo, hi = r.learn or 1, (r.x or 1) + 10   -- from learn to a little past grey
     if hi <= lo then hi = lo + 1 end
-    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * (BAND_W - 2) + 1 end
+    local w = tonumber(self:GetWidth()) or BAND_W
+    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * (w - 2) + 1 end
     local edges = { lo, r.y, r.g, r.x, hi }
     for i, t in ipairs(self.segs) do
       local a, b = X(math.max(lo, edges[i])), X(math.max(lo, edges[i + 1]))

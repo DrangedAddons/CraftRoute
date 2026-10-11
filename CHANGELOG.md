@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.7
+
+- Profession-window view: the skill colour bar only shows for recipes you can craft now (not for future steps marked "too soon"), and always fits the row - narrower when the line's text is long, hidden if there's no room. It could run off the window's edge.
+
 ## 0.28.6
 
 - Profession-window view: a compact skill-up colour bar next to the recipe's step and count, in place of the coloured word - orange, yellow, green and grey, with a white marker at your skill (the Craft tab's band, small). Hover it for the exact skill points. A recipe you can't learn yet still says "too soon".
