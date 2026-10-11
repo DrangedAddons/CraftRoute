@@ -37,6 +37,7 @@ local ui = {
   selectedKey = nil,
   openSteps = {},
   openParts = {}, -- component chains opened under a step's reagents
+  openForks = {}, -- "Choose one" blocks of 3+ options shown in full
   keepScroll = false,
   openProf = nil,
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
@@ -328,6 +329,8 @@ local function ShowTooltip(row)
     GameTooltip:SetText(item.task.title or "", 1, 0.82, 0, 1, true)
     if item.task.text and item.task.text ~= "" then GameTooltip:AddLine(item.task.text, 1, 1, 1, true) end
     GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
+  elseif item.kind == "toggle" then
+    GameTooltip:SetText(item.open and "Show only the chosen option" or "Show every option to choose from", 1, 1, 1)
   elseif item.kind == "note" then
     GameTooltip:SetText(item.tip or item.text or "", 1, 0.82, 0, 1, true)   -- long guide notes wrap
   else
@@ -393,6 +396,21 @@ local function ApplyRow(row, item)
     row.right:SetText(from and from > 0 and tostring(from) or "")
     row:SetScript("OnClick", function()
       ui.selectedKey = item.key
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end)
+    return
+  end
+
+  if item.kind == "toggle" then
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", 26, 0)
+    row.name:SetPoint("RIGHT", -8, 0)
+    row.name:SetText(item.open and "-  Hide the other options"
+      or string.format("+  Show %d more option%s", item.n, item.n == 1 and "" or "s"))
+    row.name:SetTextColor(0.6, 0.75, 1)
+    row:SetScript("OnClick", function()
+      ui.openForks[item.key] = not item.open or nil
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -868,12 +886,38 @@ local function BuildItems()
     return { kind = "task", action = a, task = a.task, key = ActionKey(a), selected = ActionKey(a) == ui.selectedKey }
   end
 
+  -- "Choose one" blocks with more than two options show only the chosen one until opened, with a
+  -- "+ Show N more options" row - they took up most of the column.
+  local hiddenOpt, toggleAfter = {}, {}
+  for i, st in ipairs(plan.steps) do
+    if st.kind == "fork" then
+      local opts = {}
+      for j = i + 1, #plan.steps do
+        if plan.steps[j].kind ~= "option" then break end
+        table.insert(opts, plan.steps[j])
+      end
+      if #opts > 2 then
+        local key = "fork:" .. tostring(opts[1].choice) .. ":" .. tostring(st.from or 0)
+        if ui.openForks[key] then
+          toggleAfter[opts[#opts]] = { key = key, open = true }
+        else
+          local shown = opts[1]
+          for _, o in ipairs(opts) do if o.selected then shown = o end end
+          for _, o in ipairs(opts) do if o ~= shown then hiddenOpt[o] = true end end
+          toggleAfter[shown] = { key = key, n = #opts - 1 }
+        end
+      end
+    end
+  end
+
   local items = {}
   for _, st in ipairs(plan.steps) do
     if st.kind == "fork" then
       table.insert(items, { kind = "note", gold = true, text = "Choose one", tip = st.text or "Choose one" })
     elseif st.kind == "option" then
-      table.insert(items, { kind = "option", step = st })
+      if not hiddenOpt[st] then table.insert(items, { kind = "option", step = st }) end
+      local tg = toggleAfter[st]
+      if tg then table.insert(items, { kind = "toggle", key = tg.key, open = tg.open, n = tg.n }) end
     elseif (st.kind == "guide" or st.kind == "train") and (taskOf[st] or doneOf[st]) then
       table.insert(items, TaskItem(taskOf[st] or doneOf[st]))
     elseif st.kind == "guide" or st.kind == "train" then
@@ -1853,6 +1897,14 @@ local function BuildOverlay()
   -- only this character's materials, or alts' too (the same setting as the main window's)
   frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
   -- (placed above the Shopping List button once that exists, below)
+  -- CraftRoute's version, small, just left of the button
+  local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+  local version = getMeta and getMeta("CraftRoute", "Version")
+  if version then
+    frame.version = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    frame.version:SetPoint("RIGHT", frame.mainBtn, "LEFT", -6, 0)
+    frame.version:SetText("v" .. version)
+  end
   frame.mainBtn:SetScript("OnClick", function(self)
     CR.SafeCall(CR.ToggleWindow)
     self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.27.6
+
+- Profession-window view: "Choose one" blocks with more than two options show only the one you've chosen, with a "+ Show N more options" row to open the rest (and "- Hide the other options" to close them). Blocks of two show both as before.
+- Profession-window view: CraftRoute's version number next to the Open CraftRoute button.
+
 ## 0.27.5
 
 - Cooking's campfire step names who actually sells Flint and Tinder, from the guide - e.g. Erika Tate next to the trainer in Stormwind (Stephen Ryback is only the trainer) - with map pins to them. It used to pin the Cooking trainers.
