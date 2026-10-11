@@ -10,9 +10,46 @@ local listeners = {}
 local function Fire() for _, fn in ipairs(listeners) do CR.SafeCall(fn) end end
 function CR.OnCraftBatch(fn) table.insert(listeners, fn) end
 
+-- The route step a batch is for: the first step of the plan crafting this recipe.
+local function StepFor(spell)
+  local prof = CraftRouteCharDB and CraftRouteCharDB.profession
+  local entry = prof and CR.GetPlans and CR.GetPlans(prof)
+  for _, st in ipairs(entry and entry.plan.steps or {}) do
+    if st.spell == spell and st.recipe then return st, prof end
+  end
+end
+
 -- Called just before CraftRecipe(spell, count).
 function CR.StartCraftBatch(spell, name, total)
   batch = { spell = spell, name = name or "", total = math.max(1, total or 1), done = 0 }
+  local st = StepFor(spell)
+  if st then batch.routeKey, batch.stepKind = st.routeKey, st.kind end
+  Fire()
+end
+
+-- Stop a running batch once its step's done (skill reached, the step's count made): the estimate
+-- of crafts left can be on the high side, and over-crafting wastes materials. Checked after each
+-- skill-up and craft; the plan is rebuilt first, so "done" means the step has left the route.
+local function StepStillOpen()
+  if CR.InvalidatePlan then CR.InvalidatePlan() end
+  local prof = CraftRouteCharDB and CraftRouteCharDB.profession
+  local entry = prof and CR.GetPlans and CR.GetPlans(prof)
+  for _, st in ipairs(entry and entry.plan.steps or {}) do
+    if st.spell == batch.spell and st.recipe then
+      -- the same step - or it's become "finish this step" (its items are kept for later steps)
+      if batch.routeKey == nil or st.routeKey == batch.routeKey or st.finish then return true end
+    end
+  end
+  return false
+end
+
+local function CheckStepDone()
+  if not batch or batch.endedAt or not batch.stepKind or batch.done >= batch.total then return end
+  if StepStillOpen() then return end
+  local TS = C_TradeSkillUI
+  if TS and TS.StopRecipeRepeat then pcall(TS.StopRecipeRepeat) end
+  batch.stopped, batch.stepDone, batch.endedAt = true, true, GetTime()
+  CR.Print(string.format("Step done - stopped crafting %s at %d/%d so nothing's wasted.", batch.name, batch.done, batch.total))
   Fire()
 end
 
@@ -31,7 +68,7 @@ function CR.CraftBatchState()
   return {
     name = batch.name, done = batch.done, total = batch.total,
     current = math.min(batch.done + 1, batch.total),
-    finished = batch.done >= batch.total, stopped = batch.stopped,
+    finished = batch.done >= batch.total, stopped = batch.stopped, stepDone = batch.stepDone,
     frac = math.min(1, (batch.done + castFrac) / batch.total),
   }
 end
@@ -44,6 +81,7 @@ end
 -- "Crafting Minor Mana Oil  3/50" / "Made 50/50 Minor Mana Oil" / "Stopped at 12/50".
 function CR.CraftBatchText(s)
   if s.finished then return string.format("Made %d/%d %s", s.done, s.total, s.name) end
+  if s.stepDone then return string.format("Step done - stopped at %d/%d %s", s.done, s.total, s.name) end
   if s.stopped then return string.format("Stopped at %d/%d %s", s.done, s.total, s.name) end
   return string.format("Crafting %s  %d/%d", s.name, s.current, s.total)
 end
@@ -71,18 +109,25 @@ function CR.CountStepCraft(spellID)
 end
 
 local ev = CreateFrame("Frame")
-for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED" }) do
+for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
+                     "SKILL_LINES_CHANGED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
-    pcall(ev.RegisterUnitEvent or ev.RegisterEvent, ev, e, "player")
+    if e == "SKILL_LINES_CHANGED" then pcall(ev.RegisterEvent, ev, e) else pcall(ev.RegisterUnitEvent or ev.RegisterEvent, ev, e, "player") end
   end
 end
 ev:SetScript("OnEvent", function(_, event, unit, _, spellID)
+  if event == "SKILL_LINES_CHANGED" then
+    -- after the skill scan (Core) has run: is the batch's step done now?
+    if batch and not batch.endedAt then C_Timer.After(0.1, function() CR.SafeCall(CheckStepDone) end) end
+    return
+  end
   if unit ~= "player" then return end
   if event == "UNIT_SPELLCAST_SUCCEEDED" and spellID then CR.SafeCall(CR.CountStepCraft, spellID) end
   if not batch or batch.endedAt or spellID ~= batch.spell then return end
   if event == "UNIT_SPELLCAST_SUCCEEDED" then
     batch.done = batch.done + 1
     if batch.done >= batch.total then batch.endedAt = GetTime() end
+    C_Timer.After(0.3, function() CR.SafeCall(CheckStepDone) end)   -- a count-made step ends here
   else
     -- interrupted (moved, stopped): the rest of the batch won't happen
     batch.stopped, batch.endedAt = true, GetTime()

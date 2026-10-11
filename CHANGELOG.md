@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.8
+
+- A batch started from CraftRoute stops by itself once its step is done - skill reached (and, for a step whose items are kept for later steps, enough made) - so an estimate on the high side doesn't make you over-craft and waste materials. The progress bar says "Step done - stopped at 12/50" and a chat line says so. Crafts started from Blizzard's own buttons aren't touched.
+
 ## 0.28.7
 
 - Profession-window view: the skill colour bar only shows for recipes you can craft now (not for future steps marked "too soon"), and always fits the row - narrower when the line's text is long, hidden if there's no room. It could run off the window's edge.
