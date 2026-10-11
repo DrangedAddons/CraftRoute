@@ -606,15 +606,30 @@ function CR.BuildPlan(profName, cur, goal)
           own.event.keepFor = label
         elseif own then
           -- you've passed that step's skill range without making enough: it stays the current
-          -- step until you have them, rather than turning up again just before they're needed
-          local at = #plan.steps + 1
-          for i, ps in ipairs(plan.steps) do
-            if ps.kind == "craft" or ps.kind == "extra" or ps.kind == "target" then at = i break end
+          -- step until you have them, rather than turning up again just before they're needed.
+          -- One step, however many later steps the items are for.
+          local fin
+          for _, ps in ipairs(plan.steps) do
+            if ps.finish and ps.spell == producer.spell then fin = ps break end
           end
-          table.insert(plan.steps, at, { kind = "craft", from = own.st.from, to = own.st.to, stepFrom = own.st.from,
-            stepTo = own.st.to, spell = producer.spell, crafts = n, recipe = producer, skill = profName,
-            finish = true, keepFor = label,
-            note = string.format("Finish this step: %d more to keep for %s", n * producer.makes, label) })
+          if not fin then
+            local at = #plan.steps + 1
+            for i, ps in ipairs(plan.steps) do
+              if ps.kind == "craft" or ps.kind == "extra" or ps.kind == "target" then at = i break end
+            end
+            fin = { kind = "craft", from = own.st.from, to = own.st.to, stepFrom = own.st.from, stepTo = own.st.to,
+                    spell = producer.spell, crafts = 0, recipe = producer, skill = profName, finish = true,
+                    keepFor = {} }
+            table.insert(plan.steps, at, fin)
+          end
+          fin.crafts = fin.crafts + n
+          local what = label:match("%((.-)%)$") or label   -- "Leatherworking 165-175 (Guardian Gloves)"
+          local seen = false
+          for _, w in ipairs(fin.keepFor) do if w == what then seen = true end end
+          if not seen then table.insert(fin.keepFor, what) end
+          local list = #fin.keepFor > 1 and (table.concat(fin.keepFor, ", ", 1, #fin.keepFor - 1) .. " and "
+            .. fin.keepFor[#fin.keepFor]) or fin.keepFor[1]
+          fin.note = string.format("Finish this step: %d more to keep for %s", fin.crafts * producer.makes, list)
         else
           table.insert(plan.steps, { kind = "extra", from = skillAt, spell = producer.spell, crafts = n,
                                      recipe = producer, text = "for " .. label })

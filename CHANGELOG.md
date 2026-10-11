@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.27.3
+
+- Fixed the same step showing several times (e.g. three "Cured Heavy Hide 130-140" lines - 26x, 10x and 1x) when a step you'd passed was short of items for more than one later step. It's now one step with the total - "Finish this step: 37 more to keep for Barbaric Shoulders and Guardian Gloves".
+
 ## 0.27.2
 
 - Profession-window view: "Count alts" moved down to just above the Shopping List button.
