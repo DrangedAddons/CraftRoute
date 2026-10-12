@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.4
+
+- Craft view: the Shopping list button only turns into the cart icon when the row is short of room (e.g. the narrower left column); otherwise it says "Shopping list". For enchants it sits right after Create.
+
 ## 0.33.3
 
 - Enchant target slot: no tooltip on hover any more - it covered the list of items to pick from. Hovering just opens the list.

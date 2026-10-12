@@ -675,8 +675,8 @@ local function ApplyRow(row, item)
       row.crQty:SetJustifyH("CENTER")
       row.crCreate = Btn(56, "Create")
       row.crAll = Btn(92, "Create All")
-      -- the shopping list: a small cart button (tooltip says what it is) to save room
-      row.crCart = Btn(26, "")
+      -- the shopping list: "Shopping list", or a small cart icon when the row is short of room
+      row.crCart = Btn(88, "Shopping list")
       row.crCart.icon = row.crCart:CreateTexture(nil, "OVERLAY")
       row.crCart.icon:SetSize(16, 16)
       row.crCart.icon:SetPoint("CENTER")
@@ -729,6 +729,19 @@ local function ApplyRow(row, item)
     row.crCart:SetShown(CR.HasAuctionator() and true or false)
     for _, w in ipairs({ row.crQty, row.crCreate }) do w:Show() end
     row.crAll:SetShown(not isEnchant)   -- enchants go one at a time, onto the target above
+    -- the shopping list button: full text if it fits after the other buttons, else the cart icon
+    local prev = isEnchant and row.crCreate or row.crAll
+    row.crCart:ClearAllPoints()
+    row.crCart:SetPoint("LEFT", prev, "RIGHT", 4, 0)
+    local used = 34 + row.crQty:GetWidth() + 6 + row.crCreate:GetWidth() + 4
+      + (isEnchant and 0 or (row.crAll:GetWidth() + 4))
+    row.crCart:SetText("Shopping list")
+    local fs = row.crCart:GetFontString()
+    local full = math.max(88, (fs and fs:GetStringWidth() or 0) + 20)
+    local fits = (row:GetWidth() or 0) - 8 >= used + full
+    row.crCart:SetWidth(fits and full or 26)
+    row.crCart:SetText(fits and "Shopping list" or "")
+    row.crCart.icon:SetShown(not fits)
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
     row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")
