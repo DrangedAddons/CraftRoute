@@ -733,12 +733,12 @@ local function ApplyRow(row, item)
     local prev = isEnchant and row.crCreate or row.crAll
     row.crCart:ClearAllPoints()
     row.crCart:SetPoint("LEFT", prev, "RIGHT", 4, 0)
-    local used = 34 + row.crQty:GetWidth() + 6 + row.crCreate:GetWidth() + 4
-      + (isEnchant and 0 or (row.crAll:GetWidth() + 4))
+    local function W(f) return tonumber(f and f:GetWidth()) or 0 end
+    local used = 34 + W(row.crQty) + 6 + W(row.crCreate) + 4 + (isEnchant and 0 or (W(row.crAll) + 4))
     row.crCart:SetText("Shopping list")
     local fs = row.crCart:GetFontString()
-    local full = math.max(88, (fs and fs:GetStringWidth() or 0) + 20)
-    local fits = (row:GetWidth() or 0) - 8 >= used + full
+    local full = math.max(88, (tonumber(fs and fs.GetStringWidth and fs:GetStringWidth()) or 0) + 20)
+    local fits = W(row) - 8 >= used + full
     row.crCart:SetWidth(fits and full or 26)
     row.crCart:SetText(fits and "Shopping list" or "")
     row.crCart.icon:SetShown(not fits)

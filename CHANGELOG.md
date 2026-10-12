@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.5
+
+- Craft view: safer sizing for the Shopping list button (guards the width check so a missing size can never break the crafting row).
+
 ## 0.33.4
 
 - Craft view: the Shopping list button only turns into the cart icon when the row is short of room (e.g. the narrower left column); otherwise it says "Shopping list". For enchants it sits right after Create.
