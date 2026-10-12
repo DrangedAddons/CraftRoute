@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.6
+
+- Craft view filter: clicking anywhere on an option's line (its name too, not just the tick box) toggles it - in the main list and the Quality / Slot side lists.
+
 ## 0.34.5
 
 - Craft view filter: a click anywhere else really does close it now. The check used a game function Forever doesn't have, so it failed silently on every click; it now asks the frames themselves whether the mouse is over them.
