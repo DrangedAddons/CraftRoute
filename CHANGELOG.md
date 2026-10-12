@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.30.1
+
+- Profession-window view: the lists' scroll bars (route, recipes, destinations) move the right way - down as you scroll down, at the top when you're at the top. They were upside down.
+
 ## 0.30.0
 
 - Destinations - a second view in the profession window's CraftRoute tab, for after the route. Route / Destinations buttons sit above the profession picker; a profession at its true max (300) opens on Destinations, everything below that stays on Route, and you can switch either way.

@@ -942,14 +942,16 @@ local function CreateList(parent)
   local function ApplySlider()
     local maxOff = MaxOffset()
     slider.silent = true
+    -- a vertical slider's minimum is at the top: the thumb sits at the top of the list, and moves
+    -- down as you scroll down
     slider:SetMinMaxValues(0, math.max(1, maxOff))
-    slider:SetValue(maxOff - offset)
+    slider:SetValue(offset)
     slider.silent = false
     slider:SetShown(maxOff > 0)
   end
   slider:SetScript("OnValueChanged", function(self, value)
     if self.silent then return end
-    offset = math.max(0, MaxOffset() - math.floor(value + 0.5))
+    offset = math.max(0, math.min(MaxOffset(), math.floor(value + 0.5)))
     Paint()
   end)
   function holder:Wheel(delta)
