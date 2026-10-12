@@ -46,8 +46,6 @@ local ui = {
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
   destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
-  destFilters = {},   -- ticked: mats, skillup, learned, unlearned, and the quality / slot sub-lists
-                      -- (none ticked = everything)
   destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
   destOpened = false, -- a recipe was just opened: scroll it to the top of the list
 }
@@ -228,6 +226,18 @@ local function DestList(name)
   return db.destinations[name]
 end
 
+-- The Craft view's filter for this profession (kept per character): ticked mats, skillup,
+-- learned, unlearned, and the quality / slot sub-lists. None ticked = everything.
+local noDB = {}
+local function DestFilters(name)
+  local db = DB()
+  if not name then return {} end
+  if not db then noDB[name] = noDB[name] or {} return noDB[name] end
+  db.destFilters = db.destFilters or {}
+  db.destFilters[name] = db.destFilters[name] or {}
+  return db.destFilters[name]
+end
+
 local function IsDest(name, spell)
   for _, s in ipairs(DestList(name)) do if s == spell then return true end end
   return false
@@ -341,7 +351,7 @@ local function BuildDestItems(name)
     ui.destPresent.slot[RecipeSlot(r)] = true
     local learned = RecipeLearned(pn, r) == true
     learnedOf[r.spell] = learned
-    local F, ok = ui.destFilters, q == "" or r.name:lower():find(q, 1, true)
+    local F, ok = DestFilters(name), q == "" or r.name:lower():find(q, 1, true)
     if ok and (F.learned or F.unlearned) then ok = (F.learned and learned) or (F.unlearned and not learned) end
     if ok and F.mats then ok = CraftsReady(pn, r) > 0 end
     if ok and F.skillup then
@@ -2838,7 +2848,7 @@ local function BuildOverlay()
     cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
     cb.label:SetText(spec[2])
     cb:SetScript("OnClick", function(self)
-      ui.destFilters[spec[1]] = self:GetChecked() and true or nil
+      DestFilters(PlanProfession())[spec[1]] = self:GetChecked() and true or nil
       ui.keepScroll = false
       frame:Refresh()
     end)
@@ -2880,7 +2890,7 @@ local function BuildOverlay()
     sub:ClearAllPoints()
     sub:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 6)
     sub:SetSize(150, math.max(1, #opts) * 22 + 12)
-    local chosen = ui.destFilters[spec.key] or {}
+    local chosen = DestFilters(PlanProfession())[spec.key] or {}
     for i, o in ipairs(opts) do
       local cb = sub.boxes[i]
       if not cb then
@@ -2892,9 +2902,10 @@ local function BuildOverlay()
         cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
         cb:SetScript("OnClick", function(self)
           local key = sub.spec.key
-          local set = ui.destFilters[key] or {}
+          local F = DestFilters(PlanProfession())
+          local set = F[key] or {}
           set[self.value] = self:GetChecked() and true or nil
-          ui.destFilters[key] = next(set) and set or nil
+          F[key] = next(set) and set or nil
           ui.keepScroll = false
           frame:Refresh()
         end)
@@ -2958,13 +2969,13 @@ local function BuildOverlay()
     if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then ClickedOutside() end
   end)
   function frame.destFilterDD:Sync()
-    local n = 0
+    local n, F = 0, DestFilters(PlanProfession())
     for _, cb in ipairs(pop.boxes) do
-      cb:SetChecked(ui.destFilters[cb.key] and true or false)
-      if ui.destFilters[cb.key] then n = n + 1 end
+      cb:SetChecked(F[cb.key] and true or false)
+      if F[cb.key] then n = n + 1 end
     end
     for _, b in ipairs(pop.subRows) do
-      local set, k = ui.destFilters[b.spec.key], 0
+      local set, k = F[b.spec.key], 0
       if set then for _ in pairs(set) do k = k + 1 end end
       n = n + k
       b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)

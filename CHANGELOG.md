@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.13
+
+- Craft view filter: each profession has its own filter now (it used to apply one filter to every profession), and each profession's ticks are remembered per character across reloads and logins.
+
 ## 0.34.12
 
 - Craft view recipe list: the **Not Learned** marker is dimmed to match the dimmed name.
