@@ -282,7 +282,6 @@ local function BuildDestItems(name)
     local r = p.recipes[spell]
     if r then table.insert(favs, { kind = "destFav", recipe = r, prof = pn, list = name, fav = true }) end
   end
-  if not ui.destSelected and favs[1] then ui.destSelected = favs[1].recipe.spell end
   local left = {}
   for _, r in ipairs(all) do
     table.insert(left, { kind = "dest", recipe = r, prof = pn, list = name, fav = IsDest(name, r.spell),
@@ -546,7 +545,7 @@ local function ApplyRow(row, item)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
     star:Show()
     star:SetScript("OnClick", function()
-      if ToggleDest(item.list, r.spell) then ui.destSelected = r.spell end
+      ToggleDest(item.list, r.spell)   -- (only a click on the row opens a recipe)
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -562,7 +561,7 @@ local function ApplyRow(row, item)
         if link then ChatEdit_InsertLink(link) end
         return
       end
-      ui.destSelected = r.spell
+      ui.destSelected = (ui.destSelected ~= r.spell) and r.spell or nil   -- click again to close
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -1384,6 +1383,20 @@ local function FillSchematic(info)
   frame.rStructure:SetText(structure or "")
 
   local reagents = recipe.reagents or {}
+  -- Destinations: compact - the icon tucked into the corner, the learned / source lines under it,
+  -- reagents straight after, slimmer rows. The route keeps Blizzard's positions.
+  local compact = info.dest and true or false
+  frame.icon:ClearAllPoints()
+  frame.reagentsLabel:ClearAllPoints()
+  if compact then
+    frame.icon:SetPoint("TOPLEFT", 10, -6)
+    frame.destInfo:Show()
+    frame.reagentsLabel:SetPoint("TOPLEFT", frame.destBottom or frame.destInfo, "BOTTOMLEFT", 0, -8)
+  else
+    frame.icon:SetPoint("TOPLEFT", 28, -28)
+    frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
+  end
+  local rowH = compact and 28 or 42
   -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
   -- this recipe has one, else above the Shopping List button.
   local rscroll, rcontent = frame.rscroll, frame.rcontent
@@ -1421,7 +1434,9 @@ local function FillSchematic(info)
       row:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y)
       -- the right edge (and its Buy button) stays inside the column, clear of the scroll bar
       row:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
-      y = y - 46
+      row:SetHeight(rowH)
+      row.icon:SetSize(rowH, rowH)
+      y = y - rowH - 4
     else
       row:Hide()
     end
@@ -1693,13 +1708,18 @@ local function SetDestWidgets(on)
   f.costBar.label:SetText(on and "Make each once" or "Route cost")
   f.schematic:ClearAllPoints()
   f.schematic:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
-  if not on then f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, 0) end
+  if not on then
+    f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, 0)
+    f.schematic:Show()
+  end
 end
 
 -- Right column: your destinations at the top (up to 5 rows, then it scrolls), the recipe panel under.
-local function LayoutDestRight(n)
+local function LayoutDestRight(n, open)
   local f = overlay
-  local rows = math.max(1, math.min(5, n))
+  -- a recipe open: up to 5 destination rows, the recipe under them; none open: the list gets the column
+  local rows = math.max(1, math.min(open and 5 or 14, n))
+  f.schematic:SetShown(open and true or false)
   f.favHeader:ClearAllPoints()
   f.favHeader:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 14, -40)   -- under Open CraftRoute
   f.favList:ClearAllPoints()
@@ -1716,6 +1736,7 @@ end
 local function FillDestDetail(info)
   local f = overlay
   for _, row in ipairs(f.destPins) do row:Hide() end
+  f.destBottom = f.destInfo
   local st = info and info.selected
   if not st then
     f.destInfo:SetText("")
@@ -1747,6 +1768,7 @@ local function FillDestDetail(info)
     row:Show()
     anchor = row
   end
+  f.destBottom = anchor
 end
 
 local function DestRefresh(name)
@@ -1766,15 +1788,15 @@ local function DestRefresh(name)
   f.modeDD:Hide()
   f.customBox:Hide()
   LayoutHeader()
-  LayoutDestRight(#favs)
+  LayoutDestRight(#favs, info.selected ~= nil)
   UpdateRankBar()
   if f.profDD then f.profDD:Sync() end
   if f.altsCB then f.altsCB:Sync() end
   f.destFilterDD:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
+  FillDestDetail(info)   -- first: the compact recipe panel starts its reagents under these lines
   FillSchematic(info)
-  FillDestDetail(info)
   -- the cost bar: making each destination once
   if not CR.HasAuctionator() then
     f.costBar.money:SetText("")
@@ -2533,7 +2555,7 @@ local function BuildOverlay()
 
   -- Destinations: learned or not, where to get it, map pins (FillDestDetail)
   frame.destInfo = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.destInfo:SetPoint("TOPLEFT", frame.rStructure, "BOTTOMLEFT", 0, -6)
+  frame.destInfo:SetPoint("TOPLEFT", frame.icon, "BOTTOMLEFT", -2, -8)
   frame.destInfo:SetPoint("RIGHT", schematic, "RIGHT", -8, 0)
   frame.destInfo:SetJustifyH("LEFT")
   frame.destInfo:SetWordWrap(true)

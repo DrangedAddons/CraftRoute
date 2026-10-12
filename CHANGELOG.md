@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.30.3
+
+- Destinations: nothing's opened until you click a recipe - click it again to close it. With none open, your destinations list gets the whole right column. Starring a recipe adds it without opening it.
+- Destinations: a more compact recipe panel - the icon tucked into the corner, learned / where to get it right under it, the reagents straight after (in slimmer rows), then crafting and the shopping list as before. The route's panel is unchanged.
+
 ## 0.30.2
 
 - Destinations: recipe names are coloured by the crafted item's rarity (white, green, blue, purple...), on both sides; a recipe you don't know yet is the same colour, dimmed.
