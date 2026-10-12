@@ -1970,7 +1970,7 @@ function CR.CreateCraftPanel(parent)
     end
     if #short > 0 then
       table.insert(lines, string.format("For all %d you still need: %s", st.crafts, table.concat(short, ", "))
-        .. (cost > 0 and ("  ·  " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""))
+        .. (cost > 0 and ("  ·  " .. CR.FormatMoney(cost) .. (unpriced and " +" or "")) or ""))
     end
     if #lines == 0 then
       lines[1] = CR.ColorText(string.format("Everything for all %d is in your bags.", st.crafts), "40ff40")

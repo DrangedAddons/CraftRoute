@@ -587,7 +587,7 @@ local function StepRowText(st, profName, route)
     -- Gloves, ..."), so the choice is between tangible crafts; the Materials panel shows what each
     -- needs as you switch. Underneath: the guide's name for the path and its cost.
     -- Options with nothing to craft (fishing spots) keep their name and what you catch there.
-    local cost = st.cost > 0 and (" · " .. CR.FormatMoney(st.cost) .. (st.unpriced and "+" or "")) or ""
+    local cost = st.cost > 0 and (" · " .. CR.FormatMoney(st.cost) .. (st.unpriced and " +" or "")) or ""
     local dim = st.selected and nil or "d8c690"
     if st.crafts and #st.crafts > 0 then
       local parts = {}

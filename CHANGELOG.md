@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.31.2
+
+- Craft view: an opened recipe's cost shows in full (it was cut off part-way through the coin icon, showing "|T..."); tooltips of rows in your list open to the left, so a long "Sold by ..." stays over the window instead of running off the right side.
+- The small "+" after an amount (some prices unknown) has a gap so the coin icon isn't drawn over it.
+
 ## 0.31.1
 
 - Craft view: no more overlapping in your list. Each recipe shows what it costs to make (and how many you can make now) on a line under its name, so the name and the star have their room; an opened recipe's info line has its learned / level / source on the left and the cost on the right; the crafting row's buttons no longer have text under them.

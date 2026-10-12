@@ -400,6 +400,7 @@ local function ResetRow(row)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
   if row.crSub then row.crSub:Hide() end
+  row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
   for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart" }) do
@@ -425,7 +426,9 @@ end
 local function ShowTooltip(row)
   local item = row.item
   if not item then return end
-  GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+  -- rows in the right-hand list open their tooltip to the left, so it stays over the window
+  local inRight = overlay and overlay.favList and row:GetParent() == overlay.favList
+  GameTooltip:SetOwner(row, inRight and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
   if item.kind == "reagent" then
     GameTooltip:SetItemByID(item.itemID)
     GameTooltip:AddLine(" ")
@@ -552,6 +555,7 @@ local function ApplyRow(row, item)
   if item.kind == "dInfo" then
     row.right:ClearAllPoints()
     row.right:SetPoint("RIGHT", row, "RIGHT", -8, 7)
+    row.right:SetWidth(170)   -- room for the whole amount (a cut one shows the coin code)
     row.right:SetText(CR.ColorText(item.qty > 1 and (item.qty .. " cost ") or "cost ", "aaaaaa") .. item.cost)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 7)
@@ -665,7 +669,7 @@ local function ApplyRow(row, item)
     local sub
     if item.kind == "destFav" then
       local cost, unpriced = MakeCost(r)
-      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""
+      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost) .. (unpriced and " +" or "")) or ""
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
@@ -1943,7 +1947,7 @@ local function ExpandFavs(name, favs)
         places = pl or {}
       end
       table.insert(out, { kind = "dInfo", recipe = r, learned = learned, qty = qty, source = source,
-        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and "+" or "")) or "?" })
+        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and " +" or "")) or "?" })
       for i = 1, math.min(2, #places) do table.insert(out, { kind = "dPin", place = places[i] }) end
       AddReagents(out, r.reagents or {}, qty, 1, CR.professions[pn] or CraftProf(name), "dest:" .. r.spell, {})
       table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
