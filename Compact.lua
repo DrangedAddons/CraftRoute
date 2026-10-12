@@ -555,7 +555,7 @@ local function ApplyRow(row, item)
   if item.kind == "dInfo" then
     row.right:ClearAllPoints()
     row.right:SetPoint("RIGHT", row, "RIGHT", -8, 7)
-    row.right:SetWidth(170)   -- room for the whole amount (a cut one shows the coin code)
+    row.right:SetWidth(0)   -- as wide as the amount needs (a cut one shows the coin code); the rest is the status
     row.right:SetText(CR.ColorText(item.qty > 1 and (item.qty .. " cost ") or "cost ", "aaaaaa") .. item.cost)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 7)
@@ -563,7 +563,7 @@ local function ApplyRow(row, item)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
-      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("   learn at " .. (item.recipe.learn or 1), "aaaaaa"))
+      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("  learn at " .. (item.recipe.learn or 1), "aaaaaa"))
     end
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.31.3
+
+- Craft view: an opened recipe's info line fits both - the cost takes only the width it needs, so "Not learned  learn at 300" isn't cut to "learn...".
+
 ## 0.31.2
 
 - Craft view: an opened recipe's cost shows in full (it was cut off part-way through the coin icon, showing "|T..."); tooltips of rows in your list open to the left, so a long "Sold by ..." stays over the window instead of running off the right side.
