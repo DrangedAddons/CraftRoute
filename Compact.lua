@@ -561,7 +561,7 @@ local function ShowTooltip(row)
       0.4, 0.8, 1, true)
     GameTooltip:AddLine(item.fav and "The star takes it off your list." or "The star adds it to your list.", 0.6, 0.6, 0.6, true)
   elseif item.kind == "dInfo" then
-    GameTooltip:SetText(item.learned and "Learned" or "Not learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
+    GameTooltip:SetText(item.learned and "Learned" or "Not Learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
   elseif item.kind == "dPin" then
     GameTooltip:SetText(item.place.name)
     GameTooltip:AddLine("Pin puts it on your map and tracks it on screen.", 1, 1, 1, true)
@@ -650,7 +650,7 @@ local function ApplyRow(row, item)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
-      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("  learn at " .. (item.recipe.learn or 1), "aaaaaa"))
+      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. (item.recipe.learn or 1), "aaaaaa"))
     end
     return
   end
@@ -813,8 +813,8 @@ local function ApplyRow(row, item)
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
-      -- the level it's learned at, and "Unlearned" if you don't know it yet
-      sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Unlearned", "ff4040")))
+      -- the level it's learned at, and "Not Learned" if you don't know it yet
+      sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Not Learned", "ff4040")))
     end
     row.right:SetText("")
     -- the crafted item's rarity colour (learned or not: that's said under the name)
@@ -2158,7 +2158,7 @@ local function FillDestDetail(info)
   local cur = CR.GetSkill(info.profName)
   local text, places, cost = "", {}, nil
   if CR.RecipeSource then text, places, cost = CR.RecipeSource(info.profName, r) end
-  f.destInfo:SetText(CR.ColorText("Not learned", "ff6060")
+  f.destInfo:SetText(CR.ColorText("Not Learned", "ff6060")
     .. CR.ColorText(string.format("  -  learn at %d%s", r.learn or 1, (cur or 0) >= (r.learn or 1) and "" or
       string.format(" (you: %d)", cur or 0)), "aaaaaa")
     .. "\n" .. (text or "") .. (cost and ("  " .. CR.FormatMoney(cost)) or ""))
@@ -2824,7 +2824,7 @@ local function BuildOverlay()
   pop:Hide()
   frame.destFilterPop = pop
   local FILTERS = { { "mats", "Has materials" }, { "skillup", "Has skill-ups" },
-                    { "learned", "Learned" }, { "unlearned", "Not learned" } }
+                    { "learned", "Learned" }, { "unlearned", "Not Learned" } }
   pop.boxes = {}
   for i, spec in ipairs(FILTERS) do
     local cb = CreateFrame("CheckButton", nil, pop, "UICheckButtonTemplate")

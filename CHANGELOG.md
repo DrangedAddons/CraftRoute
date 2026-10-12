@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.10
+
+- Craft view: the marker beside the level reads **Not Learned** (not "Unlearned"), and the filter, tooltips and recipe details use the same "Not Learned" wording.
+
 ## 0.34.9
 
 - Craft view recipe list: only unlearned recipes are marked (**Unlearned** in red beside the level); learned ones just show their level.
