@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.31.4
+
+- Craft view: an opened recipe's source wraps in full - a long "Sold by ..." list goes over as many lines as it needs instead of being cut off - and its cost to make has its own line just above the Create / Shopping list row. The info line at the top is just learned or not, and the level.
+
 ## 0.31.3
 
 - Craft view: an opened recipe's info line fits both - the cost takes only the width it needs, so "Not learned  learn at 300" isn't cut to "learn...".

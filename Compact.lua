@@ -474,7 +474,6 @@ local function ShowTooltip(row)
     end
   elseif item.kind == "dInfo" then
     GameTooltip:SetText(item.learned and "Learned" or "Not learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
-    if item.source and item.source ~= "" then GameTooltip:AddLine(item.source, 1, 1, 1, true) end
   elseif item.kind == "dPin" then
     GameTooltip:SetText(item.place.name)
     GameTooltip:AddLine("Pin puts it on your map and tracks it on screen.", 1, 1, 1, true)
@@ -553,28 +552,37 @@ local function ApplyRow(row, item)
 
   -- Craft view: an opened recipe's details, in rows under it
   if item.kind == "dInfo" then
-    row.right:ClearAllPoints()
-    row.right:SetPoint("RIGHT", row, "RIGHT", -8, 7)
-    row.right:SetWidth(0)   -- as wide as the amount needs (a cut one shows the coin code); the rest is the status
-    row.right:SetText(CR.ColorText(item.qty > 1 and (item.qty .. " cost ") or "cost ", "aaaaaa") .. item.cost)
     row.name:ClearAllPoints()
-    row.name:SetPoint("LEFT", row, "LEFT", 32, 7)
-    row.name:SetPoint("RIGHT", row.right, "LEFT", -8, 0)
+    row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
       row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("  learn at " .. (item.recipe.learn or 1), "aaaaaa"))
     end
+    return
+  end
+  -- where it comes from, wrapped (long "Sold by" lists go on as many of these rows as they need)
+  if item.kind == "dText" then
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       row.crSub:SetJustifyH("LEFT")
     end
     row.crSub:ClearAllPoints()
-    row.crSub:SetPoint("LEFT", row, "LEFT", 32, -7)
-    row.crSub:SetPoint("RIGHT", row, "RIGHT", -8, -7)
-    row.crSub:SetWordWrap(false)
-    row.crSub:SetText(item.learned and "" or (item.source or ""))
+    row.crSub:SetPoint("TOPLEFT", row, "TOPLEFT", 32, -2)
+    row.crSub:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 2)
+    row.crSub:SetWordWrap(true)
+    if row.crSub.SetJustifyV then row.crSub:SetJustifyV("MIDDLE") end
+    row.crSub:SetText(item.text)
     row.crSub:Show()
+    return
+  end
+  -- what it costs to make, just above the crafting row
+  if item.kind == "dCost" then
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.name:SetText(CR.ColorText(string.format("Cost to make %d:  ", item.qty), "aaaaaa") .. item.cost)
     return
   end
   if item.kind == "dPin" then
@@ -1946,10 +1954,23 @@ local function ExpandFavs(name, favs)
         source = (text or "") .. (tcost and ("  " .. CR.FormatMoney(tcost)) or "")
         places = pl or {}
       end
-      table.insert(out, { kind = "dInfo", recipe = r, learned = learned, qty = qty, source = source,
-        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and " +" or "")) or "?" })
+      table.insert(out, { kind = "dInfo", recipe = r, learned = learned })
+      -- the source, split at its commas into rows of up to two lines each
+      local cur = ""
+      for part in ((source or "") .. ", "):gmatch("(.-), ") do
+        local joined = cur == "" and part or (cur .. ", " .. part)
+        if #joined > 110 and cur ~= "" then
+          table.insert(out, { kind = "dText", text = cur .. "," })
+          cur = part
+        else
+          cur = joined
+        end
+      end
+      if cur ~= "" then table.insert(out, { kind = "dText", text = cur }) end
       for i = 1, math.min(2, #places) do table.insert(out, { kind = "dPin", place = places[i] }) end
       AddReagents(out, r.reagents or {}, qty, 1, CR.professions[pn] or CraftProf(name), "dest:" .. r.spell, {})
+      table.insert(out, { kind = "dCost", qty = qty,
+        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and " +" or "")) or "?" })
       table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
     end
   end
