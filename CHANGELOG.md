@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.29.0
+
+- The main window's Craft tab is hidden - the CraftRoute tab in the profession window does everything it did, and more. The main window now has Plan and Recipes, and opens on Plan. Nothing the profession tab uses is removed: the Craft tab's file stays loaded for its shared parts (buy box, component maker, enchant target, merchant scanning), only the tab isn't built. (It can be brought back with one setting in UI.lua, CR.SHOW_CRAFT_TAB.)
+
 ## 0.28.14
 
 - With EllesmereUI loaded, CraftRoute uses the font you've chosen in EllesmereUI (its global font, outline and shadow) - in the main window and the profession-window view, on every CraftRoute look. It used to force EllesmereUI's default Expressway font, and only on the EllesmereUI Style look. Each text keeps its own size; a font change in EllesmereUI is picked up on /reload; without EllesmereUI the original fonts are kept. (Contributed fix, integrated with a check so the frequently refreshed profession view only changes fonts that need it.)

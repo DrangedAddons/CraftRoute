@@ -8,12 +8,12 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 
 **Follows the guides, step by step.** Covers Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking, Tailoring, First Aid, Cooking and Fishing, plus Fishing + Cooking together. Routes start from your current skill and run to the goal you pick: the next rank, your level's cap, or the end of the guide. Where a guide gives you a choice, you pick the path.
 
-**A Craft tab built for leveling.**
-- The recipe to make now, with "Up next" and "After that" beside it.
-- Reagent counts for the whole step, coloured by whether you're ready.
-- A skill-up colour band and a progress bar for the step.
-- A cast bar, and Create / Create All buttons.
-- Warnings when a recipe needs a special station, like a Tanning Rack or a Sewing Machine.
+**A CraftRoute tab in the profession window, built for leveling.**
+- The route down the left, with the step you're on and what it needs; the recipe on the right.
+- Reagent counts for the whole step, coloured by whether you're ready, with a skill-up colour bar.
+- Create / Create All, a progress bar for the batch ("3/50") and the time left - and it stops by itself once the step's done, so nothing's over-crafted.
+- Crafting stations it needs ("Anvil required"), green while you're at one.
+- Shift+K opens it (change the key under Options > Keybindings > AddOns > CraftRoute).
 
 **Stops at the steps that aren't crafts.** Training the next rank, a book or quest, supplies to buy, a recipe to learn, fishing to a skill: the route stops and shows what to do, the nearest NPCs with a map pin button, and the cost. It moves on by itself once the game shows it's done, or click Mark as done.
 
@@ -27,7 +27,7 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 **Knows what you have and what it costs.**
 - Materials across your bags, bank, mail and (optionally) alts.
 - Auctionator prices, the total cost of what's missing, and a one-click shopping list.
-- Buy vendor reagents straight from the Craft tab while a merchant is open.
+- Buy vendor reagents straight from the profession window while a merchant is open.
 
 **Plan for the gear you want.** Tick target recipes (like the Wisdom's Leather set) and they slot into the route at the skill where you can make them.
 

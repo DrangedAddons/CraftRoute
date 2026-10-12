@@ -432,14 +432,22 @@ local function CreateWindow()
     frame.tabs[key] = b
     CR.ThemeRegisterButton(b)
   end
-  AddTab("craft", "Craft", 130)
-  AddTab("plan", "Plan", 234)
-  AddTab("recipes", "Recipes", 338)
+  -- The Craft tab is hidden: the profession window's CraftRoute tab does its job. Its file
+  -- (UICraft.lua) stays loaded - the profession tab uses its shared helpers (buy box, component
+  -- maker, enchant target, merchant scanning...). Set CR.SHOW_CRAFT_TAB = true to bring it back.
+  if CR.SHOW_CRAFT_TAB then
+    AddTab("craft", "Craft", 130)
+    AddTab("plan", "Plan", 234)
+    AddTab("recipes", "Recipes", 338)
+  else
+    AddTab("plan", "Plan", 130)
+    AddTab("recipes", "Recipes", 234)
+  end
 
   -- Look picker: only when EllesmereUI is installed, to match its four styles.
   if CR.HasEllesmere() then
     local lookLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    lookLabel:SetPoint("TOPLEFT", 456, -19)
+    lookLabel:SetPoint("TOPLEFT", CR.SHOW_CRAFT_TAB and 456 or 352, -19)
     lookLabel:SetText("Look:")
     CR.ThemeRegisterAccentText(lookLabel)
     local lookDD = CR.CreateDropdown(frame, 170, function()
@@ -477,7 +485,9 @@ local function CreateWindow()
   end
 
   -- each tab is built on its own, so one failing doesn't leave the others blank
-  for _, spec in ipairs({ { "plan", CR.CreatePlanPanel }, { "recipes", CR.CreateRecipesPanel }, { "craft", CR.CreateCraftPanel } }) do
+  local specs = { { "plan", CR.CreatePlanPanel }, { "recipes", CR.CreateRecipesPanel } }
+  if CR.SHOW_CRAFT_TAB then table.insert(specs, { "craft", CR.CreateCraftPanel }) end
+  for _, spec in ipairs(specs) do
     CR.SafeCall(function()
       local p = spec[2](frame)
       p:SetPoint("TOPLEFT", 14, -42)
@@ -491,9 +501,9 @@ end
 
 function CR.ShowWindow(tab)
   if not frame then CreateWindow() end
-  -- the last tab used is remembered, so the window reopens where you left it (e.g. on Craft)
-  tab = tab or frame.current or CraftRouteDB.lastTab or "craft"
-  if not frame.panels[tab] then tab = frame.panels.craft and "craft" or (frame.panels.plan and "plan" or "recipes") end
+  -- the last tab used is remembered, so the window reopens where you left it
+  tab = tab or frame.current or CraftRouteDB.lastTab or "plan"
+  if not frame.panels[tab] then tab = frame.panels.plan and "plan" or "recipes" end
   CraftRouteDB.lastTab = tab
   frame.current = tab
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
