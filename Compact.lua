@@ -3431,24 +3431,8 @@ local function BuildOverlay()
     return CR.EnchantClick(st.recipe, enchant.target, true)
   end
 
-  enchant.slot:SetScript("OnEnter", function(self)
-    ShowFlyout()
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    local target = enchant.target
-    if target then
-      local link = CandidateLink(target)
-      if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(target.itemID) end
-      GameTooltip:AddLine(" ")
-      GameTooltip:AddLine("Left-click: enchant it.", 0.2, 1, 0.2, true)
-      GameTooltip:AddLine("An existing enchant is replaced without asking.", 1, 0.4, 0.4, true)
-      GameTooltip:AddLine("Right-click: clear the target.", 0.8, 0.8, 0.8)
-    else
-      GameTooltip:SetText("Optional Target")
-      GameTooltip:AddLine("Pick gear you're wearing or carrying that this enchant fits. "
-        .. "You can also drop an item onto the slot.", 1, 1, 1, true)
-    end
-    GameTooltip:Show()
-  end)
+  -- hovering opens the pick list; no tooltip (it would cover the list)
+  enchant.slot:SetScript("OnEnter", function() ShowFlyout() end)
   enchant.slot:SetScript("OnLeave", GameTooltip_Hide)
   enchant.slot:SetScript("OnClick", SlotClick)
   enchant.slotCover = AttachEnchantCover(enchant.slot, SlotClick)

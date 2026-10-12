@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.3
+
+- Enchant target slot: no tooltip on hover any more - it covered the list of items to pick from. Hovering just opens the list.
+
 ## 0.33.2
 
 - Craft view: the "Shopping list" button is now a small cart icon, so the crafting row fits inside the recipe's box. Hover it to see what it does.
