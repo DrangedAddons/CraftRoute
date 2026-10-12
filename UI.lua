@@ -992,14 +992,15 @@ function CR.CreatePlanPanel(parent)
   -- Footer
   local totals = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   totals:SetPoint("BOTTOMLEFT", 4, 8)
-  totals:SetPoint("RIGHT", panel, "RIGHT", -200, 0)
+  totals:SetPoint("RIGHT", panel, "RIGHT", -214, 0)
   totals:SetJustifyH("LEFT")
 
   local shop = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-  shop:SetSize(190, 22)
+  shop:SetSize(204, 22)
   shop:SetPoint("BOTTOMRIGHT", -2, 4)
   shop:SetText("Auctionator shopping list")
   CR.ThemeRegisterButton(shop)
+  CR.AddCartIcon(shop)
   shop:SetScript("OnClick", function()
     local e = CR.GetPlans()
     if e then CR.CreateShoppingList(e.plan) end

@@ -324,3 +324,36 @@ function CR.ApplyTheme(frame)
     CR.Print("|cffff4040theme error, using the default look:|r " .. tostring(err))
   end
 end
+
+-- The little shopping cart picture for a shopping list button. With text: the cart sits just
+-- left of the (nudged right) label; withText false: the cart alone, centred. The button's width
+-- is the caller's (leave ~20px for the cart).
+function CR.SetCartTexture(tex)
+  local ok = false
+  if tex.SetAtlas then
+    for _, atlas in ipairs({ "Perks-ShoppingCart", "perks-shoppingcart" }) do
+      local good, res = pcall(tex.SetAtlas, tex, atlas, false)
+      if good and res ~= false then ok = true break end
+    end
+  end
+  if not ok then tex:SetTexture("Interface\\CURSOR\\Buy") end
+end
+function CR.AddCartIcon(b, withText)
+  local icon = rawget(b, "cartIcon")
+  if not icon then
+    icon = b:CreateTexture(nil, "OVERLAY")
+    icon:SetSize(16, 16)
+    CR.SetCartTexture(icon)
+    b.cartIcon = icon
+  end
+  local fs = b:GetFontString()
+  icon:ClearAllPoints()
+  if withText ~= false and fs then
+    fs:ClearAllPoints()
+    fs:SetPoint("CENTER", b, "CENTER", 10, 0)
+    icon:SetPoint("RIGHT", fs, "LEFT", -3, 0)
+  else
+    icon:SetPoint("CENTER")
+  end
+  icon:Show()
+end

@@ -728,12 +728,6 @@ local function ApplyRow(row, item)
       row.crAll = Btn(92, "Create All")
       -- the shopping list: "Shopping list", or a small cart icon when the row is short of room
       row.crCart = Btn(88, "Shopping list")
-      row.crCart.icon = row.crCart:CreateTexture(nil, "OVERLAY")
-      row.crCart.icon:SetSize(16, 16)
-      row.crCart.icon:SetPoint("CENTER")
-      if not (TryAtlas(row.crCart.icon, "Perks-ShoppingCart") or TryAtlas(row.crCart.icon, "perks-shoppingcart")) then
-        row.crCart.icon:SetTexture("Interface\\CURSOR\\Buy")
-      end
       row.crCart:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText("Shopping list")
@@ -794,17 +788,7 @@ local function ApplyRow(row, item)
     local fits = W(row) - 8 >= used + full
     row.crCart:SetWidth(fits and full or 26)
     row.crCart:SetText(fits and "Shopping list" or "")
-    row.crCart.icon:ClearAllPoints()
-    if fits then
-      row.crCart.icon:SetPoint("LEFT", row.crCart, "LEFT", 7, 0)
-      if fs then
-        fs:ClearAllPoints()
-        fs:SetPoint("LEFT", row.crCart.icon, "RIGHT", 3, 0)
-      end
-    else
-      row.crCart.icon:SetPoint("CENTER")
-    end
-    row.crCart.icon:Show()
+    CR.AddCartIcon(row.crCart, fits)
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
     row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")
@@ -3289,11 +3273,12 @@ local function BuildOverlay()
   end)
   -- Auctionator shopping list for just this step, above Create
   frame.shopBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
-  frame.shopBtn:SetSize(130, 22)
+  frame.shopBtn:SetSize(130, 22)   -- cart + "Shopping List"
   frame.shopBtn:SetPoint("BOTTOMRIGHT", frame.buttons, "TOPRIGHT", 0, 6)
   frame.altsCB:SetPoint("BOTTOMLEFT", frame.shopBtn, "TOPLEFT", 0, 4)   -- "Count alts", just above it
   frame.shopBtn:SetText("Shopping List")
   CR.ThemeRegisterButton(frame.shopBtn)
+  CR.AddCartIcon(frame.shopBtn)
   frame.shopBtn:SetScript("OnClick", function()
     local st = frame.current
     if st and st.recipe then CR.CreateStepShoppingList(st.recipe, st.crafts) end

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.2
+
+- The shopping cart picture is on every shopping list button now: the Route view's "Shopping List" and the main window's "Auctionator shopping list" too, not just the Craft view.
+
 ## 0.34.1
 
 - Craft / Route: the view you pick now sticks when you change profession (and is remembered per character), instead of each profession having its own. Until you pick one, it still opens on Route below max skill and Craft at max.
