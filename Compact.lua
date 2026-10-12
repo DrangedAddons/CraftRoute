@@ -737,11 +737,23 @@ local function ApplyRow(row, item)
     local used = 34 + W(row.crQty) + 6 + W(row.crCreate) + 4 + (isEnchant and 0 or (W(row.crAll) + 4))
     row.crCart:SetText("Shopping list")
     local fs = row.crCart:GetFontString()
-    local full = math.max(88, (tonumber(fs and fs.GetStringWidth and fs:GetStringWidth()) or 0) + 20)
+    -- room for it: cart + "Shopping list"; short of room: just the cart
+    local textW = tonumber(fs and fs.GetStringWidth and fs:GetStringWidth()) or 70
+    local full = math.max(100, textW + 38)
     local fits = W(row) - 8 >= used + full
     row.crCart:SetWidth(fits and full or 26)
     row.crCart:SetText(fits and "Shopping list" or "")
-    row.crCart.icon:SetShown(not fits)
+    row.crCart.icon:ClearAllPoints()
+    if fits then
+      row.crCart.icon:SetPoint("LEFT", row.crCart, "LEFT", 7, 0)
+      if fs then
+        fs:ClearAllPoints()
+        fs:SetPoint("LEFT", row.crCart.icon, "RIGHT", 3, 0)
+      end
+    else
+      row.crCart.icon:SetPoint("CENTER")
+    end
+    row.crCart.icon:Show()
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
     row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")

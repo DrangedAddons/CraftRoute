@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.6
+
+- Craft view: the Shopping list button always has the cart picture - with "Shopping list" beside it when there's room, just the cart when there isn't.
+
 ## 0.33.5
 
 - Craft view: safer sizing for the Shopping list button (guards the width check so a missing size can never break the crafting row).
