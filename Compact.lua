@@ -249,12 +249,13 @@ local function ViewFor(name)
   return (cur or 0) >= TRUE_MAX and "dest" or "route"
 end
 
--- What one craft's reagents cost to buy (vendor or AH price), and whether any had no price.
+-- What one craft's reagents cost to buy (vendor or AH price), and how many of them have no price
+-- yet (not seen on the AH) - 0 when all are priced.
 local function MakeCost(r)
-  local total, unpriced = 0, false
+  local total, unpriced = 0, 0
   for _, rg in ipairs(r.reagents or {}) do
     local p = CR.GetUnitPrice and CR.GetUnitPrice(rg[1])
-    if p then total = total + p * rg[2] else unpriced = true end
+    if p then total = total + p * rg[2] else unpriced = unpriced + 1 end
   end
   return total, unpriced
 end
@@ -677,7 +678,7 @@ local function ApplyRow(row, item)
     local sub
     if item.kind == "destFav" then
       local cost, unpriced = MakeCost(r)
-      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost) .. (unpriced and " +" or "")) or ""
+      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost)) or ""
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
@@ -1969,8 +1970,10 @@ local function ExpandFavs(name, favs)
       if cur ~= "" then table.insert(out, { kind = "dText", text = cur }) end
       for i = 1, math.min(2, #places) do table.insert(out, { kind = "dPin", place = places[i] }) end
       AddReagents(out, r.reagents or {}, qty, 1, CR.professions[pn] or CraftProf(name), "dest:" .. r.spell, {})
+      -- reagents with no price yet (not seen on the AH) are left out of the total - say how many
       table.insert(out, { kind = "dCost", qty = qty,
-        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and " +" or "")) or "?" })
+        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty)
+          .. (unpriced > 0 and CR.ColorText(string.format("   (+%d unpriced)", unpriced), "ff9966") or "")) or "?" })
       table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
     end
   end
@@ -2052,7 +2055,7 @@ local function DestRefresh(name)
     for _, it in ipairs(favs) do
       local c, u = MakeCost(it.recipe)
       total = total + c
-      if u then unpriced = unpriced + 1 end
+      if u > 0 then unpriced = unpriced + 1 end
     end
     f.costBar.money:SetText(CR.FormatMoney(total))
     f.costBar.note:SetText(unpriced > 0 and CR.ColorText(string.format("(+%d unpriced)", unpriced), "ff9966") or "")
