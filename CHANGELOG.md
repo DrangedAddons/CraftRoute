@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.0
+
+- Craft view filter: two new sub-lists under the tickboxes - **Quality >** (Common, Uncommon, Rare, ... in their colours) and **Slot >** (Head, Shoulder, Chest, Wrist, One-Hand, Bag, ... in character-sheet order; enchants count as the slot they enchant; anything not worn is Other). Hover or click one to open its list. Each only offers what this profession actually makes. Ticking several in one list shows any of them; the lists and tickboxes narrow each other. The Filter button counts everything ticked, and each sub-list shows how many of its own are on.
+
 ## 0.33.6
 
 - Craft view: the Shopping list button always has the cart picture - with "Shopping list" beside it when there's room, just the cart when there isn't.

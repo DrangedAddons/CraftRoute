@@ -47,7 +47,8 @@ local ui = {
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
   destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
-  destFilters = {},   -- ticked: mats, skillup, learned, unlearned (none ticked = everything)
+  destFilters = {},   -- ticked: mats, skillup, learned, unlearned, and the quality / slot sub-lists
+                      -- (none ticked = everything)
   destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
   destOpened = false, -- a recipe was just opened: scroll it to the top of the list
 }
@@ -282,6 +283,50 @@ local function FitName(fs, text)
   end
 end
 
+-- Filter > Slot: the gear slot a recipe makes (or, for an enchant, the slot it enchants), in
+-- character-sheet order. Anything that isn't worn is "Other".
+local SLOT_GROUPS = {
+  { "head", "Head", { "INVTYPE_HEAD" } },
+  { "neck", "Neck", { "INVTYPE_NECK" } },
+  { "shoulder", "Shoulder", { "INVTYPE_SHOULDER" } },
+  { "back", "Back", { "INVTYPE_CLOAK" } },
+  { "chest", "Chest", { "INVTYPE_CHEST", "INVTYPE_ROBE" } },
+  { "shirt", "Shirt", { "INVTYPE_BODY" } },
+  { "tabard", "Tabard", { "INVTYPE_TABARD" } },
+  { "wrist", "Wrist", { "INVTYPE_WRIST" } },
+  { "hands", "Hands", { "INVTYPE_HAND" } },
+  { "waist", "Waist", { "INVTYPE_WAIST" } },
+  { "legs", "Legs", { "INVTYPE_LEGS" } },
+  { "feet", "Feet", { "INVTYPE_FEET" } },
+  { "finger", "Finger", { "INVTYPE_FINGER" } },
+  { "trinket", "Trinket", { "INVTYPE_TRINKET" } },
+  { "onehand", "One-Hand", { "INVTYPE_WEAPON", "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND" } },
+  { "twohand", "Two-Hand", { "INVTYPE_2HWEAPON" } },
+  { "ranged", "Ranged", { "INVTYPE_RANGED", "INVTYPE_RANGEDRIGHT", "INVTYPE_THROWN" } },
+  { "shield", "Shield", { "INVTYPE_SHIELD" } },
+  { "offhand", "Held In Off-hand", { "INVTYPE_HOLDABLE" } },
+  { "bag", "Bag", { "INVTYPE_BAG", "INVTYPE_QUIVER" } },
+  { "ammo", "Ammo", { "INVTYPE_AMMO" } },
+  { "other", "Other", {} },
+}
+local SLOT_OF_INVTYPE = {}
+for _, g in ipairs(SLOT_GROUPS) do for _, t in ipairs(g[3]) do SLOT_OF_INVTYPE[t] = g[1] end end
+local SLOT_OF_ENCHANT = {
+  ["2H Weapon"] = "twohand", ["Weapon"] = "onehand", ["Bracer"] = "wrist", ["Boots"] = "feet",
+  ["Gloves"] = "hands", ["Chest"] = "chest", ["Cloak"] = "back", ["Shield"] = "shield",
+  ["Off-Hand"] = "offhand", ["Necklace"] = "neck",
+}
+local function RecipeSlot(r)
+  local _, kind = CR.EnchantSlotFor(r)
+  if kind then return SLOT_OF_ENCHANT[kind] or "other" end
+  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if f and r.item and r.item > 0 then
+    local loc = select(4, f(r.item))
+    return type(loc) == "string" and SLOT_OF_INVTYPE[loc] or "other"
+  end
+  return "other"
+end
+
 -- Left: every recipe (searched / filtered). Right: your destinations, in the order you added them.
 local function BuildDestItems(name)
   local pn = DestProf(name)
@@ -289,7 +334,10 @@ local function BuildDestItems(name)
   if not p then return {}, {}, { profName = pn, dest = true } end
   local q = (ui.destSearch or ""):lower()
   local all, learnedOf = {}, {}
+  ui.destPresent = { quality = {}, slot = {} }   -- what this profession has (the sub-lists offer only these)
   for _, r in pairs(p.recipes) do
+    ui.destPresent.quality[r.q or 1] = true
+    ui.destPresent.slot[RecipeSlot(r)] = true
     local learned = RecipeLearned(pn, r) == true
     learnedOf[r.spell] = learned
     local F, ok = ui.destFilters, q == "" or r.name:lower():find(q, 1, true)
@@ -299,6 +347,8 @@ local function BuildDestItems(name)
       local diff = CR.Difficulty(r, CR.GetSkill(pn))
       ok = diff ~= "grey" and diff ~= "red"
     end
+    if ok and F.quality and next(F.quality) then ok = F.quality[r.q or 1] and true or false end
+    if ok and F.slot and next(F.slot) then ok = F.slot[RecipeSlot(r)] and true or false end
     if ok then table.insert(all, r) end
   end
   table.sort(all, function(a, b)
@@ -2759,7 +2809,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 4 * 22 + 12)
+  pop:SetSize(160, 6 * 22 + 18)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
@@ -2781,18 +2831,116 @@ local function BuildOverlay()
       frame:Refresh()
     end)
     cb.key = spec[1]
+    cb:SetScript("OnEnter", function() if pop.sub then pop.sub:Hide() end end)
     pop.boxes[i] = cb
   end
-  frame.destFilterDD:SetScript("OnClick", function() pop:SetShown(not pop:IsShown()) end)
+
+  -- Quality > / Slot > : a side list of tickboxes (several ticked = any of them)
+  local function QualityName(q)
+    local n = _G["ITEM_QUALITY" .. q .. "_DESC"] or ({ [0] = "Poor", "Common", "Uncommon", "Rare", "Epic",
+      "Legendary", "Artifact", "Heirloom" })[q] or ("Quality " .. q)
+    local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+    return (c and c.r) and CR.ColorText(n, string.format("%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255)) or n
+  end
+  local SUBS = {
+    { key = "quality", label = "Quality", options = function()
+        local out, have = {}, ui.destPresent and ui.destPresent.quality or {}
+        for q = 0, 7 do if have[q] then table.insert(out, { q, QualityName(q) }) end end
+        return out
+      end },
+    { key = "slot", label = "Slot", options = function()
+        local out, have = {}, ui.destPresent and ui.destPresent.slot or {}
+        for _, g in ipairs(SLOT_GROUPS) do if have[g[1]] then table.insert(out, { g[1], g[2] }) end end
+        return out
+      end },
+  }
+  local sub = CreateFrame("Frame", nil, pop, "BackdropTemplate")
+  sub:SetFrameStrata("DIALOG")
+  sub:SetFrameLevel(pop:GetFrameLevel() + 10)
+  CR.Backdrop(sub, 0.05, 0.05, 0.07, 0.97)
+  sub:EnableMouse(true)
+  sub:Hide()
+  sub.boxes = {}
+  pop.sub = sub
+  local function OpenSub(spec, anchor)
+    local opts = spec.options()
+    sub.spec = spec
+    sub:ClearAllPoints()
+    sub:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 6)
+    sub:SetSize(150, math.max(1, #opts) * 22 + 12)
+    local chosen = ui.destFilters[spec.key] or {}
+    for i, o in ipairs(opts) do
+      local cb = sub.boxes[i]
+      if not cb then
+        cb = CreateFrame("CheckButton", nil, sub, "UICheckButtonTemplate")
+        cb:SetSize(22, 22)
+        cb:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 22)
+        cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+        cb:SetScript("OnClick", function(self)
+          local key = sub.spec.key
+          local set = ui.destFilters[key] or {}
+          set[self.value] = self:GetChecked() and true or nil
+          ui.destFilters[key] = next(set) and set or nil
+          ui.keepScroll = false
+          frame:Refresh()
+        end)
+        sub.boxes[i] = cb
+      end
+      cb.value = o[1]
+      cb.label:SetText(o[2])
+      cb:SetChecked(chosen[o[1]] and true or false)
+      cb:Show()
+    end
+    for i = #opts + 1, #sub.boxes do sub.boxes[i]:Hide() end
+    sub:Show()
+  end
+  pop.subRows = {}
+  for i, spec in ipairs(SUBS) do
+    local b = CreateFrame("Button", nil, pop)
+    b:SetSize(148, 22)
+    b:SetPoint("TOPLEFT", 6, -12 - (#FILTERS + i - 1) * 22)
+    b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    b.label:SetPoint("LEFT", 4, 0)
+    b.arrow = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.arrow:SetPoint("RIGHT", -4, 0)
+    b.arrow:SetText(">")
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.08)
+    b:SetScript("OnEnter", function(self) OpenSub(spec, self) end)
+    b:SetScript("OnClick", function(self)
+      if sub:IsShown() and sub.spec == spec then sub:Hide() else OpenSub(spec, self) end
+    end)
+    b.spec = spec
+    pop.subRows[i] = b
+  end
+  -- a thin line between the tickboxes and the sub-lists
+  local line = pop:CreateTexture(nil, "ARTWORK")
+  line:SetColorTexture(1, 1, 1, 0.12)
+  line:SetHeight(1)
+  line:SetPoint("TOPLEFT", 10, -9 - #FILTERS * 22)
+  line:SetPoint("TOPRIGHT", -10, -9 - #FILTERS * 22)
+
+  frame.destFilterDD:SetScript("OnClick", function()
+    pop:SetShown(not pop:IsShown())
+    if not pop:IsShown() then sub:Hide() end
+  end)
   function frame.destFilterDD:Sync()
     local n = 0
     for _, cb in ipairs(pop.boxes) do
       cb:SetChecked(ui.destFilters[cb.key] and true or false)
       if ui.destFilters[cb.key] then n = n + 1 end
     end
+    for _, b in ipairs(pop.subRows) do
+      local set, k = ui.destFilters[b.spec.key], 0
+      if set then for _ in pairs(set) do k = k + 1 end end
+      n = n + k
+      b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)
+    end
     self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
   end
-  frame:HookScript("OnHide", function() pop:Hide() end)
+  frame:HookScript("OnHide", function() pop:Hide() sub:Hide() end)
 
   -- right column: your destinations
   frame.favHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
