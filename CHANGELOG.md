@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.33.0
+
+- Craft view: clicking a recipe in the left list opens it right there - the same details and controls as your list (where to get it, reagents with Buy, the enchant target, Create / Create All, Shopping list) - so you can craft a one-off straight from the filtered list. It no longer adds it to your list: the star does that. One recipe is open at a time, in either column.
+- Craft view: the filter is tickboxes - Has materials, Has skill-ups, Learned, Not learned. Nothing ticked shows every recipe; each one ticked narrows the list (Learned and Not learned together show both). The button shows how many are on.
+
 ## 0.32.1
 
 - Enchanting through the trade window: one click enchants the other player's item - the enchant is cast and their "Will not be traded" slot is clicked for you in the same click. It used to leave you holding the targeting hand to click the slot yourself.

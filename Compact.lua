@@ -46,7 +46,8 @@ local ui = {
   view = {},          -- [profession] = "route" | "dest", once picked with the buttons (this session)
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
-  destFilter = "all", -- "all" | "learned" | "unlearned"
+  destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
+  destFilters = {},   -- ticked: mats, skillup, learned, unlearned (none ticked = everything)
   destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
   destOpened = false, -- a recipe was just opened: scroll it to the top of the list
 }
@@ -291,10 +292,14 @@ local function BuildDestItems(name)
   for _, r in pairs(p.recipes) do
     local learned = RecipeLearned(pn, r) == true
     learnedOf[r.spell] = learned
-    if (q == "" or r.name:lower():find(q, 1, true))
-        and (ui.destFilter == "all" or (ui.destFilter == "learned") == learned) then
-      table.insert(all, r)
+    local F, ok = ui.destFilters, q == "" or r.name:lower():find(q, 1, true)
+    if ok and (F.learned or F.unlearned) then ok = (F.learned and learned) or (F.unlearned and not learned) end
+    if ok and F.mats then ok = CraftsReady(pn, r) > 0 end
+    if ok and F.skillup then
+      local diff = CR.Difficulty(r, CR.GetSkill(pn))
+      ok = diff ~= "grey" and diff ~= "red"
     end
+    if ok then table.insert(all, r) end
   end
   table.sort(all, function(a, b)
     if (a.learn or 0) ~= (b.learn or 0) then return (a.learn or 0) < (b.learn or 0) end
@@ -309,9 +314,9 @@ local function BuildDestItems(name)
   local left = {}
   for _, r in ipairs(all) do
     table.insert(left, { kind = "dest", recipe = r, prof = pn, list = name, fav = IsDest(name, r.spell),
-                         learned = learnedOf[r.spell], selected = ui.destSelected == r.spell })
+                         learned = learnedOf[r.spell], selected = ui.destSide == "left" and ui.destSelected == r.spell })
   end
-  for _, f in ipairs(favs) do f.selected = ui.destSelected == f.recipe.spell end
+  for _, f in ipairs(favs) do f.selected = ui.destSide == "right" and ui.destSelected == f.recipe.spell end
   local sel = ui.destSelected and p.recipes[ui.destSelected]
   return left, favs, { profName = pn, dest = true,
     selected = sel and { kind = "dest", recipe = sel, spell = sel.spell, crafts = 1 } or nil }
@@ -501,12 +506,9 @@ local function ShowTooltip(row)
     GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
   elseif item.kind == "dest" or item.kind == "destFav" then
     CR.RecipeTooltip(GameTooltip, item.recipe, 1)
-    if item.kind == "dest" then
-      GameTooltip:AddLine(item.fav and "Click to take it off your list." or "Click to add it to your list.", 0.4, 0.8, 1, true)
-    else
-      GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
-        0.4, 0.8, 1, true)
-    end
+    GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
+      0.4, 0.8, 1, true)
+    GameTooltip:AddLine(item.fav and "The star takes it off your list." or "The star adds it to your list.", 0.6, 0.6, 0.6, true)
   elseif item.kind == "dInfo" then
     GameTooltip:SetText(item.learned and "Learned" or "Not learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
   elseif item.kind == "dPin" then
@@ -722,7 +724,7 @@ local function ApplyRow(row, item)
   if item.kind == "dest" or item.kind == "destFav" then
     local r = item.recipe
     row:ShowSelected(item.selected and true or false)
-    if item.kind == "destFav" and item.selected then row.selEdges[2]:Hide() end   -- open: joins its panel
+    if item.selected then row.selEdges[2]:Hide() end   -- open: joins its panel below
     row.icon:SetTexture(CR.RecipeIcon(r))
     row.icon:Show()
     row.icon:ClearAllPoints()
@@ -749,7 +751,7 @@ local function ApplyRow(row, item)
     -- the name, and under it the level (recipe list) or what it costs to make (your list); it
     -- stops short of the star (and the expand marker)
     row.name:ClearAllPoints()
-    local stop = item.kind == "destFav" and -52 or -30
+    local stop = -52
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
     row.name:SetPoint("RIGHT", row, "RIGHT", stop, 6)
     if not row.crSub then
@@ -778,7 +780,7 @@ local function ApplyRow(row, item)
     end
     -- your list (right): the same expand marker the route's steps have, + to open, - when open.
     -- The recipe list (left) has none: a click there adds / removes the recipe.
-    row.chevron:SetShown(item.kind == "destFav")
+    row.chevron:Show()
     local atlas = item.selected and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
     local drew = TryAtlas(row.chevron.icon, atlas, true)
     row.chevron.icon:SetShown(drew)
@@ -787,8 +789,7 @@ local function ApplyRow(row, item)
     if drew then row.chevron.icon:SetVertexColor(1, 1, 1) end
     row.chevron:SetScript("OnClick", function() row:Click() end)
     star:ClearAllPoints()
-    if item.kind == "destFav" then star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
-    else star:SetPoint("RIGHT", row, "RIGHT", -8, 0) end
+    star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
     star.tex:SetDesaturated(not item.fav)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
     star:Show()
@@ -809,12 +810,14 @@ local function ApplyRow(row, item)
         if link then ChatEdit_InsertLink(link) end
         return
       end
-      if item.kind == "dest" then
-        ToggleDest(item.list, r.spell)   -- the recipe list: a click adds it to your list (or takes it off)
+      -- open it in place (one recipe open at a time, in either column); click again to close
+      local side = item.kind == "dest" and "left" or "right"
+      if item.selected then
+        ui.destSelected, ui.destSide = nil, nil
       else
-        ui.destSelected = (ui.destSelected ~= r.spell) and r.spell or nil   -- your list: open / close it
-        ui.destOpened = ui.destSelected ~= nil
+        ui.destSelected, ui.destSide = r.spell, side
       end
+      ui.destOpened = ui.destSelected ~= nil
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -1911,7 +1914,7 @@ local function LayoutHeader()
     overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + 6, y - 26)
     overlay.destSearch:SetWidth(avail - gap - fw - 6)
     overlay.destFilterDD:ClearAllPoints()
-    overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 24)
+    overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 25)
     overlay.destFilterDD:SetWidth(fw)
     listTop = listTop - 26
   elseif overlay.modeDD:IsShown() then
@@ -1968,6 +1971,7 @@ local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
   for _, w in ipairs({ f.destSearch, f.destFilterDD, f.favHeader, f.favList }) do w:SetShown(on) end
+  if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
   if not on then f.favEmpty:Hide() end
@@ -2003,7 +2007,7 @@ end
 
 -- Your list with the opened recipe's details under it: learned and cost, where to get it (pins),
 -- its reagents (Buy / Vendor, make the parts), and a crafting row.
-local function ExpandFavs(name, favs)
+local function ExpandOpen(name, favs)
   local out, at = {}, nil
   for _, f in ipairs(favs) do
     table.insert(out, f)
@@ -2098,10 +2102,13 @@ local function DestRefresh(name)
   f.empty:SetText("No recipes match.")
   f.empty:SetShown(#left == 0)
   list:SetShown(#left > 0)
-  list:SetData(left, ui.keepScroll)
+  local leftRows, leftAt = ExpandOpen(name, left)
+  list:SetData(leftRows, ui.keepScroll)
+  if ui.destOpened and leftAt then list:ScrollTo(leftAt) end
   -- the opened recipe is the current one for the enchant target slot (and its click covers)
   local open
   for _, it in ipairs(favs) do if it.selected then open = it end end
+  for _, it in ipairs(left) do if it.selected then open = it end end
   if open then
     f.current = { kind = "dest", recipe = open.recipe, spell = open.recipe.spell, crafts = 1 }
     f.craftProf = open.prof
@@ -2111,7 +2118,7 @@ local function DestRefresh(name)
   elseif f.UpdateEnchant then
     f:UpdateEnchant(nil)
   end
-  local rows, openAt = ExpandFavs(name, favs)
+  local rows, openAt = ExpandOpen(name, favs)
   f.favList:SetData(rows, ui.keepScroll)
   if ui.destOpened and openAt then f.favList:ScrollTo(openAt) end   -- show what just opened
   ui.destOpened = false
@@ -2721,14 +2728,47 @@ local function BuildOverlay()
   frame.destSearch:SetScript("OnEditFocusLost", function(self) self.hint:SetShown(self:GetText() == "") end)
   frame.destSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   frame.destSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-  frame.destFilterDD = CR.CreateDropdown(frame, 112, function()
-    return { { value = "all", text = "All recipes" }, { value = "learned", text = "Learned" },
-             { value = "unlearned", text = "Not learned" } }
-  end, function() return ui.destFilter end, function(v)
-    ui.destFilter = v
-    ui.keepScroll = false
-    frame:Refresh()
-  end)
+  -- Filter: tickboxes (none ticked = every recipe; each ticked one narrows the list)
+  frame.destFilterDD = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.destFilterDD:SetSize(112, 22)
+  frame.destFilterDD:SetText("Filter")
+  CR.ThemeRegisterButton(frame.destFilterDD)
+  local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  pop:SetFrameStrata("DIALOG")
+  pop:SetSize(160, 4 * 22 + 12)
+  pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
+  CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
+  pop:EnableMouse(true)
+  pop:Hide()
+  frame.destFilterPop = pop
+  local FILTERS = { { "mats", "Has materials" }, { "skillup", "Has skill-ups" },
+                    { "learned", "Learned" }, { "unlearned", "Not learned" } }
+  pop.boxes = {}
+  for i, spec in ipairs(FILTERS) do
+    local cb = CreateFrame("CheckButton", nil, pop, "UICheckButtonTemplate")
+    cb:SetSize(22, 22)
+    cb:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 22)
+    cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+    cb.label:SetText(spec[2])
+    cb:SetScript("OnClick", function(self)
+      ui.destFilters[spec[1]] = self:GetChecked() and true or nil
+      ui.keepScroll = false
+      frame:Refresh()
+    end)
+    cb.key = spec[1]
+    pop.boxes[i] = cb
+  end
+  frame.destFilterDD:SetScript("OnClick", function() pop:SetShown(not pop:IsShown()) end)
+  function frame.destFilterDD:Sync()
+    local n = 0
+    for _, cb in ipairs(pop.boxes) do
+      cb:SetChecked(ui.destFilters[cb.key] and true or false)
+      if ui.destFilters[cb.key] then n = n + 1 end
+    end
+    self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
+  end
+  frame:HookScript("OnHide", function() pop:Hide() end)
 
   -- right column: your destinations
   frame.favHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
