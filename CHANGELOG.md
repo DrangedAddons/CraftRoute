@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.2
+
+- Craft view: the "Shopping list" button is now a small cart icon, so the crafting row fits inside the recipe's box. Hover it to see what it does.
+
 ## 0.33.1
 
 - Hovering the Enchant / Create button or the enchant target slot (and Split / Combine, Open, and the profession picks) lights the button up again and shows it pressed while you click. Those buttons have a click-through cover on top of them (so the click can enchant or answer the replace prompt), and the cover was only passing on the tooltip, not the glow.

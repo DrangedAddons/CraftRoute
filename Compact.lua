@@ -675,7 +675,21 @@ local function ApplyRow(row, item)
       row.crQty:SetJustifyH("CENTER")
       row.crCreate = Btn(56, "Create")
       row.crAll = Btn(92, "Create All")
-      row.crCart = Btn(88, "Shopping list")
+      -- the shopping list: a small cart button (tooltip says what it is) to save room
+      row.crCart = Btn(26, "")
+      row.crCart.icon = row.crCart:CreateTexture(nil, "OVERLAY")
+      row.crCart.icon:SetSize(16, 16)
+      row.crCart.icon:SetPoint("CENTER")
+      if not (TryAtlas(row.crCart.icon, "Perks-ShoppingCart") or TryAtlas(row.crCart.icon, "perks-shoppingcart")) then
+        row.crCart.icon:SetTexture("Interface\\CURSOR\\Buy")
+      end
+      row.crCart:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Shopping list")
+        GameTooltip:AddLine("Make an Auctionator shopping list of what you need for this many.", 1, 1, 1, true)
+        GameTooltip:Show()
+      end)
+      row.crCart:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
     row.crQty:ClearAllPoints()
     row.crQty:SetPoint("LEFT", row, "LEFT", 34, 0)
