@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.11
+
+- Craft view recipe list: recipes you haven't learned are dimmed again (their rarity colour, darker), as well as saying **Not Learned** beside the level.
+
 ## 0.34.10
 
 - Craft view: the marker beside the level reads **Not Learned** (not "Unlearned"), and the filter, tooltips and recipe details use the same "Not Learned" wording.
