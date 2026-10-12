@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.1
+
+- Craft / Route: the view you pick now sticks when you change profession (and is remembered per character), instead of each profession having its own. Until you pick one, it still opens on Route below max skill and Craft at max.
+
 ## 0.34.0
 
 - Craft view filter: two new sub-lists under the tickboxes - **Quality >** (Common, Uncommon, Rare, ... in their colours) and **Slot >** (Head, Shoulder, Chest, Wrist, One-Hand, Bag, ... in character-sheet order; enchants count as the slot they enchant; anything not worn is Other). Hover or click one to open its list. Each only offers what this profession actually makes. Ticking several in one list shows any of them; the lists and tickboxes narrow each other. The Filter button counts everything ticked, and each sub-list shows how many of its own are on.

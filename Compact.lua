@@ -43,7 +43,6 @@ local ui = {
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
   keepUntil = nil, -- a profession switch started here: stay on this view while it loads
   -- Destinations view
-  view = {},          -- [profession] = "route" | "dest", once picked with the buttons (this session)
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
   destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
@@ -243,10 +242,12 @@ local function ToggleDest(name, spell)
   return true
 end
 
--- Route below the true max, Destinations at it - unless you've picked one with the buttons.
+-- The view you last picked with the Craft / Route buttons, for every profession (kept per
+-- character); until you pick one: Route below the true max, Craft at it.
 local function ViewFor(name)
   if not name then return "route" end
-  if ui.view[name] then return ui.view[name] end
+  local picked = CraftRouteCharDB and CraftRouteCharDB.compactView
+  if picked == "dest" or picked == "route" then return picked end
   local cur = CR.GetSkill(DestProf(name))
   return (cur or 0) >= TRUE_MAX and "dest" or "route"
 end
@@ -2768,7 +2769,7 @@ local function BuildOverlay()
     b:SetScript("OnClick", function()
       local n = PlanProfession()
       if not n then return end
-      ui.view[n] = view
+      if CraftRouteCharDB then CraftRouteCharDB.compactView = view end
       ui.keepScroll = false
       frame:Refresh()
     end)
