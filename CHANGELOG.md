@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.4
+
+- Craft view filter: closing it with a click elsewhere now actually works - it listens for the game's "mouse pressed" event instead of watching the mouse buttons, which didn't catch the click.
+
 ## 0.34.3
 
 - Craft view filter: clicking anywhere outside the filter list (and its Quality / Slot side list) closes it - no need to click the Filter button again.

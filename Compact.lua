@@ -2911,18 +2911,22 @@ local function BuildOverlay()
     pop:SetShown(not pop:IsShown())
     if not pop:IsShown() then sub:Hide() end
   end)
-  -- a click anywhere else (not on the list, its side list or the Filter button) closes it
-  pop:SetScript("OnShow", function(self) self.wasDown = true end)   -- the click that opened it
-  pop:SetScript("OnUpdate", function(self)
-    local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")) or false
-    if down and not self.wasDown then
-      local over = (MouseIsOver(self) or (sub:IsShown() and MouseIsOver(sub)) or MouseIsOver(frame.destFilterDD))
-      if not over then
-        sub:Hide()
-        self:Hide()
-      end
+  -- a click anywhere else (not on the list, its side list or the Filter button) closes it: the
+  -- game's "mouse pressed anywhere" event while it's open
+  local function ClickedOutside()
+    local over = MouseIsOver(pop) or (sub:IsShown() and MouseIsOver(sub)) or MouseIsOver(frame.destFilterDD)
+    if not over then
+      sub:Hide()
+      pop:Hide()
     end
-    self.wasDown = down
+  end
+  pop:SetScript("OnShow", function(self) pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  pop:SetScript("OnHide", function(self)
+    pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN")
+    sub:Hide()
+  end)
+  pop:SetScript("OnEvent", function(self, event)
+    if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then ClickedOutside() end
   end)
   function frame.destFilterDD:Sync()
     local n = 0
