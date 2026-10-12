@@ -466,6 +466,7 @@ local function ForkEvents(route, rprof, profName, cur, goal)
           -- Net materials for this option; items it makes for itself cancel out.
           -- crafts: what this option has you make (shown as the option itself, in route order)
           local net, cost, unpriced, catch, crafts = {}, 0, false, {}, {}
+          local unpricedN = 0
           for i, st in ipairs(route.steps) do
             if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) then
               local e = ClipStep(route, rprof, st, i, profName, cur, goal)
@@ -486,13 +487,14 @@ local function ForkEvents(route, rprof, profName, cur, goal)
             if cnt > 0 then
               table.insert(mats, { id = id, n = cnt })
               local price = CR.GetUnitPrice(id)
-              if price then cost = cost + price * cnt else unpriced = true end
+              if price then cost = cost + price * cnt else unpriced = true unpricedN = unpricedN + 1 end
             end
           end
           table.sort(mats, function(a, b) return a.n > b.n end)
           table.insert(out, { kind = "option", from = lo, to = hi, sort = base + n * 0.01, skill = skillName,
             choice = c.key, option = o.key, label = CR.FactionText(o.label), letter = string.char(64 + n),
             routeID = route.id, selected = picked == o.key, mats = mats, cost = cost, unpriced = unpriced,
+            unpricedN = unpricedN,
             catch = catch, crafts = crafts })
         end
       end

@@ -504,7 +504,7 @@ local function ResetRow(row)
   row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
-  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart" }) do
+  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute" }) do
     if row[w] then row[w]:Hide() end
   end
   if row.name.crBaseSize then
@@ -559,6 +559,11 @@ local function ShowTooltip(row)
   elseif item.kind == "option" and item.step then
     local st = item.step
     GameTooltip:SetText(st.letter .. ": " .. st.label, 1, 1, 1, 1, true)
+    if CR.HasAuctionator() and ((st.cost or 0) > 0 or (st.unpricedN or 0) > 0) then
+      GameTooltip:AddLine("Materials to buy: " .. CR.FormatMoney(st.cost or 0)
+        .. ((st.unpricedN or 0) > 0 and CR.ColorText(string.format("  (+%d unpriced)", st.unpricedN), "ff9966") or ""),
+        1, 1, 1, true)
+    end
     GameTooltip:AddLine(st.selected and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t Chosen - this is the path the route follows."
       or "Click to choose this path instead.", st.selected and 0.4 or 1, st.selected and 1 or 0.82, st.selected and 0.4 or 0, true)
   elseif item.kind == "task" then
@@ -654,9 +659,47 @@ local function ApplyRow(row, item)
 
   -- Craft view: an opened recipe's details, in rows under it
   if item.kind == "dInfo" then
+    -- Add to route / Remove from route: a target the route levels you to and makes (as the main
+    -- window's Recipes tab ticks do). A guide followed strictly in order takes no targets.
+    if not row.crRoute then
+      row.crRoute = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+      row.crRoute:SetSize(118, 20)
+      CR.ThemeRegisterButton(row.crRoute)
+    end
+    local rt = CR.Route and CR.Route(item.list)
+    local targets = CR.ProfTable("targets", item.prof)
+    local inRoute = targets[item.recipe.spell] ~= nil
+    local b = row.crRoute
+    b:ClearAllPoints()
+    b:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    b:SetText(inRoute and "Remove from route" or "Add to route")
+    b:SetEnabled(not (rt and rt.sequential))
+    b:SetScript("OnClick", function()
+      local t = CR.ProfTable("targets", item.prof)
+      t[item.recipe.spell] = (t[item.recipe.spell] == nil) and 1 or nil
+      CR.InvalidatePlan()
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+      CR.NotifyChanged()
+    end)
+    b:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+      if rt and rt.sequential then
+        GameTooltip:SetText("This guide is followed in order", 1, 0.82, 0)
+        GameTooltip:AddLine("It doesn't take extra recipes as targets.", 1, 1, 1, true)
+      else
+        GameTooltip:SetText(inRoute and "Remove from route" or "Add to route", 1, 0.82, 0)
+        GameTooltip:AddLine(inRoute and "Takes it back off the route's targets."
+          or "Makes it a target on the Route: it's crafted at the right point (once you can), "
+          .. "and its materials join the route's shopping.", 1, 1, 1, true)
+      end
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    b:Show()
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
-    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.name:SetPoint("RIGHT", b, "LEFT", -6, 0)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
@@ -965,9 +1008,13 @@ local function ApplyRow(row, item)
     row.name:SetText((st.letter or "") .. "  " .. (st.label or ""))
     -- light text with a shadow so it reads on either tint
     if sel then row.name:SetTextColor(0.82, 1, 0.82) else row.name:SetTextColor(1, 0.9, 0.62) end
+    -- what this path's materials cost to buy (as the main window shows it)
+    row.right:ClearAllPoints()
+    row.right:SetPoint("RIGHT", row.tick, "LEFT", -6, 0)
+    row.right:SetText((CR.HasAuctionator() and (st.cost or 0) > 0) and CR.FormatMoney(st.cost) or "")
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.radio, "RIGHT", 6, 0)
-    row.name:SetPoint("RIGHT", row.tick, "LEFT", -6, 0)
+    row.name:SetPoint("RIGHT", row.right, "LEFT", -6, 0)
     row:SetScript("OnClick", function()
       if st.selected then return end
       CR.ProfTable("choices", st.routeID)[st.choice] = st.option
@@ -2004,13 +2051,15 @@ local function LayoutHeader()
   local listTop = LIST_TOP - (overlay.viewRoute and 26 or 0)
   if dest and overlay.destSearch then
     -- search and filter, under the profession picker
-    local fw = 112
+    local fw, xw = 112, 22   -- Filter, and its clear X after it
     overlay.destSearch:ClearAllPoints()
     overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + 6, y - 26)
     overlay.destSearch:SetWidth(avail - gap - fw - 6)
     overlay.destFilterDD:ClearAllPoints()
     overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 25)
-    overlay.destFilterDD:SetWidth(fw)
+    overlay.destFilterDD:SetWidth(fw - xw - 2)
+    overlay.destFilterClear:ClearAllPoints()
+    overlay.destFilterClear:SetPoint("LEFT", overlay.destFilterDD, "RIGHT", 2, 0)
     listTop = listTop - 26
   elseif overlay.modeDD:IsShown() then
     overlay.modeDD:ClearAllPoints()
@@ -2065,7 +2114,7 @@ end
 local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
-  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.favHeader, f.favList }) do w:SetShown(on) end
+  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList }) do w:SetShown(on) end
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
@@ -2118,7 +2167,7 @@ local function ExpandOpen(name, favs)
         source = (text or "") .. (tcost and ("  " .. CR.FormatMoney(tcost)) or "")
         places = pl or {}
       end
-      table.insert(out, { kind = "dInfo", recipe = r, learned = learned })
+      table.insert(out, { kind = "dInfo", recipe = r, learned = learned, prof = pn, list = name })
       -- the source, split at its commas into rows of up to two lines each
       local cur = ""
       for part in ((source or "") .. ", "):gmatch("(.-), ") do
@@ -2231,7 +2280,10 @@ local function DestRefresh(name)
   f.destFilterDD:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
-  -- the cost bar: making each destination once
+  -- the cost bar: making each destination once (the route's cart isn't for this)
+  f.costBar.cart:Hide()
+  f.costBar.money:ClearAllPoints()
+  f.costBar.money:SetPoint("RIGHT", -8, 0)
   if not CR.HasAuctionator() then
     f.costBar.money:SetText("")
     f.costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))
@@ -2770,6 +2822,24 @@ local function BuildOverlay()
   costBar.label:SetPoint("LEFT", 8, 0)
   costBar.label:SetText("Route cost")
   CR.ThemeRegisterAccentText(costBar.label)
+  -- the route's Auctionator shopping list (what the main window's button makes), Route view only
+  costBar.cart = CreateFrame("Button", nil, costBar, "UIPanelButtonTemplate")
+  costBar.cart:SetSize(24, 18)
+  costBar.cart:SetPoint("RIGHT", -4, 0)
+  costBar.cart:SetText("")
+  CR.ThemeRegisterButton(costBar.cart)
+  CR.AddCartIcon(costBar.cart, false)
+  costBar.cart:SetScript("OnClick", function()
+    if costBar.plan then CR.CreateShoppingList(costBar.plan) end
+  end)
+  costBar.cart:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Route shopping list")
+    GameTooltip:AddLine("Makes an Auctionator shopping list of everything the route still needs to buy.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  costBar.cart:SetScript("OnLeave", GameTooltip_Hide)
+  costBar.cart:Hide()
   costBar.money = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   costBar.money:SetPoint("RIGHT", -8, 0)
   costBar.money:SetJustifyH("RIGHT")
@@ -2968,6 +3038,25 @@ local function BuildOverlay()
   pop:SetScript("OnEvent", function(self, event)
     if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then ClickedOutside() end
   end)
+  -- X: clear every filter for this profession
+  frame.destFilterClear = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.destFilterClear:SetSize(22, 22)
+  frame.destFilterClear:SetText("X")
+  CR.ThemeRegisterButton(frame.destFilterClear)
+  frame.destFilterClear:SetScript("OnClick", function()
+    local F = DestFilters(PlanProfession())
+    for k in pairs(F) do F[k] = nil end
+    sub:Hide()
+    ui.keepScroll = false
+    frame:Refresh()
+  end)
+  frame.destFilterClear:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Clear filters")
+    GameTooltip:Show()
+  end)
+  frame.destFilterClear:SetScript("OnLeave", GameTooltip_Hide)
+  frame.destFilterClear:Hide()
   function frame.destFilterDD:Sync()
     local n, F = 0, DestFilters(PlanProfession())
     for _, cb in ipairs(pop.boxes) do
@@ -2981,6 +3070,7 @@ local function BuildOverlay()
       b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)
     end
     self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
+    frame.destFilterClear:SetEnabled(n > 0)
   end
   frame:HookScript("OnHide", function() pop:Hide() sub:Hide() end)
 
@@ -2998,6 +3088,12 @@ local function BuildOverlay()
     costBar.plan = plan
     if not plan then costBar:Hide() return end
     costBar:Show()
+    -- the cart sits at the right end, the gold just before it
+    local cart = CR.HasAuctionator() and true or false
+    costBar.cart:SetShown(cart)
+    costBar.money:ClearAllPoints()
+    if cart then costBar.money:SetPoint("RIGHT", costBar.cart, "LEFT", -6, 0)
+    else costBar.money:SetPoint("RIGHT", -8, 0) end
     if not CR.HasAuctionator() then
       costBar.money:SetText("")
       costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))

@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.35.0
+
+- Route view: a little cart button at the right end of the Route cost bar makes the route's Auctionator shopping list - the same list as the main window's "Auctionator shopping list" button, without opening the main window.
+- Route view: each "Choose one" option shows what its materials cost to buy, on the right of its row (as the main window does). Its tooltip repeats the cost and says how many of its materials have no price yet ("+N unpriced").
+- Craft view: an opened recipe has an **Add to route** button (on its Learned / Not Learned line) - it becomes a target on the Route, like ticking it in the main window's Recipes tab. Click again (**Remove from route**) to take it off. Guides followed strictly in order (Fishing + Cooking) don't take targets, so the button is greyed there.
+- Craft view: a small **X** beside Filter clears every filter for this profession in one click (greyed when none are on).
+
 ## 0.34.13
 
 - Craft view filter: each profession has its own filter now (it used to apply one filter to every profession), and each profession's ticks are remembered per character across reloads and logins.
