@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.32.1
+
+- Enchanting through the trade window: one click enchants the other player's item - the enchant is cast and their "Will not be traded" slot is clicked for you in the same click. It used to leave you holding the targeting hand to click the slot yourself.
+
 ## 0.32.0
 
 - Enchanting through the trade window: while a trade is open, the enchant target box (everywhere it appears) offers only the item in the trade window's "Will not be traded" slot - the other player's item you're enchanting for them - and picks it for you; your own bags and worn gear aren't offered. Clicking enchants it there (the enchant is cast, then their trade slot is targeted, as clicking it by hand does). When the trade closes, the box goes back to your own gear.

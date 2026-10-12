@@ -257,7 +257,9 @@ local function EnchantTarget(r, t)
   if t.trade then
     -- the trade window's item: cast, then target their slot, like clicking it in the trade window
     Craft(r, 1)
-    if SpellIsTargeting and SpellIsTargeting() and ClickTargetTradeButton then ClickTargetTradeButton(t.tradeSlot) end
+    if SpellIsTargeting and SpellIsTargeting() and ClickTargetTradeButton then
+      pcall(ClickTargetTradeButton, t.tradeSlot)   -- (the secure /click in EnchantClick is what does it)
+    end
     return
   end
   local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
@@ -289,6 +291,14 @@ local function EnchantClick(r, t, canCast)
   end
   if not (r and t and canCast) then return "" end
   EnchantTarget(r, t)
+  if t.trade then
+    -- the trade window's item: the cast is waiting for a target. A click on the trade window's own
+    -- "Will not be traded" button gives it one - done by the secure button as part of this click
+    -- (an addon targeting it directly leaves you holding the targeting hand).
+    local name = "TradeRecipientItem" .. (t.tradeSlot or 7) .. "ItemButton"
+    if _G[name] then return "/click " .. name end
+    return ""
+  end
   _, yes = CR.VisibleReplacePopup()   -- asked straight away? answer it in this same click
   if yes then
     CR.enchantPendingUntil = nil
