@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.9
+
+- Craft view recipe list: only unlearned recipes are marked (**Unlearned** in red beside the level); learned ones just show their level.
+
 ## 0.34.8
 
 - Craft view recipe list: under each name, beside its level, it now says **Learned** (green) or **Unlearned** (red). Names are always their full rarity colour - unlearned ones are no longer shown in a dimmer shade.
