@@ -335,6 +335,31 @@ end
 -- opts.plain: the macro is just onClick()'s result, run once per click (down or up, as the game
 -- acts) - for
 -- using an item (splitting / combining essences); no replace-dialog handling.
+-- A secure cover sits on top of a button (to make a protected action part of your click), so the
+-- button itself never sees the mouse. Hand it on: the button's tooltip, its hover glow while the
+-- mouse is over the cover, and its pressed look while you click. hoverFrame: whose OnEnter /
+-- OnLeave run (the button, or its row); the glow is always the button's.
+function CR.CoverHover(cover, button, hoverFrame)
+  hoverFrame = hoverFrame or button
+  cover:SetScript("OnEnter", function()
+    if button.LockHighlight then button:LockHighlight() end
+    local f = hoverFrame:GetScript("OnEnter")
+    if f then f(hoverFrame) end
+  end)
+  cover:SetScript("OnLeave", function()
+    if button.UnlockHighlight then button:UnlockHighlight() end
+    if button.SetButtonState then button:SetButtonState("NORMAL") end
+    local f = hoverFrame:GetScript("OnLeave")
+    if f then f(hoverFrame) end
+  end)
+  cover:HookScript("OnMouseDown", function()
+    if button.SetButtonState and (not button.IsEnabled or button:IsEnabled()) then button:SetButtonState("PUSHED") end
+  end)
+  cover:HookScript("OnMouseUp", function()
+    if button.SetButtonState then button:SetButtonState("NORMAL") end
+  end)
+end
+
 local function SecureEnchantButton(target, onClick, opts)
   opts = opts or {}
   local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
@@ -379,8 +404,7 @@ local function SecureEnchantButton(target, onClick, opts)
       self.answer = nil
     end
   end)
-  b:SetScript("OnEnter", function() local f = target:GetScript("OnEnter") if f then f(target) end end)
-  b:SetScript("OnLeave", function() local f = target:GetScript("OnLeave") if f then f(target) end end)
+  CR.CoverHover(b, target)
   b.target = target
   b.wanted = opts.wanted
   table.insert(secureButtons, b)

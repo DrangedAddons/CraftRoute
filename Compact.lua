@@ -1516,14 +1516,7 @@ local function AttachEnchantCover(target, onClick)
       self.answer = nil
     end
   end)
-  b:SetScript("OnEnter", function()
-    local enter = target:GetScript("OnEnter")
-    if enter then enter(target) end
-  end)
-  b:SetScript("OnLeave", function()
-    local leave = target:GetScript("OnLeave")
-    if leave then leave(target) end
-  end)
+  CR.CoverHover(b, target)
   b.target = target
   b.wanted = function()
     return overlay and overlay:IsShown() and overlay.enchant and overlay.enchant:IsShown()
@@ -1550,15 +1543,7 @@ AttachPlainCover = function(target, onClick, wanted)
     local act = (down and true or false) == (onDown and true or false)
     self:SetAttribute("macrotext", act and (onClick(button) or "") or "")
   end)
-  local row = target:GetParent()
-  b:SetScript("OnEnter", function()
-    local enter = row and row:GetScript("OnEnter")
-    if enter then enter(row) end
-  end)
-  b:SetScript("OnLeave", function()
-    local leave = row and row:GetScript("OnLeave")
-    if leave then leave(row) end
-  end)
+  CR.CoverHover(b, target, target:GetParent() or target)
   b.target = target
   b.wanted = wanted
   table.insert(enchantSecure, b)

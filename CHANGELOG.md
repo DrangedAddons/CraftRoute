@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.33.1
+
+- Hovering the Enchant / Create button or the enchant target slot (and Split / Combine, Open, and the profession picks) lights the button up again and shows it pressed while you click. Those buttons have a click-through cover on top of them (so the click can enchant or answer the replace prompt), and the cover was only passing on the tooltip, not the glow.
+
 ## 0.33.0
 
 - Craft view: clicking a recipe in the left list opens it right there - the same details and controls as your list (where to get it, reagents with Buy, the enchant target, Create / Create All, Shopping list) - so you can craft a one-off straight from the filtered list. It no longer adds it to your list: the star does that. One recipe is open at a time, in either column.
