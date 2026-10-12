@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.30.0
+
+- Destinations - a second view in the profession window's CraftRoute tab, for after the route. Route / Destinations buttons sit above the profession picker; a profession at its true max (300) opens on Destinations, everything below that stays on Route, and you can switch either way.
+  - Left: every recipe of the profession, with a search box and a filter (all / learned / not learned). Recipes you don't know are greyed. The star adds a recipe to your destinations (and removes it).
+  - Right: your destinations (saved per character and profession), each with what one costs to make and how many you can make now; under them, the recipe you clicked - learned or not, and if not where it comes from (trainer with price, vendor, quest or drop) with map pins, then its reagents with Buy / Vendor, Create / Create All with the progress bar, and the shopping list button for its materials.
+  - The bar at the bottom shows what making each destination once would cost.
+
 ## 0.29.0
 
 - The main window's Craft tab is hidden - the CraftRoute tab in the profession window does everything it did, and more. The main window now has Plan and Recipes, and opens on Plan. Nothing the profession tab uses is removed: the Craft tab's file stays loaded for its shared parts (buy box, component maker, enchant target, merchant scanning), only the tab isn't built. (It can be brought back with one setting in UI.lua, CR.SHOW_CRAFT_TAB.)

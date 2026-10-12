@@ -42,6 +42,11 @@ local ui = {
   openProf = nil,
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
   keepUntil = nil, -- a profession switch started here: stay on this view while it loads
+  -- Destinations view
+  view = {},          -- [profession] = "route" | "dest", once picked with the buttons (this session)
+  destSelected = nil, -- recipe (spell) shown on the right
+  destSearch = "",
+  destFilter = "all", -- "all" | "learned" | "unlearned"
 }
 
 ---------------------------------------------------------------------------
@@ -199,6 +204,96 @@ local function CraftSpell(spell, count, profName)
   end
 end
 
+---------------------------------------------------------------------------
+-- Destinations: after the route - the recipes you want to keep handy or aim to make. Picked from
+-- every recipe of the profession (left), kept per character and profession (right), each with its
+-- cost to make, whether it's learned and where to get it, and the usual crafting panel.
+---------------------------------------------------------------------------
+local TRUE_MAX = 300   -- the expansion's real cap - not a phase or character-level cap
+
+-- the profession whose recipes are listed (the combined guide's Fishing: Cooking)
+local function DestProf(name)
+  local route = name and CR.Route(name)
+  return (route and route.recipeProf) or name
+end
+
+local function DestList(name)
+  local db = DB()
+  if not db or not name then return {} end
+  db.destinations = db.destinations or {}
+  db.destinations[name] = db.destinations[name] or {}
+  return db.destinations[name]
+end
+
+local function IsDest(name, spell)
+  for _, s in ipairs(DestList(name)) do if s == spell then return true end end
+  return false
+end
+
+local function ToggleDest(name, spell)
+  local l = DestList(name)
+  for i, s in ipairs(l) do
+    if s == spell then table.remove(l, i) return false end
+  end
+  table.insert(l, spell)
+  return true
+end
+
+-- Route below the true max, Destinations at it - unless you've picked one with the buttons.
+local function ViewFor(name)
+  if not name then return "route" end
+  if ui.view[name] then return ui.view[name] end
+  local cur = CR.GetSkill(DestProf(name))
+  return (cur or 0) >= TRUE_MAX and "dest" or "route"
+end
+
+-- What one craft's reagents cost to buy (vendor or AH price), and whether any had no price.
+local function MakeCost(r)
+  local total, unpriced = 0, false
+  for _, rg in ipairs(r.reagents or {}) do
+    local p = CR.GetUnitPrice and CR.GetUnitPrice(rg[1])
+    if p then total = total + p * rg[2] else unpriced = true end
+  end
+  return total, unpriced
+end
+
+-- Left: every recipe (searched / filtered). Right: your destinations, in the order you added them.
+local function BuildDestItems(name)
+  local pn = DestProf(name)
+  local p = pn and CR.professions[pn]
+  if not p then return {}, {}, { profName = pn, dest = true } end
+  local q = (ui.destSearch or ""):lower()
+  local all, learnedOf = {}, {}
+  for _, r in pairs(p.recipes) do
+    local learned = RecipeLearned(pn, r) == true
+    learnedOf[r.spell] = learned
+    if (q == "" or r.name:lower():find(q, 1, true))
+        and (ui.destFilter == "all" or (ui.destFilter == "learned") == learned) then
+      table.insert(all, r)
+    end
+  end
+  table.sort(all, function(a, b)
+    if (a.learn or 0) ~= (b.learn or 0) then return (a.learn or 0) < (b.learn or 0) end
+    return a.name < b.name
+  end)
+  if ui.destSelected and not p.recipes[ui.destSelected] then ui.destSelected = nil end
+  local favs = {}
+  for _, spell in ipairs(DestList(name)) do
+    local r = p.recipes[spell]
+    if r then table.insert(favs, { kind = "destFav", recipe = r, prof = pn, list = name, fav = true }) end
+  end
+  if not ui.destSelected and favs[1] then ui.destSelected = favs[1].recipe.spell end
+  local left = {}
+  for _, r in ipairs(all) do
+    table.insert(left, { kind = "dest", recipe = r, prof = pn, list = name, fav = IsDest(name, r.spell),
+                         learned = learnedOf[r.spell], selected = ui.destSelected == r.spell })
+  end
+  for _, f in ipairs(favs) do f.selected = ui.destSelected == f.recipe.spell end
+  local sel = ui.destSelected and p.recipes[ui.destSelected]
+  return left, favs, { profName = pn, dest = true,
+    selected = sel and { kind = "dest", recipe = sel, spell = sel.spell, crafts = 1 } or nil }
+end
+
 local function StepKey(st)
   if st.recipe then return st.kind .. ":" .. st.recipe.spell .. ":" .. (st.from or 0) end
   return (st.kind or "note") .. ":" .. (st.from or 0) .. ":" .. (st.text or "")
@@ -282,6 +377,7 @@ local function ResetRow(row)
   row.act:SetScript("OnClick", nil)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
+  if row.crStar then row.crStar:Hide() end
   row.actMacro = nil
   row.name:ClearAllPoints()
   row.name:SetPoint("LEFT", 8, 0)
@@ -329,6 +425,9 @@ local function ShowTooltip(row)
     GameTooltip:SetText(item.task.title or "", 1, 0.82, 0, 1, true)
     if item.task.text and item.task.text ~= "" then GameTooltip:AddLine(item.task.text, 1, 1, 1, true) end
     GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
+  elseif item.kind == "dest" or item.kind == "destFav" then
+    CR.RecipeTooltip(GameTooltip, item.recipe, 1)
+    GameTooltip:AddLine("Click to see it on the right. The star keeps it in your destinations.", 0.6, 0.6, 0.6, true)
   elseif item.kind == "toggle" then
     GameTooltip:SetText(item.open and "Show only the chosen option" or "Show every option to choose from", 1, 1, 1)
   elseif item.kind == "note" then
@@ -396,6 +495,73 @@ local function ApplyRow(row, item)
     row.right:SetText(from and from > 0 and tostring(from) or "")
     row:SetScript("OnClick", function()
       ui.selectedKey = item.key
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end)
+    return
+  end
+
+  if item.kind == "dest" or item.kind == "destFav" then
+    local r = item.recipe
+    row:ShowSelected(item.selected and true or false)
+    row.icon:SetTexture(CR.RecipeIcon(r))
+    row.icon:Show()
+    row.icon:ClearAllPoints()
+    row.icon:SetPoint("LEFT", 6, 0)
+    local learned = item.learned
+    if learned == nil then learned = RecipeLearned(item.prof, r) == true end
+    local name = r.name
+    if item.kind == "destFav" then
+      local can = learned and CraftsReady(item.prof, r) or 0
+      if can > 0 then name = name .. CR.ColorText("  " .. can .. " now", "40ff40") end
+      local cost, unpriced = MakeCost(r)
+      row.right:SetText(CR.HasAuctionator() and (CR.FormatMoney(cost) .. (unpriced and "+" or "")) or "")
+    else
+      row.right:SetText(tostring(r.learn or ""))
+    end
+    row.name:SetText(name)
+    if item.selected then row.name:SetTextColor(1, 1, 1)
+    elseif learned then row.name:SetTextColor(1, 0.82, 0)
+    else row.name:SetTextColor(0.6, 0.6, 0.6) end
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+    row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    -- the star: in your destinations or not
+    local star = row.crStar
+    if not star then
+      star = CreateFrame("Button", nil, row)
+      star:SetSize(16, 16)
+      star.tex = star:CreateTexture(nil, "ARTWORK")
+      star.tex:SetAllPoints()
+      if not TryAtlas(star.tex, "auctionhouse-icon-favorite", false) then
+        star.tex:SetTexture("Interface\\Common\\ReputationStar")
+        star.tex:SetTexCoord(0, 0.5, 0, 0.5)
+      end
+      row.crStar = star
+    end
+    star:ClearAllPoints()
+    star:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    star.tex:SetDesaturated(not item.fav)
+    star.tex:SetAlpha(item.fav and 1 or 0.3)
+    star:Show()
+    star:SetScript("OnClick", function()
+      if ToggleDest(item.list, r.spell) then ui.destSelected = r.spell end
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end)
+    star:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText(item.fav and "Remove from your destinations" or "Add to your destinations")
+      GameTooltip:Show()
+    end)
+    star:SetScript("OnLeave", GameTooltip_Hide)
+    row:SetScript("OnClick", function()
+      if IsModifiedClick("CHATLINK") and r.item and r.item > 0 then
+        local _, link = CR.GetItemInfo(r.item)
+        if link then ChatEdit_InsertLink(link) end
+        return
+      end
+      ui.destSelected = r.spell
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -1421,6 +1587,20 @@ local function LayoutHeader()
   local leftW = overlay.leftW or 300
   local x, y, gap = 6, RANK_DROP_Y, 6
   local avail = leftW - x - 4
+  local dest = ViewFor(PlanProfession()) == "dest"
+  -- Route / Destinations, above the pickers
+  if overlay.viewRoute then
+    local half = math.floor((avail - gap) / 2)
+    overlay.viewRoute:ClearAllPoints()
+    overlay.viewRoute:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y + 1)
+    overlay.viewRoute:SetWidth(half)
+    overlay.viewDest:ClearAllPoints()
+    overlay.viewDest:SetPoint("LEFT", overlay.viewRoute, "RIGHT", gap, 0)
+    overlay.viewDest:SetWidth(avail - gap - half)
+    if dest then overlay.viewDest:LockHighlight() overlay.viewRoute:UnlockHighlight()
+    else overlay.viewRoute:LockHighlight() overlay.viewDest:UnlockHighlight() end
+    y = y - 26
+  end
   local custom = overlay.customBox:IsShown() and 42 or 0
   local goal = overlay.goalDD:IsShown()
   local profW = goal and math.min(avail - gap - custom - 90, math.max(130, math.floor((avail - gap - custom) / 2))) or avail
@@ -1438,12 +1618,22 @@ local function LayoutHeader()
     overlay.customBox:ClearAllPoints()
     overlay.customBox:SetPoint("LEFT", prev, "RIGHT", gap + 4, 0)
   end
-  local listTop = LIST_TOP
-  if overlay.modeDD:IsShown() then
+  local listTop = LIST_TOP - (overlay.viewRoute and 26 or 0)
+  if dest and overlay.destSearch then
+    -- search and filter, under the profession picker
+    local fw = 112
+    overlay.destSearch:ClearAllPoints()
+    overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + 6, y - 26)
+    overlay.destSearch:SetWidth(avail - gap - fw - 6)
+    overlay.destFilterDD:ClearAllPoints()
+    overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 24)
+    overlay.destFilterDD:SetWidth(fw)
+    listTop = listTop - 26
+  elseif overlay.modeDD:IsShown() then
     overlay.modeDD:ClearAllPoints()
     overlay.modeDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y - 24)
     overlay.modeDD:SetWidth(avail)
-    listTop = LIST_TOP - 24
+    listTop = listTop - 24
   end
   if list and overlay.listTop ~= listTop then
     overlay.listTop = listTop
@@ -1488,10 +1678,125 @@ local function LayoutColumns()
   end
 end
 
+-- Destinations on, or off: its widgets, where the recipe panel sits, the cost bar's label.
+local function SetDestWidgets(on)
+  local f = overlay
+  if not f.viewRoute then return end
+  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.favHeader, f.favList, f.destInfo }) do w:SetShown(on) end
+  if not on then
+    f.favEmpty:Hide()
+    for _, row in ipairs(f.destPins) do row:Hide() end
+  end
+  f.costBar.label:SetText(on and "Make each once" or "Route cost")
+  f.schematic:ClearAllPoints()
+  f.schematic:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+  if not on then f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, 0) end
+end
+
+-- Right column: your destinations at the top (up to 5 rows, then it scrolls), the recipe panel under.
+local function LayoutDestRight(n)
+  local f = overlay
+  local rows = math.max(1, math.min(5, n))
+  f.favHeader:ClearAllPoints()
+  f.favHeader:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 14, -40)   -- under Open CraftRoute
+  f.favList:ClearAllPoints()
+  f.favList:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 8, -58)
+  f.favList:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+  f.favList:SetHeight(rows * ROW_H)
+  f.favEmpty:ClearAllPoints()
+  f.favEmpty:SetPoint("TOPLEFT", f.favList, "TOPLEFT", 8, -8)
+  f.favEmpty:SetPoint("RIGHT", f, "RIGHT", -16, 0)
+  f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, -(58 + rows * ROW_H + 10))
+end
+
+-- Under the recipe's name: learned or not, and if not, where it comes from with map pins.
+local function FillDestDetail(info)
+  local f = overlay
+  for _, row in ipairs(f.destPins) do row:Hide() end
+  local st = info and info.selected
+  if not st then
+    f.destInfo:SetText("")
+    f.detailEmpty:SetText("Click a recipe on the left to see it here. Its star keeps it in your destinations, above.")
+    f.detailEmpty:Show()
+    return
+  end
+  local r = st.recipe
+  local learned = RecipeLearned(info.profName, r) == true
+  if learned then
+    f.destInfo:SetText(CR.ColorText("Learned", "40ff40"))
+    return
+  end
+  local cur = CR.GetSkill(info.profName)
+  local text, places, cost = "", {}, nil
+  if CR.RecipeSource then text, places, cost = CR.RecipeSource(info.profName, r) end
+  f.destInfo:SetText(CR.ColorText("Not learned", "ff6060")
+    .. CR.ColorText(string.format("  -  learn at %d%s", r.learn or 1, (cur or 0) >= (r.learn or 1) and "" or
+      string.format(" (you: %d)", cur or 0)), "aaaaaa")
+    .. "\n" .. (text or "") .. (cost and ("  " .. CR.FormatMoney(cost)) or ""))
+  local anchor = f.destInfo
+  for i, pl in ipairs(places or {}) do
+    local row = f.destPins[i]
+    if not row then break end
+    row.place = pl
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+    row.text:SetText(pl.name .. CR.ColorText("  " .. (pl.zone or ""), "aaaaaa"))
+    row:Show()
+    anchor = row
+  end
+end
+
+local function DestRefresh(name)
+  local f = overlay
+  SetDestWidgets(true)
+  local left, favs, info = BuildDestItems(name)
+  f.info = info
+  f.empty:SetText("No recipes match.")
+  f.empty:SetShown(#left == 0)
+  list:SetShown(#left > 0)
+  list:SetData(left, ui.keepScroll)
+  f.favList:SetData(favs, ui.keepScroll)
+  f.favEmpty:SetShown(#favs == 0)
+  f.favHeader:SetText(string.format("Your destinations (%d)", #favs))
+  ui.keepScroll = true
+  f.goalDD:Hide()
+  f.modeDD:Hide()
+  f.customBox:Hide()
+  LayoutHeader()
+  LayoutDestRight(#favs)
+  UpdateRankBar()
+  if f.profDD then f.profDD:Sync() end
+  if f.altsCB then f.altsCB:Sync() end
+  f.destFilterDD:Sync()
+  if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
+  f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
+  FillSchematic(info)
+  FillDestDetail(info)
+  -- the cost bar: making each destination once
+  if not CR.HasAuctionator() then
+    f.costBar.money:SetText("")
+    f.costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))
+  else
+    local total, unpriced = 0, 0
+    for _, it in ipairs(favs) do
+      local c, u = MakeCost(it.recipe)
+      total = total + c
+      if u then unpriced = unpriced + 1 end
+    end
+    f.costBar.money:SetText(CR.FormatMoney(total))
+    f.costBar.note:SetText(unpriced > 0 and CR.ColorText(string.format("(+%d unpriced)", unpriced), "ff9966") or "")
+  end
+  f.costBar:SetShown(#favs > 0)
+  if CR.RefreshBuyPop then CR.RefreshBuyPop() end
+end
+
 function CR.RefreshCompact()
   if not overlay or not overlay:IsShown() then return end
   local ok, err = pcall(function()
     SyncOpenProfession()
+    local pname = PlanProfession()
+    if ViewFor(pname) == "dest" then DestRefresh(pname) return end
+    SetDestWidgets(false)
     local items, info, empty = BuildItems()
     overlay.info = info
     overlay.empty:SetText(empty or "")
@@ -2015,6 +2320,69 @@ local function BuildOverlay()
   costBar.note:SetJustifyH("LEFT")
   costBar.note:SetWordWrap(false)
   frame.costBar = costBar
+
+  -- Route / Destinations
+  local function ViewButton(text, view, tip)
+    local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    b:SetHeight(22)
+    b:SetText(text)
+    CR.ThemeRegisterButton(b)
+    b:SetScript("OnClick", function()
+      local n = PlanProfession()
+      if not n then return end
+      ui.view[n] = view
+      ui.keepScroll = false
+      frame:Refresh()
+    end)
+    b:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText(text)
+      GameTooltip:AddLine(tip, 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    return b
+  end
+  frame.viewRoute = ViewButton("Route", "route", "The leveling route: the step you're on and what's next.")
+  frame.viewDest = ViewButton("Destinations", "dest", "After the route: the recipes you want to keep handy or "
+    .. "aim to make - with what they cost, whether you know them, and where to get them. Opens here once a "
+    .. "profession is at " .. TRUE_MAX .. ".")
+
+  frame.destSearch = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+  frame.destSearch:SetHeight(20)
+  frame.destSearch:SetAutoFocus(false)
+  frame.destSearch.hint = frame.destSearch:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  frame.destSearch.hint:SetPoint("LEFT", 2, 0)
+  frame.destSearch.hint:SetText("Search recipes")
+  frame.destSearch:SetScript("OnTextChanged", function(self, user)
+    if not user then return end
+    ui.destSearch = self:GetText()
+    ui.keepScroll = false
+    frame:Refresh()
+  end)
+  frame.destSearch:SetScript("OnEditFocusGained", function(self) self.hint:Hide() end)
+  frame.destSearch:SetScript("OnEditFocusLost", function(self) self.hint:SetShown(self:GetText() == "") end)
+  frame.destSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  frame.destSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+  frame.destFilterDD = CR.CreateDropdown(frame, 112, function()
+    return { { value = "all", text = "All recipes" }, { value = "learned", text = "Learned" },
+             { value = "unlearned", text = "Not learned" } }
+  end, function() return ui.destFilter end, function(v)
+    ui.destFilter = v
+    ui.keepScroll = false
+    frame:Refresh()
+  end)
+
+  -- right column: your destinations
+  frame.favHeader = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  CR.ThemeRegisterAccentText(frame.favHeader)
+  frame.favList = CreateList(frame)
+  frame.favEmpty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  frame.favEmpty:SetJustifyH("LEFT")
+  frame.favEmpty:SetWordWrap(true)
+  frame.favEmpty:SetText("Star recipes on the left to keep them here.")
+  for _, w in ipairs({ frame.viewRoute, frame.viewDest }) do w:Show() end
+  for _, w in ipairs({ frame.destSearch, frame.destFilterDD, frame.favHeader, frame.favList, frame.favEmpty }) do w:Hide() end
   function frame:UpdateRouteCost(plan)
     costBar.plan = plan
     if not plan then costBar:Hide() return end
@@ -2159,6 +2527,30 @@ local function BuildOverlay()
   frame.rStructure:SetWidth(180)
   frame.rStructure:SetJustifyH("LEFT")
   frame.rStructure:SetWordWrap(false)
+
+  -- Destinations: learned or not, where to get it, map pins (FillDestDetail)
+  frame.destInfo = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.destInfo:SetPoint("TOPLEFT", frame.rStructure, "BOTTOMLEFT", 0, -6)
+  frame.destInfo:SetPoint("RIGHT", schematic, "RIGHT", -8, 0)
+  frame.destInfo:SetJustifyH("LEFT")
+  frame.destInfo:SetWordWrap(true)
+  frame.destInfo:Hide()
+  frame.destPins = {}
+  for i = 1, 3 do
+    local row = CreateFrame("Frame", nil, schematic)
+    row:SetSize(240, 20)
+    row.pin = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.pin:SetSize(40, 18)
+    row.pin:SetPoint("LEFT", 0, 0)
+    row.pin:SetText("Pin")
+    CR.ThemeRegisterButton(row.pin)
+    row.pin:SetScript("OnClick", function() if row.place and CR.PinPlace then CR.PinPlace(row.place) end end)
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT", row.pin, "RIGHT", 6, 0)
+    row.text:SetJustifyH("LEFT")
+    row:Hide()
+    frame.destPins[i] = row
+  end
 
   frame.reagentsLabel = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line

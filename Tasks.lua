@@ -508,6 +508,19 @@ function CR.RecipeTask(st, profName)
   return t
 end
 
+-- Where a recipe comes from, for the Destinations view: a line of text, the nearest places to get
+-- it (map pins, from TrainerSpells), and the trainer's price if a trainer teaches it.
+function CR.RecipeSource(profName, r)
+  local src = r.src or ""
+  if src:find("Trainer") then
+    return "Taught by " .. profName .. " trainers", Nearest(Trainers(profName, RankFor(r.learn))),
+      TrainerCost(profName, r.spell)
+  end
+  local places = Nearest(RecipeVendors(profName, r.spell))
+  if #places == 0 then places = Nearest(NpcsInText(CR.FactionText(src))) end
+  return (r.pattern and (r.pattern .. ": ") or "") .. CR.FactionText(src), places
+end
+
 -- The route as things to do, in order: open tasks (each as { task = ... }) and crafts (the step
 -- itself). A craft whose recipe isn't learned yet is preceded by a "learn it" task. Finished
 -- tasks drop out.
