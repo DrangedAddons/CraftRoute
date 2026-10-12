@@ -3175,6 +3175,7 @@ local function BuildOverlay()
     return 0.45, 0.36, 0.16
   end
   local function CandidateLink(cand)
+    if cand.trade and GetTradeTargetItemLink then return GetTradeTargetItemLink(cand.tradeSlot) or cand.link end
     if cand.equipSlot and GetInventoryItemLink then
       return GetInventoryItemLink("player", cand.equipSlot)
     end
@@ -3265,7 +3266,8 @@ local function BuildOverlay()
     row:SetScript("OnLeave", GameTooltip_Hide)
     row:SetScript("OnClick", function(self)
       local cand = self.cand
-      enchant.target = { equipSlot = cand.equipSlot, bag = cand.bag, slot = cand.slot, itemID = cand.itemID }
+      enchant.target = { equipSlot = cand.equipSlot, bag = cand.bag, slot = cand.slot, itemID = cand.itemID,
+                       trade = cand.trade, tradeSlot = cand.tradeSlot }
       flyout:Hide()
       GameTooltip_Hide()
       if overlay then overlay:Refresh() end
@@ -3325,8 +3327,11 @@ local function BuildOverlay()
       return nil
     end
     local found = ResolveEnchantTarget(enchant.target, fits)
+    -- trading: the trade window's item is the target (it's the only one offered)
+    if not found and CR.tradeOpen then found = CR.EnchantCandidates(fits)[1] end
     enchant.target = found and {
       equipSlot = found.equipSlot, bag = found.bag, slot = found.slot, itemID = found.itemID,
+      trade = found.trade, tradeSlot = found.tradeSlot,
     } or nil
     local sw = frame.schemW or frame.schematic:GetWidth() or 220
     enchant.text:SetWidth(math.max(40, sw - 56))
@@ -3338,6 +3343,7 @@ local function BuildOverlay()
       enchant.slot:SetBackdropBorderColor(ItemQualityColor(found.itemID))
       local name = CR.ItemName(found.itemID)
       if found.equipSlot then name = name .. CR.ColorText(" (worn)", "aaaaaa") end
+      if found.trade then name = name .. CR.ColorText(" (in the trade)", "aaaaaa") end
       enchant.text:SetText(name)
       enchant.text:SetTextColor(1, 1, 1)
     else
@@ -3352,7 +3358,8 @@ local function BuildOverlay()
   end
 
   local function RememberTarget(cand)
-    enchant.target = { equipSlot = cand.equipSlot, bag = cand.bag, slot = cand.slot, itemID = cand.itemID }
+    enchant.target = { equipSlot = cand.equipSlot, bag = cand.bag, slot = cand.slot, itemID = cand.itemID,
+                       trade = cand.trade, tradeSlot = cand.tradeSlot }
     flyout:Hide()
     if overlay then overlay:Refresh() end
   end

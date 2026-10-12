@@ -137,12 +137,32 @@ local function BagItem(bag, slot)
   end
 end
 
+-- The other player's "Will not be traded" item while a trade is open (the item you enchant for
+-- them), as a candidate - nil if there's none or this enchant doesn't fit it.
+local TRADE_SLOT = TRADE_ENCHANT_SLOT or 7
+local function TradeCandidate(fits)
+  if not (GetTradeTargetItemLink and GetTradeTargetItemInfo) then return nil end
+  local link = GetTradeTargetItemLink(TRADE_SLOT)
+  local id = link and tonumber(link:match("item:(%d+)"))
+  if not id or not fits[EquipLoc(id) or ""] then return nil end
+  local _, _, _, _, _, enchantment = GetTradeTargetItemInfo(TRADE_SLOT)
+  return { trade = true, tradeSlot = TRADE_SLOT, itemID = id, link = link,
+           enchanted = (enchantment ~= nil and enchantment ~= "") or HasEnchant(link) }
+end
+
 -- Gear you could put this enchant on: what you're wearing and what's in your bags (never the
 -- bank or alts). Bag items and unenchanted ones first, so your worn gear is the last resort.
 -- Unbound items are fine; enchanting one binds it, and the game asks you about that itself.
+-- While a trade window is open: only the item in its "Will not be traded" slot (the other
+-- player's, the one you enchant for them) - nothing of yours.
 function CR.EnchantCandidates(fits)
   local list = {}
   if not fits then return list end
+  if CR.tradeOpen then
+    local c = TradeCandidate(fits)
+    if c then table.insert(list, c) end
+    return list
+  end
   for slot = 1, 19 do
     local id = GetInventoryItemID and GetInventoryItemID("player", slot)
     if id and fits[EquipLoc(id) or ""] then
@@ -234,6 +254,12 @@ end
 local function EnchantTarget(r, t)
   if InCombatLockdown() then CR.Print("Can't enchant in combat.") return end
   CR.enchantPendingUntil = GetTime() + 60
+  if t.trade then
+    -- the trade window's item: cast, then target their slot, like clicking it in the trade window
+    Craft(r, 1)
+    if SpellIsTargeting and SpellIsTargeting() and ClickTargetTradeButton then ClickTargetTradeButton(t.tradeSlot) end
+    return
+  end
   local loc = ItemLocation and (t.equipSlot and ItemLocation:CreateFromEquipmentSlot(t.equipSlot)
     or ItemLocation:CreateFromBagAndSlot(t.bag, t.slot))
   local cast = false
@@ -2087,7 +2113,8 @@ for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE", "TRADE_SKILL_LIST_
                      "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
                      "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
                      "MERCHANT_SHOW", "MERCHANT_CLOSED", "MERCHANT_UPDATE",
-                     "REPLACE_ENCHANT", "PLAYER_EQUIPMENT_CHANGED" }) do
+                     "REPLACE_ENCHANT", "PLAYER_EQUIPMENT_CHANGED",
+                     "TRADE_SHOW", "TRADE_CLOSED", "TRADE_TARGET_ITEM_CHANGED" }) do
   if not (C_EventUtils and C_EventUtils.IsEventValid and not C_EventUtils.IsEventValid(e)) then
     pcall(ev.RegisterEvent, ev, e)
   end
@@ -2101,6 +2128,8 @@ ev:SetScript("OnEvent", function(_, event, unit)
     if C_Timer then C_Timer.After(0, CR.NotifyChanged) end   -- status line: "click to replace"
     return
   end
+  -- trading: the enchant target box offers only the trade window's "Will not be traded" item
+  if event == "TRADE_SHOW" then CR.tradeOpen = true elseif event == "TRADE_CLOSED" then CR.tradeOpen = false end
   if event:find("^MERCHANT_") then
     if event == "MERCHANT_SHOW" then merchantOpen = true elseif event == "MERCHANT_CLOSED" then merchantOpen = false end
     ScanMerchant()

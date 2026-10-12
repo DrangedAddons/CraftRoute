@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.32.0
+
+- Enchanting through the trade window: while a trade is open, the enchant target box (everywhere it appears) offers only the item in the trade window's "Will not be traded" slot - the other player's item you're enchanting for them - and picks it for you; your own bags and worn gear aren't offered. Clicking enchants it there (the enchant is cast, then their trade slot is targeted, as clicking it by hand does). When the trade closes, the box goes back to your own gear.
+
 ## 0.31.8
 
 - Profession-window view: the mouse wheel scrolls the column the cursor is over, anywhere in it - the right-hand list (Craft view) included. Its rows used to scroll the left list, so only the thin scroll bar worked.
