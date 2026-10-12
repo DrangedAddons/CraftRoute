@@ -47,6 +47,8 @@ local ui = {
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
   destFilter = "all", -- "all" | "learned" | "unlearned"
+  destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
+  destOpened = false, -- a recipe was just opened: scroll it to the top of the list
 }
 
 ---------------------------------------------------------------------------
@@ -398,6 +400,9 @@ local function ResetRow(row)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
   if row.crSub then row.crSub:Hide() end
+  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart" }) do
+    if row[w] then row[w]:Hide() end
+  end
   if row.name.crBaseSize then
     local font, size, flags = row.name:GetFont()
     if font and size ~= row.name.crBaseSize then row.name:SetFont(font, row.name.crBaseSize, flags) end
@@ -456,9 +461,18 @@ local function ShowTooltip(row)
     GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
   elseif item.kind == "dest" or item.kind == "destFav" then
     CR.RecipeTooltip(GameTooltip, item.recipe, 1)
-    GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
-      0.4, 0.8, 1, true)
-    GameTooltip:AddLine("The star keeps it in your destinations.", 0.6, 0.6, 0.6, true)
+    if item.kind == "dest" then
+      GameTooltip:AddLine(item.fav and "Click to take it off your list." or "Click to add it to your list.", 0.4, 0.8, 1, true)
+    else
+      GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
+        0.4, 0.8, 1, true)
+    end
+  elseif item.kind == "dInfo" then
+    GameTooltip:SetText(item.learned and "Learned" or "Not learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
+    if item.source and item.source ~= "" then GameTooltip:AddLine(item.source, 1, 1, 1, true) end
+  elseif item.kind == "dPin" then
+    GameTooltip:SetText(item.place.name)
+    GameTooltip:AddLine("Pin puts it on your map and tracks it on screen.", 1, 1, 1, true)
   elseif item.kind == "toggle" then
     GameTooltip:SetText(item.open and "Show only the chosen option" or "Show every option to choose from", 1, 1, 1)
   elseif item.kind == "note" then
@@ -532,6 +546,110 @@ local function ApplyRow(row, item)
     return
   end
 
+  -- Craft view: an opened recipe's details, in rows under it
+  if item.kind == "dInfo" then
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row, "LEFT", 32, 7)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 7)
+    if item.learned then
+      row.name:SetText(CR.ColorText("Learned", "40ff40") .. CR.ColorText("   cost to make " .. item.qty .. ": ", "aaaaaa")
+        .. item.cost)
+    else
+      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("   learn at " .. (item.recipe.learn or 1), "aaaaaa")
+        .. CR.ColorText("   cost to make " .. item.qty .. ": ", "aaaaaa") .. item.cost)
+    end
+    if not row.crSub then
+      row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      row.crSub:SetJustifyH("LEFT")
+    end
+    row.crSub:ClearAllPoints()
+    row.crSub:SetPoint("LEFT", row, "LEFT", 32, -7)
+    row.crSub:SetPoint("RIGHT", row, "RIGHT", -8, -7)
+    row.crSub:SetWordWrap(false)
+    row.crSub:SetText(item.learned and "" or (item.source or ""))
+    row.crSub:Show()
+    return
+  end
+  if item.kind == "dPin" then
+    if not row.crPin then
+      row.crPin = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+      row.crPin:SetSize(40, 20)
+      row.crPin:SetText("Pin")
+      CR.ThemeRegisterButton(row.crPin)
+    end
+    row.crPin:ClearAllPoints()
+    row.crPin:SetPoint("LEFT", row, "LEFT", 32, 0)
+    row.crPin:SetScript("OnClick", function() if CR.PinPlace then CR.PinPlace(item.place) end end)
+    row.crPin:Show()
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row.crPin, "RIGHT", 6, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    row.name:SetText(item.place.name .. CR.ColorText("  " .. (item.place.zone or ""), "aaaaaa"))
+    return
+  end
+  if item.kind == "dCraft" then
+    local r, prof = item.recipe, item.prof
+    if not row.crCreate then
+      local function Btn(w, text)
+        local b = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        b:SetSize(w, 20)
+        b:SetText(text)
+        CR.ThemeRegisterButton(b)
+        return b
+      end
+      row.crQty = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+      row.crQty:SetSize(32, 18)
+      row.crQty:SetAutoFocus(false)
+      row.crQty:SetNumeric(true)
+      row.crQty:SetMaxLetters(4)
+      row.crQty:SetJustifyH("CENTER")
+      row.crCreate = Btn(58, "Create")
+      row.crAll = Btn(96, "Create All")
+      row.crCart = Btn(92, "Shopping list")
+    end
+    row.crQty:ClearAllPoints()
+    row.crQty:SetPoint("LEFT", row, "LEFT", 36, 0)
+    row.crCreate:ClearAllPoints()
+    row.crCreate:SetPoint("LEFT", row.crQty, "RIGHT", 6, 0)
+    row.crAll:ClearAllPoints()
+    row.crAll:SetPoint("LEFT", row.crCreate, "RIGHT", 4, 0)
+    row.crCart:ClearAllPoints()
+    row.crCart:SetPoint("LEFT", row.crAll, "RIGHT", 4, 0)
+    if not row.crQty:HasFocus() then row.crQty:SetText(tostring(item.qty)) end
+    local function SetQty()
+      ui.destQty[r.spell] = math.max(1, tonumber(row.crQty:GetText()) or 1)
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end
+    row.crQty:SetScript("OnEnterPressed", function(self) self:ClearFocus() SetQty() end)
+    row.crQty:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    row.crQty:SetScript("OnEditFocusLost", SetQty)
+    local can = item.learned and CraftsReady(prof, r) or 0
+    row.crCreate:SetEnabled(item.learned and can > 0 and not InCombatLockdown())
+    row.crAll:SetText(string.format("Create All [%d]", can))
+    row.crAll:SetEnabled(can > 0 and not InCombatLockdown())
+    row.crCreate:SetScript("OnClick", function()
+      CraftSpell(r.spell, math.max(1, tonumber(row.crQty:GetText()) or item.qty), prof)
+    end)
+    row.crAll:SetScript("OnClick", function()
+      local n = CraftsReady(prof, r)
+      if n > 0 then
+        ui.destQty[r.spell] = n
+        CraftSpell(r.spell, n, prof)
+      end
+    end)
+    row.crCart:SetScript("OnClick", function()
+      CR.CreateStepShoppingList(r, math.max(1, tonumber(row.crQty:GetText()) or item.qty))
+    end)
+    row.crCart:SetShown(CR.HasAuctionator() and true or false)
+    for _, w in ipairs({ row.crQty, row.crCreate, row.crAll }) do w:Show() end
+    -- a batch of it running: how far it's got
+    local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
+    row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100")
+      or (not item.learned and CR.ColorText("not learned", "ff6060") or ""))
+    return
+  end
+
   if item.kind == "dest" or item.kind == "destFav" then
     local r = item.recipe
     row:ShowSelected(item.selected and true or false)
@@ -560,14 +678,14 @@ local function ApplyRow(row, item)
     if item.kind == "dest" then
       -- the name, and under it the skill it's learned at
       row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
-      row.name:SetPoint("RIGHT", row.chevron, "LEFT", -24, 6)
+      row.name:SetPoint("RIGHT", row, "RIGHT", -30, 6)
       if not row.crSub then
         row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.crSub:SetJustifyH("LEFT")
       end
       row.crSub:ClearAllPoints()
       row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
-      row.crSub:SetText("Learn at " .. (r.learn or 1) .. (learned and "" or "  -  not learned"))
+      row.crSub:SetText(tostring(r.learn or 1))
       row.crSub:Show()
     else
       row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
@@ -587,8 +705,9 @@ local function ApplyRow(row, item)
       end
       row.crStar = star
     end
-    -- the same expand marker the route's steps have: + to open, - when open
-    row.chevron:Show()
+    -- your list (right): the same expand marker the route's steps have, + to open, - when open.
+    -- The recipe list (left) has none: a click there adds / removes the recipe.
+    row.chevron:SetShown(item.kind == "destFav")
     local atlas = item.selected and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
     local drew = TryAtlas(row.chevron.icon, atlas, true)
     row.chevron.icon:SetShown(drew)
@@ -597,7 +716,8 @@ local function ApplyRow(row, item)
     if drew then row.chevron.icon:SetVertexColor(1, 1, 1) end
     row.chevron:SetScript("OnClick", function() row:Click() end)
     star:ClearAllPoints()
-    star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+    if item.kind == "destFav" then star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+    else star:SetPoint("RIGHT", row, "RIGHT", -8, 0) end
     star.tex:SetDesaturated(not item.fav)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
     star:Show()
@@ -618,7 +738,12 @@ local function ApplyRow(row, item)
         if link then ChatEdit_InsertLink(link) end
         return
       end
-      ui.destSelected = (ui.destSelected ~= r.spell) and r.spell or nil   -- click again to close
+      if item.kind == "dest" then
+        ToggleDest(item.list, r.spell)   -- the recipe list: a click adds it to your list (or takes it off)
+      else
+        ui.destSelected = (ui.destSelected ~= r.spell) and r.spell or nil   -- your list: open / close it
+        ui.destOpened = ui.destSelected ~= nil
+      end
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -1024,6 +1149,11 @@ local function CreateList(parent)
   function holder:SetData(items, keep)
     data = items or {}
     if not keep then offset = 0 end
+    Paint()
+    ApplySlider()
+  end
+  function holder:ScrollTo(index)   -- that row at the top (as far as the list goes)
+    offset = math.max(0, math.min(MaxOffset(), (index or 1) - 1))
     Paint()
     ApplySlider()
   end
@@ -1672,12 +1802,13 @@ local function LayoutHeader()
   -- Route / Destinations, above the pickers
   if overlay.viewRoute then
     local half = math.floor((avail - gap) / 2)
-    overlay.viewRoute:ClearAllPoints()
-    overlay.viewRoute:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y + 1)
-    overlay.viewRoute:SetWidth(half)
+    -- Craft | Route - the addon's name
     overlay.viewDest:ClearAllPoints()
-    overlay.viewDest:SetPoint("LEFT", overlay.viewRoute, "RIGHT", gap, 0)
-    overlay.viewDest:SetWidth(avail - gap - half)
+    overlay.viewDest:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y + 1)
+    overlay.viewDest:SetWidth(half)
+    overlay.viewRoute:ClearAllPoints()
+    overlay.viewRoute:SetPoint("LEFT", overlay.viewDest, "RIGHT", gap, 0)
+    overlay.viewRoute:SetWidth(avail - gap - half)
     if dest then overlay.viewDest:LockHighlight() overlay.viewRoute:UnlockHighlight()
     else overlay.viewRoute:LockHighlight() overlay.viewDest:UnlockHighlight() end
     y = y - 26
@@ -1763,11 +1894,10 @@ end
 local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
-  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.favHeader, f.favList, f.destInfo }) do w:SetShown(on) end
-  if not on then
-    f.favEmpty:Hide()
-    for _, row in ipairs(f.destPins) do row:Hide() end
-  end
+  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.favHeader, f.favList }) do w:SetShown(on) end
+  f.destInfo:Hide()
+  for _, row in ipairs(f.destPins) do row:Hide() end
+  if not on then f.favEmpty:Hide() end
   f.costBar.label:SetText(on and "Make each once" or "Route cost")
   f.schematic:ClearAllPoints()
   f.schematic:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
@@ -1778,21 +1908,45 @@ local function SetDestWidgets(on)
 end
 
 -- Right column: your destinations at the top (up to 5 rows, then it scrolls), the recipe panel under.
-local function LayoutDestRight(n, open)
+local function LayoutDestRight()
   local f = overlay
-  -- a recipe open: up to 5 destination rows, the recipe under them; none open: the list gets the column
-  local rows = math.max(1, math.min(open and 5 or 14, n))
-  f.schematic:SetShown(open and true or false)
+  f.schematic:Hide()   -- an opened recipe's details are rows in the list itself
   f.favHeader:ClearAllPoints()
   f.favHeader:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 14, -40)   -- under Open CraftRoute
   f.favList:ClearAllPoints()
   f.favList:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 8, -58)
-  f.favList:SetPoint("RIGHT", f, "RIGHT", -8, 0)
-  f.favList:SetHeight(rows * ROW_H)
+  f.favList:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
   f.favEmpty:ClearAllPoints()
   f.favEmpty:SetPoint("TOPLEFT", f.favList, "TOPLEFT", 8, -8)
   f.favEmpty:SetPoint("RIGHT", f, "RIGHT", -16, 0)
-  f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, -(58 + rows * ROW_H + 10))
+end
+
+-- Your list with the opened recipe's details under it: learned and cost, where to get it (pins),
+-- its reagents (Buy / Vendor, make the parts), and a crafting row.
+local function ExpandFavs(name, favs)
+  local out, at = {}, nil
+  for _, f in ipairs(favs) do
+    table.insert(out, f)
+    if f.selected then
+      at = #out
+      local r, pn = f.recipe, f.prof
+      local learned = RecipeLearned(pn, r) == true
+      local qty = math.max(1, ui.destQty[r.spell] or 1)
+      local cost, unpriced = MakeCost(r)
+      local source, places = "", {}
+      if not learned and CR.RecipeSource then
+        local text, pl, tcost = CR.RecipeSource(pn, r)
+        source = (text or "") .. (tcost and ("  " .. CR.FormatMoney(tcost)) or "")
+        places = pl or {}
+      end
+      table.insert(out, { kind = "dInfo", recipe = r, learned = learned, qty = qty, source = source,
+        cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty) .. (unpriced and "+" or "")) or "?" })
+      for i = 1, math.min(2, #places) do table.insert(out, { kind = "dPin", place = places[i] }) end
+      AddReagents(out, r.reagents or {}, qty, 1, CR.professions[pn] or CraftProf(name), "dest:" .. r.spell, {})
+      table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
+    end
+  end
+  return out, at
 end
 
 -- Under the recipe's name: learned or not, and if not, where it comes from with map pins.
@@ -1843,23 +1997,24 @@ local function DestRefresh(name)
   f.empty:SetShown(#left == 0)
   list:SetShown(#left > 0)
   list:SetData(left, ui.keepScroll)
-  f.favList:SetData(favs, ui.keepScroll)
+  local rows, openAt = ExpandFavs(name, favs)
+  f.favList:SetData(rows, ui.keepScroll)
+  if ui.destOpened and openAt then f.favList:ScrollTo(openAt) end   -- show what just opened
+  ui.destOpened = false
   f.favEmpty:SetShown(#favs == 0)
-  f.favHeader:SetText(string.format("Your destinations (%d)", #favs))
+  f.favHeader:SetText(string.format("Your crafts (%d)", #favs))
   ui.keepScroll = true
   f.goalDD:Hide()
   f.modeDD:Hide()
   f.customBox:Hide()
   LayoutHeader()
-  LayoutDestRight(#favs, info.selected ~= nil)
+  LayoutDestRight()
   UpdateRankBar()
   if f.profDD then f.profDD:Sync() end
   if f.altsCB then f.altsCB:Sync() end
   f.destFilterDD:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
-  FillDestDetail(info)   -- first: the compact recipe panel starts its reagents under these lines
-  FillSchematic(info)
   -- the cost bar: making each destination once
   if not CR.HasAuctionator() then
     f.costBar.money:SetText("")
@@ -2432,8 +2587,8 @@ local function BuildOverlay()
     return b
   end
   frame.viewRoute = ViewButton("Route", "route", "The leveling route: the step you're on and what's next.")
-  frame.viewDest = ViewButton("Destinations", "dest", "After the route: the recipes you want to keep handy or "
-    .. "aim to make - with what they cost, whether you know them, and where to get them. Opens here once a "
+  frame.viewDest = ViewButton("Craft", "dest", "Your recipes, after the route: pick the ones you want handy or "
+    .. "aim to make - what they cost, whether you know them, where to get them, and crafting. Opens here once a "
     .. "profession is at " .. TRUE_MAX .. ".")
 
   frame.destSearch = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
@@ -2468,7 +2623,7 @@ local function BuildOverlay()
   frame.favEmpty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.favEmpty:SetJustifyH("LEFT")
   frame.favEmpty:SetWordWrap(true)
-  frame.favEmpty:SetText("Star recipes on the left to keep them here.")
+  frame.favEmpty:SetText("Click recipes on the left to add them here.")
   for _, w in ipairs({ frame.viewRoute, frame.viewDest }) do w:Show() end
   for _, w in ipairs({ frame.destSearch, frame.destFilterDD, frame.favHeader, frame.favList, frame.favEmpty }) do w:Hide() end
   function frame:UpdateRouteCost(plan)

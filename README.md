@@ -15,7 +15,7 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 - Crafting stations it needs ("Anvil required"), green while you're at one.
 - Shift+K opens it (change the key under Options > Keybindings > AddOns > CraftRoute).
 
-**Destinations, for after the route.** Once a profession is maxed, the profession tab opens on Destinations (or switch to it any time with the Route / Destinations buttons): search every recipe of the profession, star the ones you want handy or are aiming for, and each shows what it costs to make, whether you know it - and if not, where it comes from with map pins - plus the usual reagents, Create buttons and shopping list.
+**Craft, for after the route.** The profession tab has two views, **Craft | Route**. Once a profession is maxed it opens on Craft: search every recipe of the profession and click the ones you want handy or are aiming for. Each shows what it costs to make; open one for whether you know it (and if not, where it comes from, with map pins), its reagents with Buy, and Create / Create All and a shopping list - right there in the list.
 
 **Stops at the steps that aren't crafts.** Training the next rank, a book or quest, supplies to buy, a recipe to learn, fishing to a skill: the route stops and shows what to do, the nearest NPCs with a map pin button, and the cost. It moves on by itself once the game shows it's done, or click Mark as done.
 

@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.31.0
+
+- The new view is called Craft, and the buttons read Craft | Route.
+- Craft view: opening one of your recipes shows its details right under it, in the list - learned or not with the cost to make, where to get it with map pins, its reagents (Buy / Vendor, make the parts), and a crafting row: quantity, Create, Create All, Shopping list, and how far a batch has got. Your list fills the right column.
+- Craft view: the recipe list (left) has no expand marker - a click there adds the recipe to your list or takes it off - and shows just the level under each name.
+
 ## 0.30.5
 
 - Destinations: the recipe list shows the skill a recipe is learned at under its name ("Learn at 275", plus "not learned" if you don't know it) instead of to the right of it.
