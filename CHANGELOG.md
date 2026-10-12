@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.30.2
+
+- Destinations: recipe names are coloured by the crafted item's rarity (white, green, blue, purple...), on both sides; a recipe you don't know yet is the same colour, dimmed.
+
 ## 0.30.1
 
 - Profession-window view: the lists' scroll bars (route, recipes, destinations) move the right way - down as you scroll down, at the top when you're at the top. They were upside down.

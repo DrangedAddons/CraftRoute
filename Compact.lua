@@ -520,9 +520,10 @@ local function ApplyRow(row, item)
       row.right:SetText(tostring(r.learn or ""))
     end
     row.name:SetText(name)
-    if item.selected then row.name:SetTextColor(1, 1, 1)
-    elseif learned then row.name:SetTextColor(1, 0.82, 0)
-    else row.name:SetTextColor(0.6, 0.6, 0.6) end
+    -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed
+    local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[r.q or 1]
+    local qr, qg, qb = c and c.r or 1, c and c.g or 1, c and c.b or 1
+    if learned then row.name:SetTextColor(qr, qg, qb) else row.name:SetTextColor(qr * 0.55, qg * 0.55, qb * 0.55) end
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
     row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
