@@ -47,7 +47,7 @@ local ui = {
   destSearch = "",
   destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
   destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
-  destOpened = false, -- a recipe was just opened: scroll it to the top of the list
+  destAnchor = nil,   -- a recipe was just clicked: { spell, side, slot } - keep its row where it was
 }
 
 ---------------------------------------------------------------------------
@@ -970,7 +970,8 @@ local function ApplyRow(row, item)
       else
         ui.destSelected, ui.destSide = r.spell, side
       end
-      ui.destOpened = ui.destSelected ~= nil
+      -- it opens (or closes) where it is: its row stays put and the details expand down
+      ui.destAnchor = { spell = r.spell, side = side, slot = row.slot or 1 }
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end)
@@ -1349,6 +1350,7 @@ local function CreateList(parent)
         rows[i] = row
       end
       local item = data[offset + i]
+      row.slot = i   -- its place on screen (the Craft view keeps a clicked recipe there)
       row:SetShown(item ~= nil)
       if item then ApplyRow(row, item) end
     end
@@ -2247,8 +2249,19 @@ local function DestRefresh(name)
   f.empty:SetShown(#left == 0)
   list:SetShown(#left > 0)
   local leftRows, leftAt = ExpandOpen(name, left)
+  -- the clicked recipe's row stays on the same line of the list (rows above it may have closed)
+  local function KeepAnchor(holder, rows, side)
+    local a = ui.destAnchor
+    if not a or a.side ~= side then return end
+    for i, it in ipairs(rows) do
+      if (it.kind == "dest" or it.kind == "destFav") and it.recipe and it.recipe.spell == a.spell then
+        holder:ScrollTo(i - a.slot + 1)
+        return
+      end
+    end
+  end
   list:SetData(leftRows, ui.keepScroll)
-  if ui.destOpened and leftAt then list:ScrollTo(leftAt) end
+  KeepAnchor(list, leftRows, "left")
   -- the opened recipe is the current one for the enchant target slot (and its click covers)
   local open
   for _, it in ipairs(favs) do if it.selected then open = it end end
@@ -2264,8 +2277,8 @@ local function DestRefresh(name)
   end
   local rows, openAt = ExpandOpen(name, favs)
   f.favList:SetData(rows, ui.keepScroll)
-  if ui.destOpened and openAt then f.favList:ScrollTo(openAt) end   -- show what just opened
-  ui.destOpened = false
+  KeepAnchor(f.favList, rows, "right")
+  ui.destAnchor = nil
   f.favEmpty:SetShown(#favs == 0)
   f.favHeader:SetText(string.format("Your crafts (%d)", #favs))
   ui.keepScroll = true

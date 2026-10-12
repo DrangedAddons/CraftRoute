@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.35.1
+
+- Craft view (both columns): opening a recipe no longer scrolls it to the top - its row stays exactly where it was and the details expand down below it; scroll down to see the rest. Closing one (or opening another while one above is open) keeps the clicked row in place too.
+
 ## 0.35.0
 
 - Route view: a little cart button at the right end of the Route cost bar makes the route's Auctionator shopping list - the same list as the main window's "Auctionator shopping list" button, without opening the main window.
