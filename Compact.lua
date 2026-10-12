@@ -257,6 +257,27 @@ local function MakeCost(r)
   return total, unpriced
 end
 
+-- Show a name in full: if it's wider than its space, the text gets a point or two smaller
+-- (down to 8) rather than cut off with "...". The row's normal size comes back in ResetRow.
+local function FitName(fs, text)
+  local font, size, flags = fs:GetFont()
+  if not font or type(size) ~= "number" then fs:SetText(text) return end
+  fs.crBaseSize = fs.crBaseSize or size
+  size = fs.crBaseSize
+  fs:SetFont(font, size, flags)
+  fs:SetText(text)
+  local room = tonumber(fs:GetWidth()) or 0
+  if room <= 0 then   -- not laid out yet: the row's width less the icon, star and expand marker
+    local parent = fs:GetParent()
+    room = (parent and tonumber(parent:GetWidth()) or 0) - 80
+  end
+  if room <= 0 then return end
+  while size > 8 and (tonumber(fs:GetStringWidth()) or 0) > room do
+    size = size - 1
+    fs:SetFont(font, size, flags)
+  end
+end
+
 -- Left: every recipe (searched / filtered). Right: your destinations, in the order you added them.
 local function BuildDestItems(name)
   local pn = DestProf(name)
@@ -376,6 +397,11 @@ local function ResetRow(row)
   row.act:SetScript("OnClick", nil)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
+  if row.crSub then row.crSub:Hide() end
+  if row.name.crBaseSize then
+    local font, size, flags = row.name:GetFont()
+    if font and size ~= row.name.crBaseSize then row.name:SetFont(font, row.name.crBaseSize, flags) end
+  end
   if row.crStar then
     row.crStar:Hide()
     row.right:ClearAllPoints()
@@ -522,18 +548,32 @@ local function ApplyRow(row, item)
       local cost, unpriced = MakeCost(r)
       row.right:SetText(CR.HasAuctionator() and (CR.FormatMoney(cost) .. (unpriced and "+" or "")) or "")
     else
-      row.right:SetText(tostring(r.learn or ""))
+      row.right:SetText("")
     end
-    row.name:SetText(name)
     -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[r.q or 1]
     local qr, qg, qb = c and c.r or 1, c and c.g or 1, c and c.b or 1
     if learned then row.name:SetTextColor(qr, qg, qb) else row.name:SetTextColor(qr * 0.55, qg * 0.55, qb * 0.55) end
-    row.name:ClearAllPoints()
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-    row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
     row.right:ClearAllPoints()
     row.right:SetPoint("RIGHT", row.chevron, "LEFT", -24, 0)   -- room for the star
+    row.name:ClearAllPoints()
+    if item.kind == "dest" then
+      -- the name, and under it the skill it's learned at
+      row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
+      row.name:SetPoint("RIGHT", row.chevron, "LEFT", -24, 6)
+      if not row.crSub then
+        row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.crSub:SetJustifyH("LEFT")
+      end
+      row.crSub:ClearAllPoints()
+      row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
+      row.crSub:SetText("Learn at " .. (r.learn or 1) .. (learned and "" or "  -  not learned"))
+      row.crSub:Show()
+    else
+      row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
+      row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    end
+    FitName(row.name, name)
     -- the star: in your destinations or not
     local star = row.crStar
     if not star then

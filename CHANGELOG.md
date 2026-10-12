@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.30.5
+
+- Destinations: the recipe list shows the skill a recipe is learned at under its name ("Learn at 275", plus "not learned" if you don't know it) instead of to the right of it.
+- Destinations: recipe names aren't cut short with "..." any more - each gets the row's full width, and a name that's still too long (Enchanting's especially) is shown a little smaller instead.
+
 ## 0.30.4
 
 - Destinations: every recipe row has the same + / - expand marker as the route's steps (+ to open, - when open), with the star beside it, and the tooltip says what a click does.
