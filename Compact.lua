@@ -1146,8 +1146,10 @@ local function CreateRow(parent)
   row.name:SetJustifyH("LEFT")
   row.name:SetWordWrap(false)
   row:EnableMouseWheel(true)
-  row:SetScript("OnMouseWheel", function(_, delta)
-    if list and list.Wheel then list:Wheel(delta) end
+  row:SetScript("OnMouseWheel", function(self, delta)
+    -- the list this row belongs to (the route / recipe list, or your list on the right)
+    local holder = self:GetParent()
+    if holder and holder.Wheel then holder:Wheel(delta) elseif list and list.Wheel then list:Wheel(delta) end
   end)
   return row
 end
@@ -3499,8 +3501,15 @@ local function BuildOverlay()
   end)
   frame:SetScript("OnSizeChanged", LayoutColumns)
   frame:EnableMouseWheel(true)
-  frame:SetScript("OnMouseWheel", function(_, delta)
-    if list and list.Wheel then list:Wheel(delta) end
+  frame:SetScript("OnMouseWheel", function(self, delta)
+    -- anywhere over a column scrolls that column: right of the divider, your list (Craft view)
+    local target = list
+    local fav = self.favList
+    if fav and fav:IsShown() and self.divider and self.divider:GetLeft() then
+      local x = GetCursorPosition() / (self:GetEffectiveScale() or 1)
+      if x > self.divider:GetLeft() then target = fav end
+    end
+    if target and target.Wheel then target:Wheel(delta) end
   end)
 
   function frame:Refresh()
