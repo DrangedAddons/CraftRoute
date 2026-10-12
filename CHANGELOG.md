@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.28.14
+
+- With EllesmereUI loaded, CraftRoute uses the font you've chosen in EllesmereUI (its global font, outline and shadow) - in the main window and the profession-window view, on every CraftRoute look. It used to force EllesmereUI's default Expressway font, and only on the EllesmereUI Style look. Each text keeps its own size; a font change in EllesmereUI is picked up on /reload; without EllesmereUI the original fonts are kept. (Contributed fix, integrated with a check so the frequently refreshed profession view only changes fonts that need it.)
+
 ## 0.28.13
 
 - Profession-window view: time left for a crafting batch, just above its progress bar - "About 1m 23s left (37 to go)" - from the cast time of your crafts and what's left of the batch, counting down as you go.

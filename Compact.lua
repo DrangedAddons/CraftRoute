@@ -1521,6 +1521,8 @@ function CR.RefreshCompact()
     if CR.RefreshBuyPop then CR.RefreshBuyPop() end
   end)
   if not ok then CR.Print("Compact: " .. tostring(err)) end
+  -- rows are rebuilt while the view stays open; reapply after that rebuild
+  if overlay and CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, overlay) end
 end
 
 ---------------------------------------------------------------------------
@@ -1702,7 +1704,7 @@ local function OpenCompact()
   SetEntryChecked(true)
   PositionEntry()
   overlay:Refresh()
-  if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, overlay) end   -- the selected look's font
+  if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, overlay) end   -- EllesmereUI global font, if loaded
 end
 
 local function ToggleCompact()

@@ -1,13 +1,12 @@
 -- Window themes matching EllesmereUI's four looks (only offered when EllesmereUI is loaded).
 --   default  - CraftRoute's own look (dark dialog box). Always the fallback.
---   eui      - EllesmereUI Style: flat dark panel, thin border, the user's accent colour, Expressway.
+--   eui      - EllesmereUI Style: flat dark panel, thin border, the user's accent colour.
 --   forever  - WoW Forever: Blizzard's frame art, which this client draws in Forever's bronze.
 --   blizzard - Blizzard Style: the same frame art forced to retail's look via EllesmereUI.StockAtlas.
 --   classic  - Classic WoW UI: the vanilla dialog border over the rock background.
--- Everything is reversible at runtime: switching back to "default" restores the original look.
+-- Everything is reversible at runtime: switching back to "default" restores the original frame.
+-- The typeface follows EllesmereUI's global font for as long as that addon is loaded.
 local _, CR = ...
-
-local EUI_FONT_FALLBACK = "Interface\\AddOns\\EllesmereUI\\media\\fonts\\Expressway.ttf"
 
 CR.THEMES = {
   { key = "default",  text = "CraftRoute default" },
@@ -54,7 +53,7 @@ end
 local borders = setmetatable({}, { __mode = "k" })     -- flat backdrops: lists, dropdowns, buttons
 local accentTexts = setmetatable({}, { __mode = "k" }) -- headings drawn in the accent colour
 local buttons = setmetatable({}, { __mode = "k" })     -- UIPanelButtonTemplate buttons
-local origFonts = setmetatable({}, { __mode = "k" })   -- FontString -> { font, size, flags }
+local origFonts = setmetatable({}, { __mode = "k" })   -- FontString/EditBox -> { font, size, flags }
 
 function CR.ThemeRegisterBorder(f) borders[f] = true end
 function CR.ThemeRegisterAccentText(fs) accentTexts[fs] = true end
@@ -206,33 +205,76 @@ function CR.ThemeSetButtonActive(btn, active)
 end
 
 ---------------------------------------------------------------------------
--- Fonts: EllesmereUI's font in its style, the original fonts otherwise
+-- Fonts: EllesmereUI's global font on /cr and Compact whenever it is loaded,
+-- whichever CraftRoute look is selected. GetFontPath() with no addon key is
+-- the global face; outline and shadow come from the same setting. A /reload
+-- picks up a font change. With EllesmereUI absent, the faces these widgets
+-- were created with are put back. Each widget keeps the size it was created
+-- at, so Compact's rank number stays on the Number12 size.
+-- (From a fix contributed against 0.28.13 - CraftRoute used to force Expressway.)
 ---------------------------------------------------------------------------
+local fontApplied = setmetatable({}, { __mode = "k" })   -- FontString/EditBox -> "path|flags|shadow" it has
+
 local function EachFontString(root, fn, depth)
   depth = depth or 0
-  if depth > 12 then return end
+  if depth > 12 or not root.GetRegions then return end
+  -- EditBox text is the box itself, not a FontString region.
+  if root.GetObjectType and root:GetObjectType() == "EditBox" then fn(root) end
   for _, region in ipairs({ root:GetRegions() }) do
     if region.GetObjectType and region:GetObjectType() == "FontString" then fn(region) end
   end
-  for _, child in ipairs({ root:GetChildren() }) do EachFontString(child, fn, depth + 1) end
+  if root.GetChildren then
+    for _, child in ipairs({ root:GetChildren() }) do EachFontString(child, fn, depth + 1) end
+  end
+end
+
+-- nil path: EllesmereUI is not loaded, or its getter failed. Callers restore.
+local function EllesmereFont()
+  if not CR.HasEllesmere() or type(EllesmereUI.GetFontPath) ~= "function" then return nil end
+  local ok, path = pcall(EllesmereUI.GetFontPath)
+  if not ok or type(path) ~= "string" or path == "" then return nil end
+  local flags = ""
+  if type(EllesmereUI.GetFontOutlineFlag) == "function" then
+    local okf, flag = pcall(EllesmereUI.GetFontOutlineFlag)
+    if okf and type(flag) == "string" then flags = flag end
+  end
+  local shadow = false
+  if type(EllesmereUI.GetFontUseShadow) == "function" then
+    local oks, use = pcall(EllesmereUI.GetFontUseShadow)
+    shadow = oks and use and true or false
+  end
+  return path, flags, shadow
+end
+
+local function ApplyOneFont(obj, path, flags, shadow, key)
+  -- the profession view refreshes after every craft and bag change: only touch a string whose
+  -- font isn't already the right one
+  if path and fontApplied[obj] == key then return end
+  local font, size, curFlags = obj:GetFont()
+  if not font or not size or size <= 0 then return end
+  if path then
+    if not origFonts[obj] then origFonts[obj] = { font, size, curFlags } end
+    local useSize = origFonts[obj][2]
+    -- Shadow only renders from a FontObject, and it has to be primed before SetFont.
+    if EllesmereUI.PrimeFontShadow then pcall(EllesmereUI.PrimeFontShadow, obj, shadow) end
+    if pcall(obj.SetFont, obj, path, useSize, flags or "") then
+      fontApplied[obj] = key
+    elseif origFonts[obj] then
+      local o = origFonts[obj]
+      pcall(obj.SetFont, obj, o[1], o[2], o[3])
+    end
+  elseif origFonts[obj] then
+    local o = origFonts[obj]
+    pcall(obj.SetFont, obj, o[1], o[2], o[3])
+    origFonts[obj], fontApplied[obj] = nil, nil
+  end
 end
 
 function CR.ApplyThemeFonts(root)
   if not root then return end
-  local theme = CR.ActiveTheme()
-  local euiFont = theme == "eui" and (EllesmereUI.EXPRESSWAY or EUI_FONT_FALLBACK) or nil
-  EachFontString(root, function(fs)
-    local font, size, flags = fs:GetFont()
-    if not font then return end
-    if euiFont then
-      if not origFonts[fs] then origFonts[fs] = { font, size, flags } end
-      if font ~= euiFont then fs:SetFont(euiFont, origFonts[fs][2], origFonts[fs][3]) end
-    elseif origFonts[fs] then
-      local o = origFonts[fs]
-      fs:SetFont(o[1], o[2], o[3])
-      origFonts[fs] = nil
-    end
-  end)
+  local path, flags, shadow = EllesmereFont()
+  local key = path and (path .. "|" .. (flags or "") .. "|" .. tostring(shadow)) or nil
+  EachFontString(root, function(obj) ApplyOneFont(obj, path, flags, shadow, key) end)
 end
 
 ---------------------------------------------------------------------------

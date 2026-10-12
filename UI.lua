@@ -517,8 +517,8 @@ function CR.RefreshWindow()
   if not frame or not frame:IsShown() then return end
   local p = frame.panels[frame.current]
   if p and p.Refresh then p:Refresh() end
-  -- rows are created as lists grow, so give new ones EllesmereUI's font too
-  if CR.ActiveTheme() == "eui" then CR.ApplyThemeFonts(frame) end
+  -- rows are created as lists grow, so give new ones the EllesmereUI global font too
+  if CR.ApplyThemeFonts then CR.ApplyThemeFonts(frame) end
 end
 
 CR.OnChange(function() CR.RefreshWindow() end)
