@@ -376,7 +376,11 @@ local function ResetRow(row)
   row.act:SetScript("OnClick", nil)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
-  if row.crStar then row.crStar:Hide() end
+  if row.crStar then
+    row.crStar:Hide()
+    row.right:ClearAllPoints()
+    row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
+  end
   row.actMacro = nil
   row.name:ClearAllPoints()
   row.name:SetPoint("LEFT", 8, 0)
@@ -426,7 +430,9 @@ local function ShowTooltip(row)
     GameTooltip:AddLine("Click to see what to do and where.", 0.6, 0.6, 0.6)
   elseif item.kind == "dest" or item.kind == "destFav" then
     CR.RecipeTooltip(GameTooltip, item.recipe, 1)
-    GameTooltip:AddLine("Click to see it on the right. The star keeps it in your destinations.", 0.6, 0.6, 0.6, true)
+    GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
+      0.4, 0.8, 1, true)
+    GameTooltip:AddLine("The star keeps it in your destinations.", 0.6, 0.6, 0.6, true)
   elseif item.kind == "toggle" then
     GameTooltip:SetText(item.open and "Show only the chosen option" or "Show every option to choose from", 1, 1, 1)
   elseif item.kind == "note" then
@@ -526,6 +532,8 @@ local function ApplyRow(row, item)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
     row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    row.right:ClearAllPoints()
+    row.right:SetPoint("RIGHT", row.chevron, "LEFT", -24, 0)   -- room for the star
     -- the star: in your destinations or not
     local star = row.crStar
     if not star then
@@ -539,8 +547,17 @@ local function ApplyRow(row, item)
       end
       row.crStar = star
     end
+    -- the same expand marker the route's steps have: + to open, - when open
+    row.chevron:Show()
+    local atlas = item.selected and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
+    local drew = TryAtlas(row.chevron.icon, atlas, true)
+    row.chevron.icon:SetShown(drew)
+    row.chevron.label:SetShown(not drew)
+    row.chevron.label:SetText(item.selected and "-" or "+")
+    if drew then row.chevron.icon:SetVertexColor(1, 1, 1) end
+    row.chevron:SetScript("OnClick", function() row:Click() end)
     star:ClearAllPoints()
-    star:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
     star.tex:SetDesaturated(not item.fav)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
     star:Show()
@@ -1389,14 +1406,20 @@ local function FillSchematic(info)
   frame.icon:ClearAllPoints()
   frame.reagentsLabel:ClearAllPoints()
   if compact then
-    frame.icon:SetPoint("TOPLEFT", 10, -6)
+    frame.icon:SetPoint("TOPLEFT", 6, -2)
+    frame.icon:SetSize(34, 34)
+    frame.icon.texture:SetSize(30, 30)
+    if frame.icon.ring then frame.icon.ring:Hide() end
     frame.destInfo:Show()
-    frame.reagentsLabel:SetPoint("TOPLEFT", frame.destBottom or frame.destInfo, "BOTTOMLEFT", 0, -8)
+    frame.reagentsLabel:SetPoint("TOPLEFT", frame.destBottom or frame.destInfo, "BOTTOMLEFT", 0, -4)
   else
+    frame.icon:SetSize(54, 54)
+    frame.icon.texture:SetSize(46, 46)
+    if frame.icon.ring and frame.icon.ring.crWanted then frame.icon.ring:Show() end
     frame.icon:SetPoint("TOPLEFT", 28, -28)
     frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
   end
-  local rowH = compact and 28 or 42
+  local rowH = compact and 22 or 42
   -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
   -- this recipe has one, else above the Shopping List button.
   local rscroll, rcontent = frame.rscroll, frame.rcontent
@@ -2471,6 +2494,7 @@ local function BuildOverlay()
     ring:SetSize(68, 68)
     ring:SetVertexColor(0.62, 0.40, 0.16)
     ring:Show()
+    ring.crWanted = true   -- (Destinations' compact panel hides it)
   else
     ring:Hide()
   end
@@ -2555,7 +2579,7 @@ local function BuildOverlay()
 
   -- Destinations: learned or not, where to get it, map pins (FillDestDetail)
   frame.destInfo = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.destInfo:SetPoint("TOPLEFT", frame.icon, "BOTTOMLEFT", -2, -8)
+  frame.destInfo:SetPoint("TOPLEFT", frame.icon, "BOTTOMLEFT", 0, -4)
   frame.destInfo:SetPoint("RIGHT", schematic, "RIGHT", -8, 0)
   frame.destInfo:SetJustifyH("LEFT")
   frame.destInfo:SetWordWrap(true)

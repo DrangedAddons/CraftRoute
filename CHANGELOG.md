@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.30.4
+
+- Destinations: every recipe row has the same + / - expand marker as the route's steps (+ to open, - when open), with the star beside it, and the tooltip says what a click does.
+- Destinations: an even tighter recipe panel - a small icon without the ring, learned / where to get it right under it, slimmer reagent rows. Crafting, Buy / Vendor and the shopping list are all still there.
+
 ## 0.30.3
 
 - Destinations: nothing's opened until you click a recipe - click it again to close it. With none open, your destinations list gets the whole right column. Starring a recipe adds it without opening it.
