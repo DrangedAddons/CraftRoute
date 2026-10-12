@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.7
+
+- Craft view stars: hovering one makes it glow (an empty star also brightens), and clicking it presses in like a normal button. No tooltip on the star any more.
+
 ## 0.34.6
 
 - Craft view filter: clicking anywhere on an option's line (its name too, not just the tick box) toggles it - in the main list and the Quality / Slot side lists.

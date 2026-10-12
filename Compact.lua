@@ -844,12 +844,33 @@ local function ApplyRow(row, item)
     if not star then
       star = CreateFrame("Button", nil, row)
       star:SetSize(16, 16)
+      local function StarTex(tex)
+        if not TryAtlas(tex, "auctionhouse-icon-favorite", false) then
+          tex:SetTexture("Interface\\Common\\ReputationStar")
+          tex:SetTexCoord(0, 0.5, 0, 0.5)
+        end
+      end
       star.tex = star:CreateTexture(nil, "ARTWORK")
       star.tex:SetAllPoints()
-      if not TryAtlas(star.tex, "auctionhouse-icon-favorite", false) then
-        star.tex:SetTexture("Interface\\Common\\ReputationStar")
-        star.tex:SetTexCoord(0, 0.5, 0, 0.5)
-      end
+      StarTex(star.tex)
+      -- hover: a soft glow of the star behind it (shown by the game while the mouse is over it)
+      star.glow = star:CreateTexture(nil, "HIGHLIGHT")
+      star.glow:SetPoint("CENTER")
+      star.glow:SetSize(22, 22)
+      StarTex(star.glow)
+      star.glow:SetBlendMode("ADD")
+      star.glow:SetVertexColor(1, 0.85, 0.3)
+      star.glow:SetAlpha(0.55)
+      -- press: the star sinks a little while the button is held, like a normal button
+      star:SetScript("OnMouseDown", function(self)
+        self.tex:ClearAllPoints()
+        self.tex:SetPoint("TOPLEFT", 2, -2)
+        self.tex:SetPoint("BOTTOMRIGHT", -1, 1)
+      end)
+      star:SetScript("OnMouseUp", function(self)
+        self.tex:ClearAllPoints()
+        self.tex:SetAllPoints()
+      end)
       row.crStar = star
     end
     -- your list (right): the same expand marker the route's steps have, + to open, - when open.
@@ -873,11 +894,13 @@ local function ApplyRow(row, item)
       if overlay then overlay:Refresh() end
     end)
     star:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:SetText(item.fav and "Remove from your destinations" or "Add to your destinations")
-      GameTooltip:Show()
+      if not item.fav then self.tex:SetAlpha(0.75) end   -- an empty star brightens too (no tooltip)
     end)
-    star:SetScript("OnLeave", GameTooltip_Hide)
+    star:SetScript("OnLeave", function(self)
+      self.tex:SetAlpha(item.fav and 1 or 0.3)
+      self.tex:ClearAllPoints()
+      self.tex:SetAllPoints()
+    end)
     row:SetScript("OnClick", function()
       if IsModifiedClick("CHATLINK") and r.item and r.item > 0 then
         local _, link = CR.GetItemInfo(r.item)
