@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.31.6
+
+- Craft view: an opened recipe's details are enclosed - one panel joined to its row, with a faint fill, the selection colour down the left and a line under the crafting row - so it's clear where they end and the next recipe begins.
+
 ## 0.31.5
 
 - Craft view: no more "+" after costs. When some of a recipe's reagents have no price yet (not seen on the AH), its "Cost to make" line says so in orange - "(+2 unpriced)" - as the cost bar does; the total covers the priced ones.

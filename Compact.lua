@@ -375,6 +375,40 @@ local function TryAtlas(tex, atlas, useSize)
   return ok and result ~= false
 end
 
+-- Craft view: an opened recipe's detail rows form one panel under its row - a faint fill, the
+-- selection colour down the left, a thin edge right, and a line under the last row.
+local function BoxRow(row, part)
+  local b = row.crBox
+  if not b then
+    b = {}
+    b.fill = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+    b.fill:SetPoint("TOPLEFT", 1, 0)
+    b.fill:SetPoint("BOTTOMRIGHT", -1, 0)
+    b.fill:SetColorTexture(0.35, 0.65, 1, 0.07)
+    b.bar = row:CreateTexture(nil, "ARTWORK", nil, 2)
+    b.bar:SetPoint("TOPLEFT", 1, 0)
+    b.bar:SetPoint("BOTTOMLEFT", 1, 0)
+    b.bar:SetWidth(3)
+    b.bar:SetColorTexture(0.35, 0.65, 1, 1)
+    b.right = row:CreateTexture(nil, "ARTWORK", nil, 1)
+    b.right:SetPoint("TOPRIGHT", -1, 0)
+    b.right:SetPoint("BOTTOMRIGHT", -1, 0)
+    b.right:SetWidth(1)
+    b.right:SetColorTexture(0.35, 0.65, 1, 0.75)
+    b.bottom = row:CreateTexture(nil, "ARTWORK", nil, 1)
+    b.bottom:SetPoint("BOTTOMLEFT", 1, 1)
+    b.bottom:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.bottom:SetHeight(1)
+    b.bottom:SetColorTexture(0.35, 0.65, 1, 0.75)
+    row.crBox = b
+  end
+  local on = part ~= nil
+  b.fill:SetShown(on)
+  b.bar:SetShown(on)
+  b.right:SetShown(on)
+  b.bottom:SetShown(part == "last")
+end
+
 local function ResetRow(row)
   row.item = nil
   row.bg:SetColorTexture(0, 0, 0, 0)
@@ -492,6 +526,7 @@ end
 local function ApplyRow(row, item)
   ResetRow(row)
   row.item = item
+  if item.box or row.crBox then BoxRow(row, item.box) end
   row:SetScript("OnEnter", function(self)
     self.hover:Show()
     ShowTooltip(self)
@@ -668,6 +703,7 @@ local function ApplyRow(row, item)
   if item.kind == "dest" or item.kind == "destFav" then
     local r = item.recipe
     row:ShowSelected(item.selected and true or false)
+    if item.kind == "destFav" and item.selected then row.selEdges[2]:Hide() end   -- open: joins its panel
     row.icon:SetTexture(CR.RecipeIcon(r))
     row.icon:Show()
     row.icon:ClearAllPoints()
@@ -1975,6 +2011,8 @@ local function ExpandFavs(name, favs)
         cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty)
           .. (unpriced > 0 and CR.ColorText(string.format("   (+%d unpriced)", unpriced), "ff9966") or "")) or "?" })
       table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
+      -- they're drawn as one panel joined to the recipe's row, closed off under the crafting row
+      for i = at + 1, #out do out[i].box = (i == #out) and "last" or "mid" end
     end
   end
   return out, at
