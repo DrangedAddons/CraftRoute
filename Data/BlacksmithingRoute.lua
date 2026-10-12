@@ -44,15 +44,11 @@ CR.RegisterRoute("Blacksmithing", {
     }},
     { key = "e175", label = "175-185", options = {
       { key = "stones", label = "Solid Grinding Stones" },
-      { key = "bracers", label = "Golden Scale Bracers (stopping at 200)" },
+      { key = "bracers", label = "Golden Scale Bracers (stopping at 215)" },
     }},
-    { key = "e185", label = "185-200", options = {
-      { key = "gauntlet", label = "Heavy Mithril Gauntlet (Mageweave)" },
-      { key = "shoulder", label = "Heavy Mithril Shoulder (Heavy Leather)" },
-    }},
-    { key = "e200", label = "200-225", options = {
+    { key = "e215", label = "215-225", options = {
       { key = "helm", label = "Steel Plate Helm" },
-      { key = "spurs", label = "Helm, then Mithril Spurs from 210" },
+      { key = "spurs", label = "Mithril Spurs (world drop plans)" },
     }},
   },
 
@@ -92,17 +88,14 @@ CR.RegisterRoute("Blacksmithing", {
       note = "Green Dye from {H:Tamar (Orgrimmar), Millie Gregorian (Undercity) or Mahu (Thunder Bluff)}"
         .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)}" },
     { from = 175, to = 185, spell = 9920, crafts = 40, when = { e175 = "stones" },
-      note = "Make all 40 - for the helms at 200" },
+      note = "Make all 40 - 21 are for the helms at 215" },
     { from = 175, to = 185, spell = 7223, crafts = 10, when = { e175 = "bracers" },
-      note = "Only if you stop at 200 and Solid Stone is expensive - uses the Heavy Grinding Stones from 100" },
-    { from = 185, to = 200, spell = 9928, crafts = 15, when = { e185 = "gauntlet" } },
-    { from = 185, to = 200, spell = 9926, crafts = 15, when = { e185 = "shoulder" },
-      note = "Use if Mageweave Cloth is hard to get" },
-    { from = 200, to = 225, spell = 9935, crafts = 37, when = { e200 = "helm" },
-      note = "Yellow from 210, green from 220" },
-    { from = 200, to = 210, spell = 9935, crafts = 10, when = { e200 = "spurs" } },
-    { from = 210, to = 225, spell = 9964, crafts = 15, when = { e200 = "spurs" },
-      note = "Plans: Mithril Spurs is a world drop - check the AH" },
+      note = "Only if you stop at 215 and Solid Stone is expensive - uses the Heavy Grinding Stones from 100" },
+    { from = 185, to = 215, spell = 9931, crafts = 36 },
+    { from = 215, to = 225, spell = 9935, crafts = 21, when = { e215 = "helm" },
+      note = "Green from 220 - you might need a few more" },
+    { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },
+      note = "Plans: Mithril Spurs is a world drop - check the AH. Uses 30 of the Solid Grinding Stones from 175" },
   },
 })
 

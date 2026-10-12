@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.35.2
+
+- Blacksmithing route updated to the latest wow-professions.com guide: 185-215 is now 36x Mithril Plate Pants (432 Mithril Bar - no more Heavy Mithril Gauntlet / Shoulder choice, so no Mageweave or Heavy Leather), then 215-225 is 21x Steel Plate Helm (was 37 from 200), or 10x Mithril Spurs if you have the world-drop plans. The 40 Solid Grinding Stones at 175 are now "21 for the helms at 215", and the Golden Scale Bracers option is for stopping at 215.
+
 ## 0.35.1
 
 - Craft view (both columns): opening a recipe no longer scrolls it to the top - its row stays exactly where it was and the details expand down below it; scroll down to see the rest. Closing one (or opening another while one above is open) keeps the clicked row in place too.
