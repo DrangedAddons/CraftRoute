@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.3
+
+- Craft view filter: clicking anywhere outside the filter list (and its Quality / Slot side list) closes it - no need to click the Filter button again.
+
 ## 0.34.2
 
 - The shopping cart picture is on every shopping list button now: the Route view's "Shopping List" and the main window's "Auctionator shopping list" too, not just the Craft view.

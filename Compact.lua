@@ -2911,6 +2911,19 @@ local function BuildOverlay()
     pop:SetShown(not pop:IsShown())
     if not pop:IsShown() then sub:Hide() end
   end)
+  -- a click anywhere else (not on the list, its side list or the Filter button) closes it
+  pop:SetScript("OnShow", function(self) self.wasDown = true end)   -- the click that opened it
+  pop:SetScript("OnUpdate", function(self)
+    local down = IsMouseButtonDown and (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")) or false
+    if down and not self.wasDown then
+      local over = (MouseIsOver(self) or (sub:IsShown() and MouseIsOver(sub)) or MouseIsOver(frame.destFilterDD))
+      if not over then
+        sub:Hide()
+        self:Hide()
+      end
+    end
+    self.wasDown = down
+  end)
   function frame.destFilterDD:Sync()
     local n = 0
     for _, cb in ipairs(pop.boxes) do
