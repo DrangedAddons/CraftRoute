@@ -527,6 +527,9 @@ local function ApplyRow(row, item)
   ResetRow(row)
   row.item = item
   if item.box or row.crBox then BoxRow(row, item.box) end
+  if overlay and overlay.enchant and overlay.enchant:GetParent() == row and item.kind ~= "dEnchant" then
+    overlay.enchant:Hide()
+  end
   row:SetScript("OnEnter", function(self)
     self.hover:Show()
     ShowTooltip(self)
@@ -613,6 +616,20 @@ local function ApplyRow(row, item)
     row.crSub:Show()
     return
   end
+  -- the enchant target slot, moved into this row while the Craft view shows an enchant
+  if item.kind == "dEnchant" then
+    local e = overlay and overlay.enchant
+    if e and e.fits then
+      e:SetParent(row)
+      e:ClearAllPoints()
+      e:SetPoint("TOPLEFT", row, "TOPLEFT", 34, -4)
+      e:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+      e:SetFrameLevel(row:GetFrameLevel() + 5)
+      e:Show()
+    end
+    return
+  end
+  if item.kind == "dSpacer" then return end   -- (the target slot is two rows tall)
   -- what it costs to make, just above the crafting row
   if item.kind == "dCost" then
     row.name:ClearAllPoints()
@@ -679,6 +696,7 @@ local function ApplyRow(row, item)
     row.crCreate:SetEnabled(item.learned and can > 0 and not InCombatLockdown())
     row.crAll:SetText(string.format("Create All [%d]", can))
     row.crAll:SetEnabled(can > 0 and not InCombatLockdown())
+    local isEnchant = CR.EnchantSlotFor(r) and true or false
     row.crCreate:SetScript("OnClick", function()
       CraftSpell(r.spell, math.max(1, tonumber(row.crQty:GetText()) or item.qty), prof)
     end)
@@ -693,7 +711,8 @@ local function ApplyRow(row, item)
       CR.CreateStepShoppingList(r, math.max(1, tonumber(row.crQty:GetText()) or item.qty))
     end)
     row.crCart:SetShown(CR.HasAuctionator() and true or false)
-    for _, w in ipairs({ row.crQty, row.crCreate, row.crAll }) do w:Show() end
+    for _, w in ipairs({ row.crQty, row.crCreate }) do w:Show() end
+    row.crAll:SetShown(not isEnchant)   -- enchants go one at a time, onto the target above
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
     row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")
@@ -1950,6 +1969,13 @@ local function SetDestWidgets(on)
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
   if not on then f.favEmpty:Hide() end
+  -- the enchant target slot: back in the recipe panel for the route
+  if not on and f.enchant and f.enchant:GetParent() ~= f.schematic then
+    f.enchant:SetParent(f.schematic)
+    f.enchant:ClearAllPoints()
+    f.enchant:SetPoint("BOTTOMLEFT", f.status, "TOPLEFT", 0, 4)
+    f.enchant:SetPoint("BOTTOMRIGHT", f.status, "TOPRIGHT", 0, 4)
+  end
   f.costBar.label:SetText(on and "Make each once" or "Route cost")
   f.schematic:ClearAllPoints()
   f.schematic:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
@@ -2007,6 +2033,11 @@ local function ExpandFavs(name, favs)
       for i = 1, math.min(2, #places) do table.insert(out, { kind = "dPin", place = places[i] }) end
       AddReagents(out, r.reagents or {}, qty, 1, CR.professions[pn] or CraftProf(name), "dest:" .. r.spell, {})
       -- reagents with no price yet (not seen on the AH) are left out of the total - say how many
+      if CR.EnchantSlotFor(r) then
+        -- the enchant target slot (Route's own): pick gear, click it to enchant, replace prompts answered
+        table.insert(out, { kind = "dEnchant" })
+        table.insert(out, { kind = "dSpacer" })
+      end
       table.insert(out, { kind = "dCost", qty = qty,
         cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty)
           .. (unpriced > 0 and CR.ColorText(string.format("   (+%d unpriced)", unpriced), "ff9966") or "")) or "?" })
@@ -2066,6 +2097,18 @@ local function DestRefresh(name)
   f.empty:SetShown(#left == 0)
   list:SetShown(#left > 0)
   list:SetData(left, ui.keepScroll)
+  -- the opened recipe is the current one for the enchant target slot (and its click covers)
+  local open
+  for _, it in ipairs(favs) do if it.selected then open = it end end
+  if open then
+    f.current = { kind = "dest", recipe = open.recipe, spell = open.recipe.spell, crafts = 1 }
+    f.craftProf = open.prof
+    local learned = RecipeLearned(open.prof, open.recipe) ~= false
+    local canCast = learned and CR.TradeSkillOpenFor(open.prof) and CraftsReady(open.prof, open.recipe) > 0
+    if f.UpdateEnchant then f:UpdateEnchant(open.recipe, canCast) end
+  elseif f.UpdateEnchant then
+    f:UpdateEnchant(nil)
+  end
   local rows, openAt = ExpandFavs(name, favs)
   f.favList:SetData(rows, ui.keepScroll)
   if ui.destOpened and openAt then f.favList:ScrollTo(openAt) end   -- show what just opened

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.31.7
+
+- Craft view: an opened enchant (one that goes on gear) has the enchant target slot in its panel - the same one as the Route view: pick gear you're wearing or carrying (or drop an item on it), click it to enchant, right-click to clear, and "replace the existing enchant?" is answered for you. Create still casts it (with Blizzard's "click an item" if you'd rather); Create All is hidden for enchants, which go one at a time. The slot goes back to the Route view's panel when you switch.
+
 ## 0.31.6
 
 - Craft view: an opened recipe's details are enclosed - one panel joined to its row, with a faint fill, the selection colour down the left and a line under the crafting row - so it's clear where they end and the next recipe begins.
