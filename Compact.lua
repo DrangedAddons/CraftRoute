@@ -2914,7 +2914,8 @@ local function BuildOverlay()
   -- a click anywhere else (not on the list, its side list or the Filter button) closes it: the
   -- game's "mouse pressed anywhere" event while it's open
   local function ClickedOutside()
-    local over = MouseIsOver(pop) or (sub:IsShown() and MouseIsOver(sub)) or MouseIsOver(frame.destFilterDD)
+    -- (Frame:IsMouseOver - Forever has no global MouseIsOver)
+    local over = pop:IsMouseOver() or (sub:IsShown() and sub:IsMouseOver()) or frame.destFilterDD:IsMouseOver()
     if not over then
       sub:Hide()
       pop:Hide()

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.5
+
+- Craft view filter: a click anywhere else really does close it now. The check used a game function Forever doesn't have, so it failed silently on every click; it now asks the frames themselves whether the mouse is over them.
+
 ## 0.34.4
 
 - Craft view filter: closing it with a click elsewhere now actually works - it listens for the game's "mouse pressed" event instead of watching the mouse buttons, which didn't catch the click.
