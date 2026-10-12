@@ -813,13 +813,13 @@ local function ApplyRow(row, item)
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
-      sub = tostring(r.learn or 1)
+      -- the level it's learned at, and whether you know it
+      sub = tostring(r.learn or 1) .. "   " .. (learned and CR.ColorText("Learned", "40ff40") or CR.ColorText("Unlearned", "ff4040"))
     end
     row.right:SetText("")
-    -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed
+    -- the crafted item's rarity colour (learned or not: that's said under the name)
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[r.q or 1]
-    local qr, qg, qb = c and c.r or 1, c and c.g or 1, c and c.b or 1
-    if learned then row.name:SetTextColor(qr, qg, qb) else row.name:SetTextColor(qr * 0.55, qg * 0.55, qb * 0.55) end
+    row.name:SetTextColor(c and c.r or 1, c and c.g or 1, c and c.b or 1)
     row.right:ClearAllPoints()
     row.right:SetPoint("RIGHT", row.chevron, "LEFT", -24, 0)   -- room for the star
     -- the name, and under it the level (recipe list) or what it costs to make (your list); it

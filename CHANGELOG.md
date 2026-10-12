@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.8
+
+- Craft view recipe list: under each name, beside its level, it now says **Learned** (green) or **Unlearned** (red). Names are always their full rarity colour - unlearned ones are no longer shown in a dimmer shade.
+
 ## 0.34.7
 
 - Craft view stars: hovering one makes it glow (an empty star also brightens), and clicking it presses in like a normal button. No tooltip on the star any more.
