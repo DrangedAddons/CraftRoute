@@ -814,7 +814,8 @@ local function ApplyRow(row, item)
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
       -- the level it's learned at, and "Not Learned" if you don't know it yet
-      sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Not Learned", "ff4040")))
+      -- (dimmed like the name: the red at 55%)
+      sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Not Learned", "8c2323")))
     end
     row.right:SetText("")
     -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed

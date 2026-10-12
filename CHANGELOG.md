@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.34.12
+
+- Craft view recipe list: the **Not Learned** marker is dimmed to match the dimmed name.
+
 ## 0.34.11
 
 - Craft view recipe list: recipes you haven't learned are dimmed again (their rarity colour, darker), as well as saying **Not Learned** beside the level.
