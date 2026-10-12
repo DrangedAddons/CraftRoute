@@ -400,6 +400,8 @@ local function ResetRow(row)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
   if row.crSub then row.crSub:Hide() end
+  row.right:ClearAllPoints()
+  row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
   for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart" }) do
     if row[w] then row[w]:Hide() end
   end
@@ -548,15 +550,16 @@ local function ApplyRow(row, item)
 
   -- Craft view: an opened recipe's details, in rows under it
   if item.kind == "dInfo" then
+    row.right:ClearAllPoints()
+    row.right:SetPoint("RIGHT", row, "RIGHT", -8, 7)
+    row.right:SetText(CR.ColorText(item.qty > 1 and (item.qty .. " cost ") or "cost ", "aaaaaa") .. item.cost)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 7)
-    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 7)
+    row.name:SetPoint("RIGHT", row.right, "LEFT", -8, 0)
     if item.learned then
-      row.name:SetText(CR.ColorText("Learned", "40ff40") .. CR.ColorText("   cost to make " .. item.qty .. ": ", "aaaaaa")
-        .. item.cost)
+      row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
-      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("   learn at " .. (item.recipe.learn or 1), "aaaaaa")
-        .. CR.ColorText("   cost to make " .. item.qty .. ": ", "aaaaaa") .. item.cost)
+      row.name:SetText(CR.ColorText("Not learned", "ff6060") .. CR.ColorText("   learn at " .. (item.recipe.learn or 1), "aaaaaa"))
     end
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -603,12 +606,12 @@ local function ApplyRow(row, item)
       row.crQty:SetNumeric(true)
       row.crQty:SetMaxLetters(4)
       row.crQty:SetJustifyH("CENTER")
-      row.crCreate = Btn(58, "Create")
-      row.crAll = Btn(96, "Create All")
-      row.crCart = Btn(92, "Shopping list")
+      row.crCreate = Btn(56, "Create")
+      row.crAll = Btn(92, "Create All")
+      row.crCart = Btn(88, "Shopping list")
     end
     row.crQty:ClearAllPoints()
-    row.crQty:SetPoint("LEFT", row, "LEFT", 36, 0)
+    row.crQty:SetPoint("LEFT", row, "LEFT", 34, 0)
     row.crCreate:ClearAllPoints()
     row.crCreate:SetPoint("LEFT", row.crQty, "RIGHT", 6, 0)
     row.crAll:ClearAllPoints()
@@ -645,8 +648,7 @@ local function ApplyRow(row, item)
     for _, w in ipairs({ row.crQty, row.crCreate, row.crAll }) do w:Show() end
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
-    row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100")
-      or (not item.learned and CR.ColorText("not learned", "ff6060") or ""))
+    row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")
     return
   end
 
@@ -660,37 +662,38 @@ local function ApplyRow(row, item)
     local learned = item.learned
     if learned == nil then learned = RecipeLearned(item.prof, r) == true end
     local name = r.name
+    local sub
     if item.kind == "destFav" then
-      local can = learned and CraftsReady(item.prof, r) or 0
-      if can > 0 then name = name .. CR.ColorText("  " .. can .. " now", "40ff40") end
       local cost, unpriced = MakeCost(r)
-      row.right:SetText(CR.HasAuctionator() and (CR.FormatMoney(cost) .. (unpriced and "+" or "")) or "")
+      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost) .. (unpriced and "+" or "")) or ""
+      local can = learned and CraftsReady(item.prof, r) or 0
+      if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
-      row.right:SetText("")
+      sub = tostring(r.learn or 1)
     end
+    row.right:SetText("")
     -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[r.q or 1]
     local qr, qg, qb = c and c.r or 1, c and c.g or 1, c and c.b or 1
     if learned then row.name:SetTextColor(qr, qg, qb) else row.name:SetTextColor(qr * 0.55, qg * 0.55, qb * 0.55) end
     row.right:ClearAllPoints()
     row.right:SetPoint("RIGHT", row.chevron, "LEFT", -24, 0)   -- room for the star
+    -- the name, and under it the level (recipe list) or what it costs to make (your list); it
+    -- stops short of the star (and the expand marker)
     row.name:ClearAllPoints()
-    if item.kind == "dest" then
-      -- the name, and under it the skill it's learned at
-      row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
-      row.name:SetPoint("RIGHT", row, "RIGHT", -30, 6)
-      if not row.crSub then
-        row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        row.crSub:SetJustifyH("LEFT")
-      end
-      row.crSub:ClearAllPoints()
-      row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
-      row.crSub:SetText(tostring(r.learn or 1))
-      row.crSub:Show()
-    else
-      row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-      row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    local stop = item.kind == "destFav" and -52 or -30
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
+    row.name:SetPoint("RIGHT", row, "RIGHT", stop, 6)
+    if not row.crSub then
+      row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      row.crSub:SetJustifyH("LEFT")
     end
+    row.crSub:ClearAllPoints()
+    row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
+    row.crSub:SetPoint("RIGHT", row, "RIGHT", stop, 0)
+    row.crSub:SetWordWrap(false)
+    row.crSub:SetText(sub)
+    row.crSub:Show()
     FitName(row.name, name)
     -- the star: in your destinations or not
     local star = row.crStar

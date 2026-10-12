@@ -63,7 +63,8 @@ end
 function CR.RecipeTooltip(tt, r, crafts)
   if r.item > 0 then
     tt:SetItemByID(r.item)
-  else
+  elseif not (tt.SetSpellByID and pcall(tt.SetSpellByID, tt, r.spell) and tt:NumLines() > 0) then
+    -- an enchant (no item): the spell's own tooltip says what it gives; its name if that fails
     tt:SetText(r.name)
   end
   local skill = CR.GetSkill()

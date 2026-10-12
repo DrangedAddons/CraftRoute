@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.31.1
+
+- Craft view: no more overlapping in your list. Each recipe shows what it costs to make (and how many you can make now) on a line under its name, so the name and the star have their room; an opened recipe's info line has its learned / level / source on the left and the cost on the right; the crafting row's buttons no longer have text under them.
+- Recipe tooltips for enchants (and anything else that makes no item) show what it actually does - the spell's own tooltip, e.g. "Permanently enchant a weapon to..." - above CraftRoute's lines.
+
 ## 0.31.0
 
 - The new view is called Craft, and the buttons read Craft | Route.
