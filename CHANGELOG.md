@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.49.4
+
+- Craft view: shopping amounts start at 1 for a recipe you haven't set, and remember the last amount you entered (0.49.3 reset them every time the window opened - undone).
+
 ## 0.49.3
 
 - Craft view: the shopping amounts beside your crafts start at 1 each time you open the profession window (the ticks are kept).
