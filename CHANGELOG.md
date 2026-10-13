@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.2
+
+- Materials panel: a small **<** button at its top left tucks it back in. The pop-out button beside the cart still opens / closes it as before.
+
 ## 0.50.1
 
 - Shopping lists: making one now asks you to **name it**, with a suggested name filled in and selected - what it's for, the amount, and the time ("CraftRoute: Heavy Leather x5 (14:32)", "CraftRoute: Leatherworking crafts, 3 recipes (14:35)", "CraftRoute: Leatherworking route 141-150 (14:40)"). Enter (or Create) makes it; type over it for your own name; Escape (or Cancel) makes nothing.
