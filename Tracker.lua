@@ -169,6 +169,7 @@ function CR.RefreshTracker()
   -- Edit: All / None above the list
   frame.allBtn:SetShown(editBar)
   frame.noneBtn:SetShown(editBar)
+  frame.vendorBtn:SetShown(editBar)
   -- the scrollbar: a thin track with a thumb for where you are
   frame.track:SetShown(scrolling and not collapsed)
   frame.thumb:SetShown(scrolling and not collapsed)
@@ -212,7 +213,7 @@ function CR.RefreshTracker()
   SameFont(frame.title)
   m:SetText(frame.title:GetText() or "")
   local headW = 8 + (tonumber(m:GetStringWidth()) or 0) + 4 + 40 + 3 + 16 + 3 + 18 + 2 + 18 + 6
-  local needW = math.ceil(math.max(rowW, headW, editBar and 120 or 0))
+  local needW = math.ceil(math.max(rowW, headW, editBar and 190 or 0))   -- (All / None / Vendor fit)
   frame:SetWidth(math.min(Settings().width or needW, needW))
   frame.edit:SetText(editing and "Done" or "Edit")
   frame.collapse:SetText(collapsed and "+" or "-")
@@ -338,8 +339,27 @@ local function Build()
   frame.allBtn:SetPoint("TOPLEFT", 8, -26)
   frame.noneBtn = HeaderButton(frame, "None", 50, "Hide every material (then tick the ones you want)", function() SetAll(false) end)
   frame.noneBtn:SetPoint("LEFT", frame.allBtn, "RIGHT", 4, 0)
+  -- Vendor: untick everything a vendor sells (thread, dyes, flux...) - or, if they're all unticked
+  -- already, tick them back
+  frame.vendorBtn = HeaderButton(frame, "Vendor", 56, "Untick the items vendors sell (click again to tick them back)", function()
+    local prof = Prof()
+    local e = CR.GetPlans and prof and CR.GetPlans(prof)
+    local hidden = Hidden(prof)
+    local vendor, anyShown = {}, false
+    for _, m in ipairs(e and e.plan and e.plan.materials or {}) do
+      if CR.IsVendorItem and CR.IsVendorItem(m.id) then
+        table.insert(vendor, m.id)
+        if not hidden[m.id] then anyShown = true end
+      end
+    end
+    if #vendor == 0 then CR.Print("Tracker: none of these materials is known as a vendor item.") return end
+    for _, id in ipairs(vendor) do hidden[id] = anyShown or nil end
+    CR.RefreshTracker()
+  end)
+  frame.vendorBtn:SetPoint("LEFT", frame.noneBtn, "RIGHT", 4, 0)
   frame.allBtn:Hide()
   frame.noneBtn:Hide()
+  frame.vendorBtn:Hide()
   frame.note = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.note:SetPoint("BOTTOMLEFT", 8, 6)
   frame.note:SetPoint("RIGHT", frame, "RIGHT", -8, 0)

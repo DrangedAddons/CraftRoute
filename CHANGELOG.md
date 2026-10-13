@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.5
+
+- Materials tracker: a **Vendor** button in Edit (beside All and None) unticks every item vendors sell - thread, dyes, flux - so the list keeps to what you gather or buy on the AH. Click it again to tick them back.
+
 ## 0.46.4
 
 - Materials tracker: it's never taller than its list (a taller height stops after the last line) or wider than it needs to show every name and count in full - by default it's exactly that size. Set smaller, it still scrolls / narrows.
