@@ -420,6 +420,11 @@ local function CreateWindow()
   local versionText = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   versionText:SetPoint("RIGHT", close, "LEFT", -6, 0)
   versionText:SetText(version and ("v" .. version) or "")
+  -- the loot feed's settings (LootFeed.lua)
+  if CR.LootFeedButton then
+    local lf = CR.LootFeedButton(frame)
+    lf:SetPoint("RIGHT", versionText, "LEFT", -10, 0)
+  end
 
   frame.panels = {}
   frame.tabs = {}

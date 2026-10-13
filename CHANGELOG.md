@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.43.0
+
+- Loot feed settings: a **Loot feed** button at the top right of the main CraftRoute window opens a small panel - show it or not, put the count in EllesmereUI's loot feed instead, and sliders for the rows' **width**, **height** and the feed's **scale** (mouse wheel works on them too), plus Test, Move and Reset (size and place back to default). Kept per character. In EllesmereUI's unlock mode "CraftRoute Loot Progress" can now be resized as well as moved.
+
 ## 0.42.3
 
 - Loot feed: bigger rows on one line - icon, the item, and on the right in a larger font just what you have now of what the route needs ("61/100", green once you have enough). The count before the loot isn't shown any more (on EllesmereUI's rows too, with /cr feed ellesmere).

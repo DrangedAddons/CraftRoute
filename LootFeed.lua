@@ -8,7 +8,10 @@
 local _, CR = ...
 local GetItemCount = CR.GetItemCount   -- (C_Item's in Forever: there's no global GetItemCount)
 
-local ROW_W, ROW_H, GAP, MAX_ROWS = 360, 42, 3, 6
+local GAP, MAX_ROWS = 3, 6
+-- size and scale: the settings (Loot feed panel / EllesmereUI unlock mode), else these
+local DEF_W, DEF_H, DEF_SCALE = 360, 42, 1
+local MIN_W, MAX_W, MIN_H, MAX_H, MIN_S, MAX_S = 200, 700, 24, 90, 0.5, 2
 local SHOW_FOR, FADE_OUT = 6, 0.8
 -- beside EllesmereUI's feed (its default: bottom right, 320 in, 260 up, 300 wide)
 local DEFAULT_POS = { "BOTTOMRIGHT", "BOTTOMRIGHT", -640, 260 }
@@ -23,6 +26,10 @@ local function Settings()
   return db.lootFeed
 end
 
+local function W() return Settings().width or DEF_W end
+local function H() return Settings().height or DEF_H end
+local function Scale() return Settings().scale or DEF_SCALE end
+
 ---------------------------------------------------------------------------
 -- The frames
 ---------------------------------------------------------------------------
@@ -36,7 +43,7 @@ end
 local function Layout()
   for i, r in ipairs(rows) do
     r:ClearAllPoints()
-    r:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 0, (i - 1) * (ROW_H + GAP))
+    r:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 0, (i - 1) * (H() + GAP))
   end
 end
 
@@ -51,14 +58,14 @@ local pool = {}
 local function NewRow()
   for _, r in ipairs(pool) do if r.free then r.free = false return r end end
   local r = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
-  r:SetSize(ROW_W, ROW_H)
+  r:SetSize(W(), H())
   CR.Backdrop(r, 0.05, 0.05, 0.07, 0.75)
   r.bar = r:CreateTexture(nil, "ARTWORK")
   r.bar:SetPoint("TOPLEFT", 1, -1)
   r.bar:SetPoint("BOTTOMLEFT", 1, 1)
   r.bar:SetWidth(3)
   r.icon = r:CreateTexture(nil, "ARTWORK")
-  r.icon:SetSize(ROW_H - 8, ROW_H - 8)
+  r.icon:SetSize(H() - 8, H() - 8)
   r.icon:SetPoint("LEFT", 9, 0)
   r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
   -- one line: icon, the item, and on the right what you have now of what the route needs
@@ -203,10 +210,27 @@ local function ShowInEllesmere(itemID, before, after, need)
   return false
 end
 
+-- New width / height / scale (nil: unchanged), kept per character; rows already made follow.
+function CR.LootFeedSetSize(w, h, scale)
+  local s = Settings()
+  if w then s.width = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) end
+  if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
+  if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
+  if not anchor then return end
+  anchor:SetSize(W(), H())
+  anchor:SetScale(Scale())
+  for _, r in ipairs(pool) do
+    r:SetSize(W(), H())
+    r.icon:SetSize(H() - 8, H() - 8)
+  end
+  Layout()
+end
+
 local function Build()
   if anchor then return end
   anchor = CreateFrame("Frame", "CraftRouteLootFeed", UIParent)
-  anchor:SetSize(ROW_W, ROW_H)
+  anchor:SetSize(W(), H())
+  anchor:SetScale(Scale())
   anchor:SetFrameStrata("MEDIUM")
   anchor:SetMovable(true)
   anchor:SetClampedToScreen(true)
@@ -321,8 +345,9 @@ local function RegisterUnlock()
       label = "CraftRoute Loot Progress",
       group = "CraftRoute",
       getFrame = function() Build() return anchor end,
-      getSize = function() return ROW_W, ROW_H end,
-      noResize = true,
+      getSize = function() return W(), H() end,
+      setWidth = function(_, w) CR.LootFeedSetSize(w, nil, nil) end,
+      setHeight = function(_, h) CR.LootFeedSetSize(nil, h, nil) end,
       isHidden = function() return not Settings().enabled end,
       savePos = function(_, point, relPoint, x, y)
         if not point then return end
@@ -382,4 +407,146 @@ function CR.LootFeedCommand(arg)
     s.enabled = not s.enabled
     CR.Print("Loot progress feed " .. (s.enabled and "on" or "off") .. ". (/cr feed move to place it, /cr feed test to see it.)")
   end
+end
+
+---------------------------------------------------------------------------
+-- Settings panel (the "Loot feed" button on the main window): on / off, where the count goes,
+-- width / height / scale, and test / move / reset.
+---------------------------------------------------------------------------
+local panel
+local function Slider(parent, label, lo, hi, step, get, set, fmt)
+  local f = CreateFrame("Frame", nil, parent)
+  f:SetSize(250, 34)
+  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  f.label:SetPoint("TOPLEFT", 0, 0)
+  f.label:SetText(label)
+  f.value = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  f.value:SetPoint("TOPRIGHT", 0, 0)
+  local sl = CreateFrame("Slider", nil, f, "BackdropTemplate")
+  sl:SetOrientation("HORIZONTAL")
+  sl:SetPoint("TOPLEFT", 0, -16)
+  sl:SetPoint("TOPRIGHT", 0, -16)
+  sl:SetHeight(12)
+  CR.Backdrop(sl, 0.08, 0.08, 0.1, 0.95)
+  sl:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+  sl:SetMinMaxValues(lo, hi)
+  sl:SetValueStep(step)
+  if sl.SetObeyStepOnDrag then sl:SetObeyStepOnDrag(true) end
+  sl:EnableMouseWheel(true)
+  sl:SetScript("OnMouseWheel", function(self, d) self:SetValue(self:GetValue() + d * step) end)
+  sl:SetScript("OnValueChanged", function(_, v)
+    if f.syncing then return end
+    set(v)
+    f.value:SetText(string.format(fmt, get()))
+  end)
+  function f:Sync()
+    self.syncing = true
+    sl:SetValue(get())
+    self.value:SetText(string.format(fmt, get()))
+    self.syncing = false
+  end
+  return f
+end
+
+local function Check(parent, label, get, set)
+  local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+  cb:SetSize(22, 22)
+  cb:SetHitRectInsets(0, -220, 0, 0)   -- the whole line toggles it
+  cb.text = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  cb.text:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+  cb.text:SetText(label)
+  cb:SetScript("OnClick", function(self) set(self:GetChecked() and true or false) end)
+  function cb:Sync() self:SetChecked(get() and true or false) end
+  return cb
+end
+
+local function BuildPanel(owner)
+  local p = CreateFrame("Frame", "CraftRouteLootFeedSettings", owner, "BackdropTemplate")
+  p:SetSize(280, 300)
+  p:SetFrameStrata("DIALOG")
+  CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
+  p:EnableMouse(true)
+  p:Hide()
+  local title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  title:SetPoint("TOPLEFT", 12, -10)
+  title:SetText("Loot feed")
+  if CR.ThemeRegisterAccentText then CR.ThemeRegisterAccentText(title) end
+  local s = Settings
+  local y = -32
+  local items = {}
+  local function Add(w, h)
+    w:SetPoint("TOPLEFT", 12, y)
+    if w.SetPoint and w.GetObjectType and w:GetObjectType() == "Frame" then w:SetPoint("RIGHT", p, "RIGHT", -14, 0) end
+    y = y - h
+    table.insert(items, w)
+  end
+  Add(Check(p, "Show loot progress for the route", function() return s().enabled end,
+    function(v) s().enabled = v end), 24)
+  if EllesmereUI and EllesmereUI.IS_FOREVER then
+    Add(Check(p, "Put the count in EllesmereUI's loot feed", function() return s().inEllesmere end,
+      function(v) s().inEllesmere = v end), 30)
+  else
+    y = y - 6
+  end
+  Add(Slider(p, "Width", MIN_W, MAX_W, 10, W, function(v) CR.LootFeedSetSize(v, nil, nil) end, "%d"), 40)
+  Add(Slider(p, "Height", MIN_H, MAX_H, 1, H, function(v) CR.LootFeedSetSize(nil, v, nil) end, "%d"), 40)
+  Add(Slider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) CR.LootFeedSetSize(nil, nil, v) end, "%.2f"), 46)
+  local function Btn(text, x, fn)
+    local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+    b:SetSize(80, 22)
+    b:SetPoint("TOPLEFT", x, y)
+    b:SetText(text)
+    if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
+    b:SetScript("OnClick", fn)
+    return b
+  end
+  Btn("Test", 12, function() CR.LootFeedCommand("test") end)
+  Btn("Move", 98, function() CR.LootFeedCommand("move") end)
+  Btn("Reset", 184, function()
+    local st = s()
+    st.width, st.height, st.scale, st.pos = nil, nil, nil, nil
+    CR.LootFeedSetSize()
+    if anchor then Place() end
+    for _, w in ipairs(items) do w:Sync() end
+  end)
+  y = y - 30
+  local note = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  note:SetPoint("TOPLEFT", 12, y)
+  note:SetPoint("RIGHT", p, "RIGHT", -12, 0)
+  note:SetJustifyH("LEFT")
+  note:SetWordWrap(true)
+  note:SetText(EllesmereUI and "Also movable and resizable in EllesmereUI's unlock mode (\"CraftRoute Loot Progress\")."
+    or "Move drags it; Reset puts size and place back.")
+  p:SetHeight(-y + 40)
+  function p:Sync() for _, w in ipairs(items) do w:Sync() end end
+  p:SetScript("OnShow", function(self) self:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  p:SetScript("OnEvent", function(self)
+    if not self:IsMouseOver() and not (self.button and self.button:IsMouseOver()) then self:Hide() end
+  end)
+  return p
+end
+
+-- The main window's "Loot feed" button
+function CR.LootFeedButton(owner)
+  local b = CreateFrame("Button", nil, owner, "UIPanelButtonTemplate")
+  b:SetSize(90, 22)
+  b:SetText("Loot feed")
+  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
+  b:SetScript("OnClick", function(self)
+    Build()
+    panel = panel or BuildPanel(owner)
+    panel.button = self
+    panel:ClearAllPoints()
+    panel:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT", 0, -4)
+    panel:SetShown(not panel:IsShown())
+  end)
+  b:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetText("Loot feed")
+    GameTooltip:AddLine("When you loot something the route needs: on / off, where it shows, its size and place.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", GameTooltip_Hide)
+  return b
 end
