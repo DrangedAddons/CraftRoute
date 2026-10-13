@@ -1019,10 +1019,12 @@ local function ApplyRow(row, item)
       local cost, unpriced = MakeCost(r)
       sub = ""
       if CR.HasAuctionator() then
-        -- what one costs to make; what it makes you sold (as its details show it) goes on the line below
-        sub = "costs " .. CR.FormatMoney(cost)
+        -- what the amount beside it costs to make; what that makes you sold (as its details show
+        -- it) on the line below
+        local n = math.max(1, (DestCart(item.list)[r.spell] or {}).qty or 1)
+        sub = "costs " .. CR.FormatMoney(cost * n)
         local p = Profit(r)
-        profitLine = "profit " .. (p and ProfitText(p) or CR.ColorText("no price yet", "888888"))
+        profitLine = "profit " .. (p and ProfitText(p * n) or CR.ColorText("no price yet", "888888"))
       end
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
@@ -2366,9 +2368,9 @@ function CR.OpenQtyEditor(btn)
       e.hint:SetShown(e:GetText() == "")
       if e.spell and Save() then
         UpdateFavCart()   -- the totals follow as you type
-        -- this recipe open below: its cost / profit lines too (the editor isn't a list row, so this
-        -- refresh doesn't disturb your typing)
-        if ui.destSelected == e.spell and overlay then
+        -- its row's costs / profit (and, if it's open, its details) follow too - the editor isn't
+        -- a list row, so this refresh doesn't disturb your typing
+        if overlay then
           ui.keepScroll = true
           overlay:Refresh()
         end

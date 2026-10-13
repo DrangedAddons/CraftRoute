@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.6
+
+- Craft view, "Your crafts": each recipe's "costs" and "profit" lines are for the amount set beside it (they were for one), and change as you type the amount.
+
 ## 0.50.5
 
 - Craft view: on the shopping line the materials pop-out is now at the far right, the cart to its left.
