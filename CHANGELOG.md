@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.37.2
+
+- Craft view: the X beside Filter also puts the sort back to Level (it's clickable whenever a filter or a profit sort is on).
+
 ## 0.37.1
 
 - Craft view: while the recipe list is sorted by profit, each recipe shows its profit per craft beside its level (and "Not Learned") - green, red for a loss, or "no price".

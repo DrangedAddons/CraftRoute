@@ -3166,7 +3166,7 @@ local function BuildOverlay()
   pop:SetScript("OnEvent", function(self, event)
     if event == "GLOBAL_MOUSE_DOWN" and self:IsShown() then ClickedOutside() end
   end)
-  -- X: clear every filter for this profession
+  -- X: clear every filter for this profession, and put the sort back to Level
   frame.destFilterClear = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   frame.destFilterClear:SetSize(22, 22)
   frame.destFilterClear:SetText("X")
@@ -3174,13 +3174,14 @@ local function BuildOverlay()
   frame.destFilterClear:SetScript("OnClick", function()
     local F = DestFilters(PlanProfession())
     for k in pairs(F) do F[k] = nil end
+    SetDestSort(PlanProfession(), "level")
     sub:Hide()
     ui.keepScroll = false
     frame:Refresh()
   end)
   frame.destFilterClear:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Clear filters")
+    GameTooltip:SetText("Clear filters and sort")
     GameTooltip:Show()
   end)
   frame.destFilterClear:SetScript("OnLeave", GameTooltip_Hide)
@@ -3205,7 +3206,7 @@ local function BuildOverlay()
       end
     end
     self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
-    frame.destFilterClear:SetEnabled(n > 0)
+    frame.destFilterClear:SetEnabled(n > 0 or DestSort(PlanProfession()) ~= "level")
   end
   frame:HookScript("OnHide", function() pop:Hide() sub:Hide() end)
 
