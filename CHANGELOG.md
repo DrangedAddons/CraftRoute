@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.46.3
+
+- Materials tracker: **Ctrl + mouse wheel** over it scales it up / down. The Scale slider works properly now - its panel scaled along with the tracker, so the slider moved under the mouse while you dragged it.
+- Tracker and loot feed: changing the scale no longer shifts them across the screen - the tracker keeps its top-left corner, the loot feed its bottom-left.
+
 ## 0.46.2
 
 - Materials tracker: you can make it **shorter** - drag its corner grip up / down as well as sideways, or use the new Height slider under the gear. Shorter than the list, it scrolls (mouse wheel, with a thin scrollbar on the right). The gear's Reset fits it to the list again. EllesmereUI's unlock mode can set its height too.

@@ -355,7 +355,17 @@ function CR.LootFeedSetSize(w, h, scale)
   if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
   if not anchor then return end
   anchor:SetSize(W(), H())
-  anchor:SetScale(Scale())
+  -- a new scale keeps the feed's bottom-left corner where it is on screen (its rows grow up from it)
+  local old, new = anchor:GetScale(), Scale()
+  if math.abs(old - new) > 0.001 then
+    local l, bottom = anchor:GetLeft(), anchor:GetBottom()
+    anchor:SetScale(new)
+    if l and bottom then
+      anchor:ClearAllPoints()
+      anchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l * old / new, bottom * old / new)
+      Settings().pos = { "BOTTOMLEFT", "BOTTOMLEFT", l * old / new, bottom * old / new }
+    end
+  end
   for _, r in ipairs(pool) do
     r:SetSize(W(), H())
     if r.itemID and not r.free then Fill(r) end

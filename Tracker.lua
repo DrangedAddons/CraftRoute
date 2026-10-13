@@ -31,6 +31,7 @@ end
 local function Width() return Settings().width or DEF_W end
 local function Scale() return Settings().scale or 1 end
 local offset = 0   -- first item shown, when the list scrolls
+local sizePanelSync   -- refreshes the size panel's sliders, once it's built
 -- the profession it shows: the one popped out from the profession window's tab, else CraftRoute's
 local function Prof() return Settings().prof or (CraftRouteCharDB and CraftRouteCharDB.profession) end
 
@@ -227,6 +228,7 @@ local function Build()
   frame.size:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Size and scale")
+    GameTooltip:AddLine("Ctrl+mouse wheel over the tracker also scales it.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   frame.size:SetScript("OnLeave", GameTooltip_Hide)
@@ -254,6 +256,12 @@ local function Build()
   -- the mouse wheel scrolls the list
   frame:EnableMouseWheel(true)
   frame:SetScript("OnMouseWheel", function(_, delta)
+    -- Ctrl+wheel: bigger / smaller
+    if IsControlKeyDown() then
+      CR.TrackerSetSize(nil, Scale() + delta * 0.05)
+      if sizePanelSync then sizePanelSync() end
+      return
+    end
     offset = math.max(0, offset - delta)
     CR.RefreshTracker()
   end)
@@ -304,7 +312,10 @@ local function Build()
   grip:SetScript("OnLeave", GameTooltip_Hide)
   frame.grip = grip
   frame:SetScript("OnShow", function() CR.RefreshTracker() end)
-  frame:SetScript("OnHide", function() editing = false end)
+  frame:SetScript("OnHide", function()
+    editing = false
+    if _G.CraftRouteTrackerSize then _G.CraftRouteTrackerSize:Hide() end
+  end)
 end
 
 -- New width / scale / height (nil: unchanged), kept per character.
@@ -315,7 +326,18 @@ function CR.TrackerSetSize(w, scale, h)
   if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
   if not frame then return end
   frame:SetWidth(Width())
-  frame:SetScale(Scale())
+  -- a new scale keeps the window's top-left corner where it is on screen (its position is in
+  -- its own scaled units, so it would otherwise drift)
+  local old, new = frame:GetScale(), Scale()
+  if math.abs(old - new) > 0.001 then
+    local l, t = frame:GetLeft(), frame:GetTop()
+    frame:SetScale(new)
+    if l and t then
+      frame:ClearAllPoints()
+      frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * old / new, t * old / new)
+      SavePos()
+    end
+  end
   CR.RefreshTracker()
 end
 
@@ -323,7 +345,8 @@ end
 local sizePanel
 function CR.TrackerSizePanel(owner)
   if not sizePanel then
-    local p = CreateFrame("Frame", "CraftRouteTrackerSize", frame, "BackdropTemplate")
+    -- on UIParent: as the tracker's child it would scale too, moving the slider you're dragging
+    local p = CreateFrame("Frame", "CraftRouteTrackerSize", UIParent, "BackdropTemplate")
     p:SetSize(240, 168)
     p:SetFrameStrata("DIALOG")
     CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
@@ -350,6 +373,7 @@ function CR.TrackerSizePanel(owner)
       CR.TrackerSetSize()
       wsl:Sync() ssl:Sync() hsl:Sync()
     end)
+    sizePanelSync = function() if p:IsShown() then wsl:Sync() ssl:Sync() hsl:Sync() end end
     p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() hsl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnEvent", function(self)
