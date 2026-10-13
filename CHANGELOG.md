@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.41.0
+
+- Loot progress feed: when you loot (or craft) something your route needs, a short row slides in for a few seconds - icon, name and **60/100 > 61/100** (green "done" once you have enough). Items the route doesn't need don't show, so it sits beside EllesmereUI's loot feed (or chat) instead of repeating it. Looting more of the same while its row is up updates that row. Hover a row to keep it and see the item. Counts are the route's own: what it needs in total, and what you have the way its materials list counts it (bags, bank, mail, alts if "Count alts" is on).
+  - `/cr feed` turns it on / off, `/cr feed move` lets you drag it (again to save), `/cr feed test` shows a sample, `/cr feed reset` puts it back beside EllesmereUI's feed. Kept per character; on by default.
+
 ## 0.40.0
 
 - New routes for the gathering professions: **Mining**, **Herbalism** and **Skinning** (1-300). They follow wow-professions.com's Classic guides as stand-ins until Forever guides exist - gathering barely differs.
