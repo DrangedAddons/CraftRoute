@@ -950,7 +950,9 @@ local function ApplyRow(row, item)
 
   if item.kind == "dest" or item.kind == "destFav" then
     local r = item.recipe
-    row:ShowSelected(item.selected and true or false)
+    -- opened, or (your list) ticked for the shopping list: the blue selection box
+    local ticked = item.kind == "destFav" and (DestCart(item.list)[r.spell] or {}).on
+    row:ShowSelected((item.selected or ticked) and true or false)
     if item.selected then row.selEdges[2]:Hide() end   -- open: joins its panel below
     row.icon:SetTexture(CR.RecipeIcon(r))
     row.icon:Show()

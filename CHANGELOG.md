@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.49.1
+
+- Craft view: a recipe ticked for the shopping list is highlighted with the blue selection box (it doesn't open).
+
 ## 0.49.0
 
 - Craft view: **a shopping list from your crafts**. Each recipe in "Your crafts" has a tickbox on its left and a quantity box beside its star; a tickbox by the "Your crafts" header selects all / none. Along the bottom, "Generate shopping list for the N selected" with the cart makes one Auctionator list of everything the ticked recipes need at the amounts you set - less what you have, counted once across them all (two recipes sharing a reagent don't both use the same stock). Parts you can make yourself are bought as what they're made from; vendor items are left off. Selections and amounts are kept per profession, per character.
