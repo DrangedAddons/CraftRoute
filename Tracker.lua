@@ -152,7 +152,14 @@ function CR.RefreshTracker()
   local collapsed = Settings().collapsed
   frame.body:SetShown(not collapsed)
   frame.note:SetShown(not collapsed and frame.note:GetText() ~= "")
-  frame:SetHeight(collapsed and 26 or (30 + bodyH + (frame.note:IsShown() and 18 or 0) + 6))
+  -- Edit: All / None above the list
+  local editBar = editing and not collapsed
+  frame.allBtn:SetShown(editBar)
+  frame.noneBtn:SetShown(editBar)
+  frame.body:ClearAllPoints()
+  frame.body:SetPoint("TOPLEFT", 8, editBar and -50 or -28)
+  frame.body:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
+  frame:SetHeight(collapsed and 26 or (30 + (editBar and 22 or 0) + bodyH + (frame.note:IsShown() and 18 or 0) + 6))
   frame.edit:SetText(editing and "Done" or "Edit")
   frame.collapse:SetText(collapsed and "+" or "-")
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
@@ -216,6 +223,20 @@ local function Build()
   frame.body:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
   frame.body:SetHeight(1)
   frame.rows = {}
+  -- Edit: show every material, or none
+  local function SetAll(show)
+    local prof = Prof()
+    local e = CR.GetPlans and prof and CR.GetPlans(prof)
+    local hidden = Hidden(prof)
+    for _, m in ipairs(e and e.plan and e.plan.materials or {}) do hidden[m.id] = (not show) or nil end
+    CR.RefreshTracker()
+  end
+  frame.allBtn = HeaderButton(frame, "All", 50, "Show every material", function() SetAll(true) end)
+  frame.allBtn:SetPoint("TOPLEFT", 8, -26)
+  frame.noneBtn = HeaderButton(frame, "None", 50, "Hide every material (then tick the ones you want)", function() SetAll(false) end)
+  frame.noneBtn:SetPoint("LEFT", frame.allBtn, "RIGHT", 4, 0)
+  frame.allBtn:Hide()
+  frame.noneBtn:Hide()
   frame.note = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.note:SetPoint("BOTTOMLEFT", 8, 6)
   frame.note:SetPoint("RIGHT", frame, "RIGHT", -8, 0)

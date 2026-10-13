@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.1
+
+- Materials tracker: **All** and **None** buttons in Edit - show every material, or hide them all and tick the ones you want.
+
 ## 0.46.0
 
 - Materials tracker: **resizable and scalable** - drag the grip in its bottom-right corner to make it wider or narrower (its height follows the list), or open the gear on its title bar for Width and Scale sliders and a Reset. EllesmereUI's unlock mode can resize its width too. Kept per character.
