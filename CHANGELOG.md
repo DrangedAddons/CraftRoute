@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.49.7
+
+- Craft view, the amount boxes beside your crafts:
+  - Clicking in one selects what's there, so what you type replaces it (it used to add to the "1" already there).
+  - The amount is kept as you type (no need to press Enter), stays 1 until you set one, and is remembered after that. Left empty, the box goes back to its amount.
+  - Each box always saves to its own recipe - a refresh while you were typing could move the amount to another one.
+  - No tooltip on them any more.
+- The Cost / Profit line under your crafts updates as you type an amount and as you tick / untick recipes.
+
 ## 0.49.6
 
 - Craft view, "Your crafts": under each name it now says "costs ..." (was "makes for ...") followed by its profit per craft ("profit +.." green, or red for a loss).

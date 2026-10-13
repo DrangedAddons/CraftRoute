@@ -29,6 +29,7 @@ local COST_BAR_H = 22     -- the route cost bar under the list
 
 local overlay, entry, list
 local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
+local UpdateFavCart    -- the shopping line under your list; defined with the right column
 local installed = false
 local installFailed = false
 local openedAt = 0
@@ -966,16 +967,42 @@ local function ApplyRow(row, item)
         row.crPick = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
         row.crPick:SetSize(22, 22)
         row.crPick:SetPoint("LEFT", 3, 0)
-        row.crCartQty = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-        row.crCartQty:SetSize(32, 18)
-        row.crCartQty:SetAutoFocus(false)
-        row.crCartQty:SetNumeric(true)
-        row.crCartQty:SetMaxLetters(4)
-        row.crCartQty:SetJustifyH("CENTER")
+        local q = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+        q:SetSize(32, 18)
+        q:SetAutoFocus(false)
+        q:SetNumeric(true)
+        q:SetMaxLetters(4)
+        q:SetJustifyH("CENTER")
+        -- the recipe it's for is q.crList / q.crSpell (set each time the row is drawn), so a refresh
+        -- while you type never puts the amount on another recipe
+        local function Stored(self) return CartEntry(self.crList, self.crSpell).qty or 1 end
+        -- clicking in selects what's there, so typing replaces it (not "1" + what you type)
+        q:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+        -- every keystroke: a valid amount is kept, and the totals below follow straight away
+        q:SetScript("OnTextChanged", function(self, userInput)
+          if not userInput or not self.crSpell then return end
+          local n = tonumber(self:GetText())
+          if n and n >= 1 then
+            CartEntry(self.crList, self.crSpell).qty = math.min(9999, math.floor(n))
+            UpdateFavCart()
+          end
+        end)
+        -- left empty (or 0): back to the amount it has
+        q:SetScript("OnEditFocusLost", function(self)
+          self:HighlightText(0, 0)
+          if not self.crSpell then return end
+          local n = tonumber(self:GetText())
+          if not n or n < 1 then self:SetText(tostring(Stored(self))) end
+          UpdateFavCart()
+        end)
+        q:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        q:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        row.crCartQty = q
       end
       row.crPick:SetChecked(entry.on and true or false)
       row.crPick:SetScript("OnClick", function(self)
         CartEntry(item.list, r.spell).on = self:GetChecked() and true or nil
+        UpdateFavCart()
         ui.keepScroll = true
         if overlay then overlay:Refresh() end
       end)
@@ -988,22 +1015,10 @@ local function ApplyRow(row, item)
       row.crPick:SetScript("OnLeave", GameTooltip_Hide)
       row.crPick:Show()
       local q = row.crCartQty
+      -- the row now shows another recipe while you were typing in it: finish that one first
+      if q:HasFocus() and (q.crSpell ~= r.spell or q.crList ~= item.list) then q:ClearFocus() end
+      q.crList, q.crSpell = item.list, r.spell
       if not q:HasFocus() then q:SetText(tostring(entry.qty or 1)) end
-      local function SaveQty(self)
-        local n = tonumber(self:GetText())
-        if n and n >= 1 then CartEntry(item.list, r.spell).qty = math.min(9999, math.floor(n)) end
-        self:SetText(tostring(CartEntry(item.list, r.spell).qty or 1))
-      end
-      q:SetScript("OnEnterPressed", function(self) SaveQty(self) self:ClearFocus() end)
-      q:SetScript("OnEscapePressed", function(self) self:SetText(tostring(CartEntry(item.list, r.spell).qty or 1)) self:ClearFocus() end)
-      q:SetScript("OnEditFocusLost", SaveQty)
-      q:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("How many to make")
-        GameTooltip:AddLine("For the shopping list at the bottom.", 1, 1, 1, true)
-        GameTooltip:Show()
-      end)
-      q:SetScript("OnLeave", GameTooltip_Hide)
       q:Show()
     end
     local learned = item.learned
@@ -2302,6 +2317,45 @@ local function SetDestWidgets(on)
   end
 end
 
+-- The shopping line under your list (and the header's select-all tick): how many are ticked, what
+-- buying what they still need costs and what they'd make you, at the amounts set. Run on every
+-- refresh, and as you type an amount.
+function UpdateFavCart()
+  local f = overlay
+  local fc = f and f.favCart
+  if not fc then return end
+  local name, favs = fc.list, fc.favs or {}
+  local cart, picked = DestCart(name), 0
+  for _, it in ipairs(favs) do if cart[it.recipe.spell] and cart[it.recipe.spell].on then picked = picked + 1 end end
+  f.favAll:SetChecked(#favs > 0 and picked == #favs)
+  f.favAll:SetShown(#favs > 0)
+  fc.text:SetText(picked > 0 and string.format("%d selected", picked)
+    or CR.ColorText("Tick recipes for a shopping list", "888888"))
+  fc.button:SetEnabled(picked > 0 and CR.HasAuctionator() and true or false)
+  -- the gold: what the ticked recipes at their amounts still need to buy (what you have taken off)
+  -- and the profit: each one's profit per craft (as its details show it) times its amount
+  local goldText, profitText = "", ""
+  if picked > 0 and CR.HasAuctionator() and CR.MultiNeeds then
+    local entries, profit, noPrice = {}, 0, 0
+    for _, it in ipairs(favs) do
+      local e = cart[it.recipe.spell]
+      if e and e.on then
+        table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 })
+        local p = Profit(it.recipe)
+        if p then profit = profit + p * (e.qty or 1) else noPrice = noPrice + 1 end
+      end
+    end
+    local total, unpriced = CR.NeedsCost(CR.MultiNeeds(entries))
+    goldText = CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
+      .. (unpriced > 0 and CR.ColorText(string.format(" (+%d unpriced)", unpriced), "ff9966") or "")
+    profitText = CR.ColorText("Profit ", "aaaaaa") .. ((noPrice < #entries) and ProfitText(profit) or CR.ColorText("no price", "888888"))
+      .. ((noPrice > 0 and noPrice < #entries) and CR.ColorText(string.format(" (%d no price)", noPrice), "ff9966") or "")
+  end
+  fc.gold:SetText(goldText)
+  fc.profit:SetText(profitText)
+  fc:SetShown(#favs > 0)
+end
+
 -- Right column: your destinations at the top (up to 5 rows, then it scrolls), the recipe panel under.
 local function LayoutDestRight()
   local f = overlay
@@ -2464,37 +2518,8 @@ local function DestRefresh(name)
   end
   f.favEmpty:SetShown(#favs == 0)
   f.favHeader:SetText(string.format("Your crafts (%d)", #favs))
-  -- the shopping selection: the header's tick (all ticked?) and the bottom line's count
-  local cart, picked = DestCart(name), 0
-  for _, it in ipairs(favs) do if cart[it.recipe.spell] and cart[it.recipe.spell].on then picked = picked + 1 end end
-  f.favAll:SetChecked(#favs > 0 and picked == #favs)
-  f.favAll:SetShown(#favs > 0)
   f.favCart.list, f.favCart.favs = name, favs
-  f.favCart.text:SetText(picked > 0 and string.format("%d selected", picked)
-    or CR.ColorText("Tick recipes for a shopping list", "888888"))
-  f.favCart.button:SetEnabled(picked > 0 and CR.HasAuctionator() and true or false)
-  -- the gold: what the ticked recipes at their amounts still need to buy (what you have taken off)
-  -- and the profit: each one's profit per craft (as its details show it) times its amount
-  local goldText, profitText = "", ""
-  if picked > 0 and CR.HasAuctionator() and CR.MultiNeeds then
-    local entries, profit, noPrice = {}, 0, 0
-    for _, it in ipairs(favs) do
-      local e = cart[it.recipe.spell]
-      if e and e.on then
-        table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 })
-        local p = Profit(it.recipe)
-        if p then profit = profit + p * (e.qty or 1) else noPrice = noPrice + 1 end
-      end
-    end
-    local total, unpriced = CR.NeedsCost(CR.MultiNeeds(entries))
-    goldText = CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
-      .. (unpriced > 0 and CR.ColorText(string.format(" (+%d unpriced)", unpriced), "ff9966") or "")
-    profitText = CR.ColorText("Profit ", "aaaaaa") .. ((noPrice < #entries) and ProfitText(profit) or CR.ColorText("no price", "888888"))
-      .. ((noPrice > 0 and noPrice < #entries) and CR.ColorText(string.format(" (%d no price)", noPrice), "ff9966") or "")
-  end
-  f.favCart.gold:SetText(goldText)
-  f.favCart.profit:SetText(profitText)
-  f.favCart:SetShown(#favs > 0)
+  UpdateFavCart()
   ui.keepScroll = true
   f.goalDD:Hide()
   f.modeDD:Hide()
