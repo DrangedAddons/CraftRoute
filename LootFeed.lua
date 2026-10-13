@@ -1,8 +1,9 @@
--- Loot progress feed: when you loot (or craft) something the route needs, a short row slides in -
--- "Copper Ore  60/100 > 61/100" - and fades out. Items the route doesn't need don't show, so it
--- sits beside EllesmereUI's loot feed (or Blizzard's chat) rather than repeating it. The counts are
--- the route's own: what it needs in total, and what you have as its materials list counts it.
--- /cr feed (on / off), /cr feed move (drag it), /cr feed test. Kept per character.
+-- Loot progress: when you loot (or craft) something the route needs, "60/100 > 61/100" shows -
+-- on the second line of EllesmereUI's own loot-feed row for it when that feed is on and showing
+-- the item, else on a short row of CraftRoute's own that fades out. Items the route doesn't need
+-- don't show. The counts are the route's own: what it needs in total, and what you have as its
+-- materials list counts it. /cr feed (on / off), /cr feed move (drag CraftRoute's own rows),
+-- /cr feed test, /cr feed why. Kept per character.
 local _, CR = ...
 local GetItemCount = CR.GetItemCount   -- (C_Item's in Forever: there's no global GetItemCount)
 
@@ -147,6 +148,66 @@ local function Show(itemID, before, after, need)
   r.fade:Play()
 end
 
+---------------------------------------------------------------------------
+-- EllesmereUI's loot feed (Forever Essentials), when it's on: the progress goes on the second line
+-- of its own row for the item, instead of a row of ours. Its rows are plain frames that keep the
+-- item they show (row.data.link) and a second-line font string (row.sub); CraftRoute only writes
+-- that line, after EllesmereUI has filled the row.
+---------------------------------------------------------------------------
+local euiAnchor
+local function IsEuiRow(f)
+  return type(rawget(f, "data")) == "table" and type(rawget(f, "sub")) == "table" and rawget(f, "key") ~= nil
+    and type(rawget(f, "name")) == "table" and type(rawget(f, "icon")) == "table"
+end
+local function EuiRows()
+  if not (EllesmereUI and EllesmereUI.IS_FOREVER) then return {} end
+  if not euiAnchor then
+    -- its feed's frame has no name: find it once, by the rows it holds
+    for _, c in ipairs({ UIParent:GetChildren() }) do
+      if not c:GetName() and c ~= anchor then
+        for _, r in ipairs({ c:GetChildren() }) do
+          if IsEuiRow(r) then euiAnchor = c break end
+        end
+      end
+      if euiAnchor then break end
+    end
+  end
+  local out = {}
+  if euiAnchor then
+    for _, r in ipairs({ euiAnchor:GetChildren() }) do
+      if IsEuiRow(r) and r:IsShown() then table.insert(out, r) end
+    end
+  end
+  return out
+end
+
+-- Put the progress on EllesmereUI's row for itemID; false if there's no such row showing
+local function ShowInEllesmere(itemID, before, after, need)
+  for _, r in ipairs(EuiRows()) do
+    local link = r.data and r.data.link
+    if type(link) == "string" and tonumber(link:match("item:(%d+)")) == itemID then
+      -- its Icon Tray style is small tiles with no second line: CraftRoute's own row then
+      local w = tonumber(r:GetWidth()) or 0
+      if w > 0 and w < 140 then return false end
+      local done = after >= need
+      r.sub:SetText(CR.ColorText("Route  ", "66ccff")
+        .. CR.ColorText(string.format("%d/%d", math.min(before, need), need), "aaaaaa")
+        .. CR.ColorText(" > ", "888888")
+        .. CR.ColorText(string.format("%d/%d", math.min(after, need), need), done and "40ff40" or "ffd100")
+        .. (done and CR.ColorText("  done", "40ff40") or ""))
+      r.sub:Show()
+      -- two lines: the name moves up (as EllesmereUI lays out a row with a second line)
+      if r.name and r.icon and r.value then
+        r.name:ClearAllPoints()
+        r.name:SetPoint("RIGHT", r.value, "LEFT", -8, 0)
+        r.name:SetPoint("BOTTOMLEFT", r.icon, "RIGHT", 6, 1)
+      end
+      return true
+    end
+  end
+  return false
+end
+
 local function Build()
   if anchor then return end
   anchor = CreateFrame("Frame", "CraftRouteLootFeed", UIParent)
@@ -242,7 +303,9 @@ local function OnLoot(text)
     if (GetItemCount(id, false) or 0) == bags0 and tries < 15 then C_Timer.After(0.1, Read) return end
     if CR.InvalidateLocation then CR.InvalidateLocation(id) end
     local after = CR.HaveCount(id)
-    Show(id, math.max(0, after - n), after, need)
+    local before = math.max(0, after - n)
+    -- EllesmereUI's feed shows this loot: the count goes on its row; otherwise a row of ours
+    if not ShowInEllesmere(id, before, after, need) then Show(id, before, after, need) end
   end
   C_Timer.After(0.1, Read)
 end

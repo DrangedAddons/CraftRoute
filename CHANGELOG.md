@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.42.0
+
+- Loot progress now goes into **EllesmereUI's loot feed**: with its feed on, the second line of its own row for the item reads "Route  60/100 > 61/100" (green "done" once you have enough) - no separate feed to place; it moves with EllesmereUI's own feed settings. CraftRoute's own row is only the fallback - when EllesmereUI's feed is off, doesn't show that item (e.g. its quality filter), or uses its Icon Tray style (tiles with no second line). `/cr feed move` places that fallback row.
+
 ## 0.41.4
 
 - Loot feed: Shift+drag any row to move the feed (the position is kept per character). `/cr feed move` still shows a bar to drag it by when no row is up.
