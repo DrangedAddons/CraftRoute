@@ -269,6 +269,7 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
   Backdrop(menu, 0.05, 0.05, 0.05, 0.97)
   menu:Hide()
   menu.buttons = {}
+  dd.menu = menu   -- (so a panel holding it can tell a click on its list from a click outside)
 
   local function BuildMenu()
     local opts = Opts()

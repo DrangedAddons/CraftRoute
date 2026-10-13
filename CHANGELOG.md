@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.9
+
+- Materials tracker: a **Sort** dropdown in its gear panel - Route order (by the step that first uses each material; the default) or Alphabetical. Either way still-needed materials stay on top. Kept per character.
+
 ## 0.46.8
 
 - Materials tracker: materials are listed in **route order** - by the step that first uses them (as a reagent, or something a step has you buy, like the hammer) - so the list follows your progress. Still-needed ones stay on top, ones you have enough of below.

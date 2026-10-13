@@ -122,11 +122,14 @@ function CR.RefreshTracker()
     for _, it in ipairs(st.items or {}) do Seen(it[1]) end
     for _, it in ipairs(st.has or {}) do Seen(it[1]) end
   end
+  local byName = Settings().sort == "name"
   table.sort(list, function(a, b)
     local da, db = a.have >= a.need, b.have >= b.need
     if da ~= db then return not da end
-    local fa, fb = firstAt[a.id] or math.huge, firstAt[b.id] or math.huge
-    if fa ~= fb then return fa < fb end
+    if not byName then
+      local fa, fb = firstAt[a.id] or math.huge, firstAt[b.id] or math.huge
+      if fa ~= fb then return fa < fb end
+    end
     return a.name < b.name
   end)
   local collapsed = Settings().collapsed
@@ -295,7 +298,7 @@ local function Build()
   frame.size:SetScript("OnClick", function(self) CR.TrackerSizePanel(self) end)
   frame.size:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Size and scale")
+    GameTooltip:SetText("Size, scale and sort")
     GameTooltip:AddLine("Ctrl+mouse wheel over the tracker also scales it.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
@@ -473,7 +476,7 @@ function CR.TrackerSizePanel(owner)
   if not sizePanel then
     -- on UIParent: as the tracker's child it would scale too, moving the slider you're dragging
     local p = CreateFrame("Frame", "CraftRouteTrackerSize", UIParent, "BackdropTemplate")
-    p:SetSize(240, 168)
+    p:SetSize(240, 196)
     p:SetFrameStrata("DIALOG")
     CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
     p:EnableMouse(true)
@@ -489,6 +492,18 @@ function CR.TrackerSizePanel(owner)
       function(v) CR.TrackerSetSize(nil, nil, v) end, "%d")
     hsl:SetPoint("TOPLEFT", 12, -90)
     hsl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
+    -- the order: route order (where each is first used) or A-Z
+    local sortLabel = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    sortLabel:SetPoint("TOPLEFT", 12, -132)
+    sortLabel:SetText("Sort")
+    local sortDD = CR.CreateDropdown(p, 150, {
+      { value = "route", text = "Route order" }, { value = "name", text = "Alphabetical" },
+    }, function() return Settings().sort == "name" and "name" or "route" end, function(v)
+      Settings().sort = (v == "name") and "name" or nil
+      CR.RefreshTracker()
+    end)
+    sortDD:SetPoint("LEFT", sortLabel, "RIGHT", 10, 0)
+    if sortDD.Sync then sortDD:Sync() end
     local reset = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
     reset:SetSize(80, 22)
     reset:SetPoint("BOTTOMLEFT", 12, 10)
@@ -503,8 +518,10 @@ function CR.TrackerSizePanel(owner)
     p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() hsl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnEvent", function(self)
-      if not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver()) then self:Hide() end
+      if not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver())
+          and not (sortDD.menu and sortDD.menu:IsShown() and sortDD.menu:IsMouseOver()) then self:Hide() end
     end)
+    p:HookScript("OnHide", function() if sortDD.menu then sortDD.menu:Hide() end end)
     sizePanel = p
   end
   sizePanel.owner = owner
