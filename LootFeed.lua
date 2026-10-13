@@ -11,6 +11,7 @@ local SHOW_FOR, FADE_OUT = 6, 0.8
 local DEFAULT_POS = { "BOTTOMRIGHT", "BOTTOMRIGHT", -640, 260 }
 
 local anchor, rows = nil, {}   -- rows: shown, newest first
+local why = false              -- /cr feed why: say in chat what each loot line did
 
 local function Settings()
   local db = CraftRouteCharDB
@@ -200,12 +201,25 @@ local function RouteNeed(itemID)
   return m and m.need
 end
 
+local function Why(msg) if why then CR.Print("|cff66ccffloot feed|r " .. msg) end end
+
 local function OnLoot(text)
-  if not Settings().enabled then return end
+  if not Settings().enabled then Why("off (/cr feed turns it on)") return end
   local id, n = ParseLoot(text or "")
-  if not id then return end
+  if not id then
+    -- another player's loot is expected here; anything else is a line it doesn't recognise
+    Why("not your loot / not a recognised line: " .. tostring(text):gsub("|", "||"))
+    return
+  end
   local need = RouteNeed(id)
-  if not need or need <= 0 then return end
+  if not need or need <= 0 then
+    local e = CR.GetPlans and CR.GetPlans()
+    Why(string.format("%s x%d - no row: the %s route doesn't need it%s", CR.ItemName(id), n,
+      tostring(CraftRouteCharDB and CraftRouteCharDB.profession),
+      (e and e.goal) and string.format(" (its plan runs to skill %d)", e.goal) or ""))
+    return
+  end
+  Why(string.format("%s x%d - row: the route needs %d", CR.ItemName(id), n, need))
   -- read the count once the bags really have it: the loot line can come before the bag update,
   -- and the shared count cache is only refreshed a moment after that - so wait for the bag count to
   -- move (up to 1.5s; if it never does it was already in), then count this item fresh
@@ -249,6 +263,10 @@ function CR.LootFeedCommand(arg)
     else
       CR.Print("Loot feed: the current route needs no materials to show.")
     end
+  elseif arg == "why" then
+    why = not why
+    CR.Print("Loot feed: " .. (why and "saying in chat why each loot does or doesn't get a row (/cr feed why again to stop)."
+      or "no longer explaining loot in chat."))
   elseif arg == "reset" then
     s.pos = nil
     Place()

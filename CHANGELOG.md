@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.41.2
+
+- Loot feed: `/cr feed why` says in chat, for every loot line, whether it got a row and why not - e.g. "Silk Cloth x1 - no row: the Leatherworking route doesn't need it (its plan runs to skill 150)", or a line it didn't recognise. `/cr feed why` again stops it.
+
 ## 0.41.1
 
 - Loot feed: the count could be one behind (3 Light Leather showing as 2) - it read CraftRoute's item count before that had caught up with the loot. It now waits until the item is in your bags and counts it fresh.

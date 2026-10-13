@@ -186,7 +186,7 @@ SlashCmdList.CRAFTROUTE = function(msg)
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
   elseif msg == "help" then
-    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession, /cr feed - loot progress feed on/off (move, test, reset)")
+    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession, /cr feed - loot progress feed on/off (move, test, reset, why)")
   else
     CR.SafeCall(CR.ToggleWindow)
   end
