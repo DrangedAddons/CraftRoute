@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.49.0
+
+- Craft view: **a shopping list from your crafts**. Each recipe in "Your crafts" has a tickbox on its left and a quantity box beside its star; a tickbox by the "Your crafts" header selects all / none. Along the bottom, "Generate shopping list for the N selected" with the cart makes one Auctionator list of everything the ticked recipes need at the amounts you set - less what you have, counted once across them all (two recipes sharing a reagent don't both use the same stock). Parts you can make yourself are bought as what they're made from; vendor items are left off. Selections and amounts are kept per profession, per character.
+- The single-recipe shopping lists use the same counting.
+
 ## 0.48.0
 
 - Materials trackers are **per profession**: each profession gets its own pop-out window, with its own position, width, height, scale, collapsed state, sort and hidden items - and several can be open at once. The Tracker button and `/cr tracker` open the one for the profession CraftRoute is on; the pop-out on the profession window's tab opens that tab's. Each has its own mover in EllesmereUI's unlock mode ("CraftRoute Tracker: <profession>"). New ones open a little offset so they don't sit on top of each other. Your existing tracker's settings carry over to the profession it was showing.

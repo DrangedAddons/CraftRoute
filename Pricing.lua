@@ -85,32 +85,44 @@ function CR.CreateShoppingList(plan)
   MakeShoppingList("CraftRoute " .. plan.prof, wanted)
 end
 
--- Just one step: what its crafts need that you don't own (counted as the "Count alts" setting
--- says). A reagent you make yourself (a bolt of cloth, a cured hide - a recipe of the same
--- profession you can make) isn't bought: what it's made from is, a level further in.
-function CR.CreateStepShoppingList(recipe, crafts)
-  local prof
-  for _, p in pairs(CR.professions) do
-    if p.recipes[recipe.spell] == recipe then prof = p break end
-  end
-  -- a component you can make by the time you're on this step (its skill isn't above the step's)
-  local skill = math.max(prof and CR.GetSkill(prof.name) or 0, recipe.learn or 0)
-  local need, order = {}, {}
-  local function Add(id, n, depth)
+-- Several recipes' crafts at once - entries { { recipe, crafts } } - into one list: what they need
+-- that you don't own (counted as the "Count alts" setting says). What you own is used once across
+-- them all, so two recipes sharing a reagent don't both count the same stock. A reagent you make
+-- yourself (a bolt of cloth, a cured hide - a recipe of the same profession you can make) isn't
+-- bought: what it's made from is, a level further in.
+function CR.CreateMultiShoppingList(entries, listName)
+  local used, need, order = {}, {}, {}
+  local function Add(prof, skill, id, n, depth)
     local bags, elsewhere = CR.BagsAndElsewhere(id)
-    local short = n - bags - elsewhere
+    local take = math.max(0, math.min(bags + elsewhere - (used[id] or 0), n))
+    used[id] = (used[id] or 0) + take
+    local short = n - take
     if short <= 0 then return end
     local maker = depth < 3 and prof and prof.byItem[id] and prof.recipes[prof.byItem[id]]
     if maker and (maker.learn or 1) <= skill then
       local times = math.ceil(short / (maker.makes or 1))
-      for _, rg in ipairs(maker.reagents or {}) do Add(rg[1], rg[2] * times, depth + 1) end
+      for _, rg in ipairs(maker.reagents or {}) do Add(prof, skill, rg[1], rg[2] * times, depth + 1) end
     else
       if not need[id] then table.insert(order, id) end
       need[id] = (need[id] or 0) + short
     end
   end
-  for _, rg in ipairs(recipe.reagents or {}) do Add(rg[1], rg[2] * math.max(1, crafts or 1), 0) end
+  for _, e in ipairs(entries) do
+    local recipe = e.recipe
+    local prof
+    for _, p in pairs(CR.professions) do
+      if p.recipes[recipe.spell] == recipe then prof = p break end
+    end
+    -- a component you can make by the time you make this (its skill isn't above this recipe's)
+    local skill = math.max(prof and CR.GetSkill(prof.name) or 0, recipe.learn or 0)
+    for _, rg in ipairs(recipe.reagents or {}) do Add(prof, skill, rg[1], rg[2] * math.max(1, e.crafts or 1), 0) end
+  end
   local wanted = {}
   for _, id in ipairs(order) do table.insert(wanted, { id = id, missing = need[id], name = CR.ItemName(id) }) end
-  MakeShoppingList("CraftRoute: " .. recipe.name, wanted)
+  MakeShoppingList(listName, wanted)
+end
+
+-- Just one step / recipe.
+function CR.CreateStepShoppingList(recipe, crafts)
+  CR.CreateMultiShoppingList({ { recipe = recipe, crafts = crafts } }, "CraftRoute: " .. recipe.name)
 end

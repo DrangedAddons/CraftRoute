@@ -251,6 +251,21 @@ local function SetDestSort(name, v)
   db.destSort[name] = (v ~= "level") and v or nil
 end
 
+-- Your list's shopping selection: which recipes are ticked and how many of each (per profession,
+-- kept per character). { [spell] = { on = true, qty = n } }
+local function DestCart(name)
+  local db = DB()
+  if not db or not name then return {} end
+  db.destCart = db.destCart or {}
+  db.destCart[name] = db.destCart[name] or {}
+  return db.destCart[name]
+end
+local function CartEntry(name, spell)
+  local c = DestCart(name)
+  c[spell] = c[spell] or {}
+  return c[spell]
+end
+
 local function IsDest(name, spell)
   for _, s in ipairs(DestList(name)) do if s == spell then return true end end
   return false
@@ -557,7 +572,7 @@ local function ResetRow(row)
   row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
-  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute" }) do
+  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute", "crPick", "crCartQty" }) do
     if row[w] then row[w]:Hide() end
   end
   if row.name.crBaseSize then
@@ -940,7 +955,55 @@ local function ApplyRow(row, item)
     row.icon:SetTexture(CR.RecipeIcon(r))
     row.icon:Show()
     row.icon:ClearAllPoints()
-    row.icon:SetPoint("LEFT", 6, 0)
+    local fav = item.kind == "destFav"
+    row.icon:SetPoint("LEFT", fav and 26 or 6, 0)
+    if fav then
+      -- your list: tick it for the shopping list, and how many to make
+      local entry = CartEntry(item.list, r.spell)
+      if not row.crPick then
+        row.crPick = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+        row.crPick:SetSize(22, 22)
+        row.crPick:SetPoint("LEFT", 3, 0)
+        row.crCartQty = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+        row.crCartQty:SetSize(32, 18)
+        row.crCartQty:SetAutoFocus(false)
+        row.crCartQty:SetNumeric(true)
+        row.crCartQty:SetMaxLetters(4)
+        row.crCartQty:SetJustifyH("CENTER")
+      end
+      row.crPick:SetChecked(entry.on and true or false)
+      row.crPick:SetScript("OnClick", function(self)
+        CartEntry(item.list, r.spell).on = self:GetChecked() and true or nil
+        ui.keepScroll = true
+        if overlay then overlay:Refresh() end
+      end)
+      row.crPick:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Shopping list")
+        GameTooltip:AddLine("Tick it to include it in the shopping list at the bottom, at the amount beside its star.", 1, 1, 1, true)
+        GameTooltip:Show()
+      end)
+      row.crPick:SetScript("OnLeave", GameTooltip_Hide)
+      row.crPick:Show()
+      local q = row.crCartQty
+      if not q:HasFocus() then q:SetText(tostring(entry.qty or 1)) end
+      local function SaveQty(self)
+        local n = tonumber(self:GetText())
+        if n and n >= 1 then CartEntry(item.list, r.spell).qty = math.min(9999, math.floor(n)) end
+        self:SetText(tostring(CartEntry(item.list, r.spell).qty or 1))
+      end
+      q:SetScript("OnEnterPressed", function(self) SaveQty(self) self:ClearFocus() end)
+      q:SetScript("OnEscapePressed", function(self) self:SetText(tostring(CartEntry(item.list, r.spell).qty or 1)) self:ClearFocus() end)
+      q:SetScript("OnEditFocusLost", SaveQty)
+      q:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("How many to make")
+        GameTooltip:AddLine("For the shopping list at the bottom.", 1, 1, 1, true)
+        GameTooltip:Show()
+      end)
+      q:SetScript("OnLeave", GameTooltip_Hide)
+      q:Show()
+    end
     local learned = item.learned
     if learned == nil then learned = RecipeLearned(item.prof, r) == true end
     local name = r.name
@@ -971,7 +1034,7 @@ local function ApplyRow(row, item)
     -- the name, and under it the level (recipe list) or what it costs to make (your list); it
     -- stops short of the star (and the expand marker)
     row.name:ClearAllPoints()
-    local stop = -52
+    local stop = fav and -96 or -52   -- (your list: the quantity box too)
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
     row.name:SetPoint("RIGHT", row, "RIGHT", stop, 6)
     if not row.crSub then
@@ -1031,6 +1094,10 @@ local function ApplyRow(row, item)
     row.chevron:SetScript("OnClick", function() row:Click() end)
     star:ClearAllPoints()
     star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+    if fav then
+      row.crCartQty:ClearAllPoints()
+      row.crCartQty:SetPoint("RIGHT", star, "LEFT", -10, 0)
+    end
     star.tex:SetDesaturated(not item.fav)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
     star:Show()
@@ -2206,7 +2273,7 @@ end
 local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
-  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList }) do w:SetShown(on) end
+  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList, f.favAll, f.favCart }) do w:SetShown(on) end
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
@@ -2231,11 +2298,16 @@ end
 local function LayoutDestRight()
   local f = overlay
   f.schematic:Hide()   -- an opened recipe's details are rows in the list itself
+  f.favAll:ClearAllPoints()
+  f.favAll:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 10, -36)
   f.favHeader:ClearAllPoints()
-  f.favHeader:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 14, -40)   -- under Open CraftRoute
+  f.favHeader:SetPoint("LEFT", f.favAll, "RIGHT", 4, 0)   -- under Open CraftRoute
   f.favList:ClearAllPoints()
   f.favList:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 8, -58)
-  f.favList:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+  f.favList:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 40)   -- (the shopping line under it)
+  f.favCart:ClearAllPoints()
+  f.favCart:SetPoint("BOTTOMLEFT", f.divider, "BOTTOMRIGHT", 8, 8)
+  f.favCart:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
   f.favEmpty:ClearAllPoints()
   f.favEmpty:SetPoint("TOPLEFT", f.favList, "TOPLEFT", 8, -8)
   f.favEmpty:SetPoint("RIGHT", f, "RIGHT", -16, 0)
@@ -2384,6 +2456,16 @@ local function DestRefresh(name)
   end
   f.favEmpty:SetShown(#favs == 0)
   f.favHeader:SetText(string.format("Your crafts (%d)", #favs))
+  -- the shopping selection: the header's tick (all ticked?) and the bottom line's count
+  local cart, picked = DestCart(name), 0
+  for _, it in ipairs(favs) do if cart[it.recipe.spell] and cart[it.recipe.spell].on then picked = picked + 1 end end
+  f.favAll:SetChecked(#favs > 0 and picked == #favs)
+  f.favAll:SetShown(#favs > 0)
+  f.favCart.list, f.favCart.favs = name, favs
+  f.favCart.text:SetText(picked > 0 and string.format("Generate shopping list for the %d selected", picked)
+    or CR.ColorText("Tick recipes for a shopping list", "888888"))
+  f.favCart.button:SetEnabled(picked > 0 and CR.HasAuctionator() and true or false)
+  f.favCart:SetShown(#favs > 0)
   ui.keepScroll = true
   f.goalDD:Hide()
   f.modeDD:Hide()
@@ -3271,8 +3353,60 @@ local function BuildOverlay()
   frame.favEmpty:SetJustifyH("LEFT")
   frame.favEmpty:SetWordWrap(true)
   frame.favEmpty:SetText("Click recipes on the left to add them here.")
+  -- tick all / none of your list for the shopping list
+  frame.favAll = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+  frame.favAll:SetSize(22, 22)
+  frame.favAll:SetScript("OnClick", function(self)
+    local name = PlanProfession()
+    local on = self:GetChecked() and true or nil
+    for _, spell in ipairs(DestList(name)) do CartEntry(name, spell).on = on end
+    ui.keepScroll = true
+    frame:Refresh()
+  end)
+  frame.favAll:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Select all / none")
+    GameTooltip:AddLine("For the shopping list at the bottom.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.favAll:SetScript("OnLeave", GameTooltip_Hide)
+  -- along the bottom: one Auctionator shopping list for every ticked recipe at its amount
+  local fc = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+  fc:SetHeight(28)
+  CR.Backdrop(fc, 0, 0, 0, 0.55)
+  fc.button = CreateFrame("Button", nil, fc, "UIPanelButtonTemplate")
+  fc.button:SetSize(28, 20)
+  fc.button:SetPoint("RIGHT", -6, 0)
+  fc.button:SetText("")
+  CR.ThemeRegisterButton(fc.button)
+  CR.AddCartIcon(fc.button, false)
+  fc.text = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  fc.text:SetPoint("RIGHT", fc.button, "LEFT", -10, 0)
+  fc.text:SetJustifyH("RIGHT")
+  fc.button:SetScript("OnClick", function()
+    local name = fc.list
+    local cart = DestCart(name)
+    local entries = {}
+    for _, it in ipairs(fc.favs or {}) do
+      local e = cart[it.recipe.spell]
+      if e and e.on then table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 }) end
+    end
+    if #entries == 0 then return end
+    CR.CreateMultiShoppingList(entries, "CraftRoute: " .. tostring(name) .. " crafts")
+  end)
+  fc.button:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Shopping list for the selected")
+    GameTooltip:AddLine("One Auctionator shopping list with everything the ticked recipes need, at the amounts "
+      .. "you set - less what you have (counted once across them all). Parts you can make yourself are "
+      .. "bought as what they're made from; vendor items are left off.", 1, 1, 1, true)
+    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
+    GameTooltip:Show()
+  end)
+  fc.button:SetScript("OnLeave", GameTooltip_Hide)
+  frame.favCart = fc
   for _, w in ipairs({ frame.viewRoute, frame.viewDest }) do w:Show() end
-  for _, w in ipairs({ frame.destSearch, frame.destFilterDD, frame.favHeader, frame.favList, frame.favEmpty }) do w:Hide() end
+  for _, w in ipairs({ frame.destSearch, frame.destFilterDD, frame.favHeader, frame.favList, frame.favEmpty, frame.favAll, frame.favCart }) do w:Hide() end
   function frame:UpdateRouteCost(plan)
     costBar.plan = plan
     if not plan then costBar:Hide() return end
