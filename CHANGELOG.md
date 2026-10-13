@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.6
+
+- Materials tracker: the bottom is one compact line - **Cost** of what you still need to buy of the materials it shows (vendor or AH prices; "+N unpriced" for any without a price; hidden items and the route's own crafts left out), and the small shopping-cart button beside it.
+
 ## 0.46.5
 
 - Materials tracker: a **Vendor** button in Edit (beside All and None) unticks every item vendors sell - thread, dyes, flux - so the list keeps to what you gather or buy on the AH. Click it again to tick them back.

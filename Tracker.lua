@@ -125,7 +125,7 @@ function CR.RefreshTracker()
   local setH = Settings().height
   -- the Shopping list button along the bottom (with Auctionator)
   local shop = CR.HasAuctionator() and not collapsed and #list > 0
-  local bottom = 8 + (shop and 26 or 0)
+  local bottom = 8 + (shop and 22 or 0)
   local vis = setH and math.max(1, math.floor((setH - top - bottom) / ROW_H)) or math.min(#list, MAX_ROWS)
   offset = math.max(0, math.min(offset, #list - vis))
   local scrolling = #list > vis
@@ -187,6 +187,16 @@ function CR.RefreshTracker()
   -- never taller than the list: a taller setting stops after the last line
   frame.shop:SetShown(shop)
   frame.shop.items = list
+  -- what's still to buy of the materials shown costs (vendor or AH price; the route's own crafts aren't bought)
+  local cost, unpriced = 0, 0
+  for _, it in ipairs(list) do
+    if not hidden[it.id] and (it.missing or 0) > 0 and (it.crafted or 0) == 0 then
+      if it.price then cost = cost + it.price * it.missing else unpriced = unpriced + 1 end
+    end
+  end
+  frame.cost:SetShown(shop)
+  frame.cost:SetText(CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
+    .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or ""))
   frame.note:ClearAllPoints()
   frame.note:SetPoint("BOTTOMLEFT", 8, bottom - 2)
   frame.note:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
@@ -213,7 +223,14 @@ function CR.RefreshTracker()
   SameFont(frame.title)
   m:SetText(frame.title:GetText() or "")
   local headW = 8 + (tonumber(m:GetStringWidth()) or 0) + 4 + 40 + 3 + 16 + 3 + 18 + 2 + 18 + 6
-  local needW = math.ceil(math.max(rowW, headW, editBar and 190 or 0))   -- (All / None / Vendor fit)
+  -- (the cost line and its cart fit too)
+  local costW = 0
+  if shop then
+    SameFont(frame.cost)
+    m:SetText(frame.cost:GetText() or "")
+    costW = 8 + (tonumber(m:GetStringWidth()) or 0) + 6 + 24 + 16
+  end
+  local needW = math.ceil(math.max(rowW, headW, costW, editBar and 190 or 0))   -- (All / None / Vendor fit)
   frame:SetWidth(math.min(Settings().width or needW, needW))
   frame.edit:SetText(editing and "Done" or "Edit")
   frame.collapse:SetText(collapsed and "+" or "-")
@@ -282,12 +299,18 @@ local function Build()
   -- Shopping list: an Auctionator list of what's still needed of the materials shown (hidden ones
   -- left out); things the route makes itself aren't bought
   frame.shop = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  frame.shop:SetHeight(20)
-  frame.shop:SetPoint("BOTTOMLEFT", 8, 6)
-  frame.shop:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
-  frame.shop:SetText("Shopping list")
+  frame.shop:SetSize(24, 18)
+  frame.shop:SetPoint("BOTTOMRIGHT", -16, 6)
+  frame.shop:SetText("")
   if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.shop) end
-  if CR.AddCartIcon then CR.AddCartIcon(frame.shop) end
+  if CR.AddCartIcon then CR.AddCartIcon(frame.shop, false) end
+  -- beside it: what the shown materials still to buy cost
+  frame.cost = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.cost:SetPoint("LEFT", frame, "BOTTOMLEFT", 8, 15)
+  frame.cost:SetPoint("RIGHT", frame.shop, "LEFT", -6, 0)
+  frame.cost:SetJustifyH("LEFT")
+  frame.cost:SetWordWrap(false)
+  frame.cost:Hide()
   frame.shop:SetScript("OnClick", function(self)
     local prof = Prof()
     local hidden = Hidden(prof)
