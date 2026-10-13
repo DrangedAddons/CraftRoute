@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.42.2
+
+- Loot feed: CraftRoute's own loot-progress rows are back on for every loot the route needs (move them in EllesmereUI's unlock mode - "CraftRoute Loot Progress" - or with `/cr feed move`). Writing the count into EllesmereUI's own loot-feed rows is now optional: `/cr feed ellesmere` switches to that (and back).
+
 ## 0.42.1
 
 - CraftRoute's own loot-progress row (the fallback when EllesmereUI's feed isn't showing the item) can now be moved in **EllesmereUI's unlock mode** - it's listed as "CraftRoute Loot Progress", like EllesmereUI's own frames. `/cr feed move` still works without EllesmereUI.

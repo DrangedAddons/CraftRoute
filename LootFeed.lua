@@ -1,8 +1,9 @@
--- Loot progress: when you loot (or craft) something the route needs, "60/100 > 61/100" shows -
--- on the second line of EllesmereUI's own loot-feed row for it when that feed is on and showing
--- the item, else on a short row of CraftRoute's own that fades out. Items the route doesn't need
--- don't show. The counts are the route's own: what it needs in total, and what you have as its
--- materials list counts it. /cr feed (on / off), /cr feed move (drag CraftRoute's own rows),
+-- Loot progress: when you loot (or craft) something the route needs, a short row of CraftRoute's
+-- own slides in - "Copper Ore  60/100 > 61/100" - and fades out (movable in EllesmereUI's unlock
+-- mode, or with /cr feed move). /cr feed ellesmere instead writes it on the second line of
+-- EllesmereUI's own loot-feed row for the item (CraftRoute's row only when that feed isn't
+-- showing it). Items the route doesn't need don't show. The counts are the route's own: what it
+-- needs in total, and what you have as its materials list counts it. /cr feed (on / off),
 -- /cr feed test, /cr feed why. Kept per character.
 local _, CR = ...
 local GetItemCount = CR.GetItemCount   -- (C_Item's in Forever: there's no global GetItemCount)
@@ -304,8 +305,10 @@ local function OnLoot(text)
     if CR.InvalidateLocation then CR.InvalidateLocation(id) end
     local after = CR.HaveCount(id)
     local before = math.max(0, after - n)
-    -- EllesmereUI's feed shows this loot: the count goes on its row; otherwise a row of ours
-    if not ShowInEllesmere(id, before, after, need) then Show(id, before, after, need) end
+    -- CraftRoute's own row; or (/cr feed ellesmere) on EllesmereUI's row when it shows this loot
+    if not (Settings().inEllesmere and ShowInEllesmere(id, before, after, need)) then
+      Show(id, before, after, need)
+    end
   end
   C_Timer.After(0.1, Read)
 end
@@ -368,6 +371,11 @@ function CR.LootFeedCommand(arg)
     else
       CR.Print("Loot feed: the current route needs no materials to show.")
     end
+  elseif arg == "ellesmere" then
+    s.inEllesmere = not s.inEllesmere
+    CR.Print(s.inEllesmere
+      and "Loot feed: the count goes on EllesmereUI's loot-feed row for the item (CraftRoute's own row only when that feed isn't showing it)."
+      or "Loot feed: CraftRoute's own rows (move them in EllesmereUI's unlock mode or with /cr feed move).")
   elseif arg == "why" then
     why = not why
     CR.Print("Loot feed: " .. (why and "saying in chat why each loot does or doesn't get a row (/cr feed why again to stop)."
