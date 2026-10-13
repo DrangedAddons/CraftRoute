@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.50.0
+
+- Craft view, "Your crafts" amounts - rebuilt: each row shows its amount as a small button; clicking it opens one editor over it, empty (the old amount shows faintly), so the first key you press is the first digit. Enter or clicking away keeps it, Escape goes back. The editor isn't part of the list's rows any more - before, every list refresh hid and re-showed the box you were typing in, which lost your typing (only the top row's amount stuck).
+- Cost and the shopping list for your crafts use the recipes' own materials - Light Leather is priced and listed as Light Leather, not broken down into the scraps it's made from.
+- **Materials panel**: a pop-out button beside the cart opens a panel along the profession window's right side with everything the ticked recipes need at their amounts - **Total** (all together) or **By recipe** (each recipe's materials times its amount) - have / need, updated as you change ticks and amounts. Mouse wheel scrolls it.
+- The Craft view's left column no longer has the "Make each once" gold bar (its list reaches the bottom); the shopping line on the right has the same height and gaps from the border as the Route view's cost bar.
+
 ## 0.49.9
 
 - Craft view: the amounts you type beside your crafts are really kept now. 0.49.7 only saved them when the game flagged the change as typed by you - which this client doesn't do - so nothing was ever saved. They're now saved on every change while you're in the box, and again on Enter or clicking away.

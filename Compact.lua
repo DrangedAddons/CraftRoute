@@ -30,6 +30,8 @@ local COST_BAR_H = 22     -- the route cost bar under the list
 local overlay, entry, list
 local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
 local UpdateFavCart    -- the shopping line under your list; defined with the right column
+local qtyEd            -- the one amount editor (your crafts' amount buttons open it)
+local matPanel, MatSettings, ToggleMatPanel   -- the materials side panel; defined with the right column
 local installed = false
 local installFailed = false
 local openedAt = 0
@@ -574,7 +576,8 @@ local function ResetRow(row)
   row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
-  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute", "crPick", "crCartQty" }) do
+  row.crEditing = qtyEd and qtyEd:IsShown() and row.crQtyBtn ~= nil and qtyEd.btn == row.crQtyBtn
+  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute", "crPick", "crQtyBtn" }) do
     if row[w] then row[w]:Hide() end
   end
   if row.name.crBaseSize then
@@ -675,6 +678,11 @@ end
 
 local function ApplyRow(row, item)
   ResetRow(row)
+  -- this row's amount was being edited and it now shows something else: finish that edit first
+  if row.crEditing and not (item.kind == "destFav" and item.recipe and qtyEd.spell == item.recipe.spell
+      and qtyEd.list == item.list) then
+    qtyEd:ClearFocus()
+  end
   row.item = item
   if item.box or row.crBox then BoxRow(row, item.box) end
   if overlay and overlay.enchant and overlay.enchant:GetParent() == row and item.kind ~= "dEnchant" then
@@ -968,50 +976,18 @@ local function ApplyRow(row, item)
         row.crPick = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
         row.crPick:SetSize(22, 22)
         row.crPick:SetPoint("LEFT", 3, 0)
-        local q = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-        q:SetSize(32, 18)
-        q:SetAutoFocus(false)
-        q:SetNumeric(true)
-        q:SetMaxLetters(4)
-        q:SetJustifyH("CENTER")
-        -- the recipe it's for is q.crList / q.crSpell (set each time the row is drawn), so a refresh
-        -- while you type never puts the amount on another recipe
-        local function Stored(self) return CartEntry(self.crList, self.crSpell).qty or 1 end
-        -- keep what's typed (a whole number from 1): saved on every change while you're in the box,
-        -- and again on Enter / clicking away - not only on the "typed by you" flag, which this
-        -- client may not pass
-        local function Save(self)
-          if not self.crSpell then return end
-          local n = tonumber(self:GetText())
-          if n and n >= 1 then
-            CartEntry(self.crList, self.crSpell).qty = math.min(9999, math.floor(n))
-          end
-        end
-        -- clicking in selects what's there, so typing replaces it (not "1" + what you type)
-        q:SetScript("OnEditFocusGained", function(self)
-          self:HighlightText()
-          C_Timer.After(0, function() if self:HasFocus() then self:HighlightText() end end)
-        end)
-        q:SetScript("OnMouseUp", function(self) if self:HasFocus() then self:HighlightText() end end)
-        -- every keystroke: a valid amount is kept, and the totals below follow straight away
-        -- (the list setting the box's text, when you're not in it, isn't you typing)
-        q:SetScript("OnTextChanged", function(self, userInput)
-          if not (userInput or self:HasFocus()) then return end
-          Save(self)
-          UpdateFavCart()
-        end)
-        -- leaving it: what's there is kept; left empty (or 0), it goes back to the amount it had
-        q:SetScript("OnEditFocusLost", function(self)
-          self:HighlightText(0, 0)
-          if not self.crSpell then return end
-          Save(self)
-          local n = tonumber(self:GetText())
-          if not n or n < 1 then self:SetText(tostring(Stored(self))) end
-          UpdateFavCart()
-        end)
-        q:SetScript("OnEnterPressed", function(self) Save(self) self:ClearFocus() end)
-        q:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-        row.crCartQty = q
+        -- the amount: a button showing it; clicking opens the one shared editor over it (an editor in
+        -- the list's own rows was hidden and re-shown by every refresh, losing what you typed)
+        local b = CreateFrame("Button", nil, row, "BackdropTemplate")
+        b:SetSize(34, 18)
+        CR.Backdrop(b, 0.02, 0.02, 0.02, 0.9)
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        b.text:SetPoint("CENTER")
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.1)
+        b:SetScript("OnClick", function(self) if CR.OpenQtyEditor then CR.OpenQtyEditor(self) end end)
+        row.crQtyBtn = b
       end
       row.crPick:SetChecked(entry.on and true or false)
       row.crPick:SetScript("OnClick", function(self)
@@ -1028,12 +1004,11 @@ local function ApplyRow(row, item)
       end)
       row.crPick:SetScript("OnLeave", GameTooltip_Hide)
       row.crPick:Show()
-      local q = row.crCartQty
-      -- the row now shows another recipe while you were typing in it: finish that one first
-      if q:HasFocus() and (q.crSpell ~= r.spell or q.crList ~= item.list) then q:ClearFocus() end
-      q.crList, q.crSpell = item.list, r.spell
-      if not q:HasFocus() then q:SetText(tostring(entry.qty or 1)) end
-      q:Show()
+      local b = row.crQtyBtn
+      b.crList, b.crSpell = item.list, r.spell
+      b.text:SetText(tostring(entry.qty or 1))
+      b.text:SetShown(not (qtyEd and qtyEd:IsShown() and qtyEd.btn == b))
+      b:Show()
     end
     local learned = item.learned
     if learned == nil then learned = RecipeLearned(item.prof, r) == true end
@@ -1148,8 +1123,8 @@ local function ApplyRow(row, item)
     star:ClearAllPoints()
     star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
     if fav then
-      row.crCartQty:ClearAllPoints()
-      row.crCartQty:SetPoint("RIGHT", star, "LEFT", -10, 0)
+      row.crQtyBtn:ClearAllPoints()
+      row.crQtyBtn:SetPoint("RIGHT", star, "LEFT", -10, 0)
     end
     star.tex:SetDesaturated(not item.fav)
     star.tex:SetAlpha(item.fav and 1 or 0.3)
@@ -2292,11 +2267,13 @@ local function LayoutHeader()
     overlay.modeDD:SetWidth(avail)
     listTop = listTop - 24
   end
-  if list and overlay.listTop ~= listTop then
-    overlay.listTop = listTop
+  -- (the Craft view has no bar under its left list: the list reaches the bottom)
+  local listBottom = dest and 8 or (8 + COST_BAR_H + 4)
+  if list and (overlay.listTop ~= listTop or overlay.listBottom ~= listBottom) then
+    overlay.listTop, overlay.listBottom = listTop, listBottom
     list:ClearAllPoints()
     list:SetPoint("TOPLEFT", overlay, "TOPLEFT", 6, listTop)
-    list:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 6, 8 + COST_BAR_H + 4)
+    list:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", 6, listBottom)
     list:SetPoint("RIGHT", overlay.divider, "LEFT", -4, 0)
   end
   -- main CraftRoute window button, above the recipe at the right edge
@@ -2340,6 +2317,8 @@ local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
   for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList, f.favAll, f.favCart }) do w:SetShown(on) end
+  if not on and qtyEd and qtyEd:IsShown() then qtyEd:ClearFocus() end
+  if on and MatSettings().shown then ToggleMatPanel(true) elseif matPanel then matPanel:Hide() end
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
@@ -2358,6 +2337,215 @@ local function SetDestWidgets(on)
     f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, 0)
     f.schematic:Show()
   end
+end
+
+-- The amount editor: one box, opened over the amount button you click. It isn't one of the list's
+-- rows, so a refresh never hides it or moves what you type to another recipe. It opens empty
+-- (the amount it had shows faintly), so the first key you press is the first digit.
+function CR.OpenQtyEditor(btn)
+  if not qtyEd then
+    local e = CreateFrame("EditBox", nil, overlay, "InputBoxTemplate")
+    e:SetAutoFocus(false)
+    e:SetNumeric(true)
+    e:SetMaxLetters(4)
+    e:SetJustifyH("CENTER")
+    e:Hide()
+    e.hint = e:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    e.hint:SetPoint("CENTER")
+    local function Save()
+      local n = tonumber(e:GetText())
+      if e.spell and n and n >= 1 then CartEntry(e.list, e.spell).qty = math.min(9999, math.floor(n)) end
+    end
+    e:SetScript("OnTextChanged", function()
+      e.hint:SetShown(e:GetText() == "")
+      if e.spell then Save() UpdateFavCart() end   -- the totals follow as you type
+    end)
+    e:SetScript("OnEnterPressed", function() e:ClearFocus() end)
+    e:SetScript("OnEscapePressed", function() e.cancel = true e:ClearFocus() end)
+    e:SetScript("OnEditFocusLost", function()
+      if e.spell then
+        if e.cancel then CartEntry(e.list, e.spell).qty = e.old or nil else Save() end
+        local b = e.btn
+        if b and b.crSpell == e.spell and b.crList == e.list then
+          b.text:SetText(tostring(CartEntry(e.list, e.spell).qty or 1))
+          b.text:Show()
+        end
+      end
+      e.cancel, e.spell, e.btn = false, false, false
+      e:Hide()
+      UpdateFavCart()
+    end)
+    e.cancel, e.spell, e.btn, e.list, e.old = false, false, false, false, false
+    qtyEd = e
+  end
+  local e = qtyEd
+  if e:IsShown() then e:ClearFocus() end   -- (another amount was open: it's kept)
+  e.btn, e.list, e.spell = btn, btn.crList, btn.crSpell
+  e.old = CartEntry(e.list, e.spell).qty or false
+  e.cancel = false
+  e:SetFrameLevel(btn:GetFrameLevel() + 20)
+  e:ClearAllPoints()
+  e:SetPoint("TOPLEFT", btn, "TOPLEFT", 4, 0)
+  e:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 0)
+  e.hint:SetText(tostring(e.old or 1))   -- (false: never set - 1)
+  e:SetText("")
+  e.hint:Show()
+  btn.text:Hide()
+  e:Show()
+  e:SetFocus()
+end
+
+-- The materials panel: beside the profession window, everything the ticked recipes need at their
+-- amounts - all together (Total), or recipe by recipe (By recipe). have / need, as the list counts.
+local MAT_ROW = 18
+MatSettings = function()
+  local db = DB()
+  if not db then return {} end
+  db.matPanel = db.matPanel or {}
+  return db.matPanel
+end
+local function MatPanel()
+  if matPanel then return matPanel end
+  local p = CreateFrame("Frame", nil, overlay, "BackdropTemplate")
+  p:SetWidth(270)
+  CR.Backdrop(p, 0.04, 0.04, 0.05, 0.96)
+  p:EnableMouse(true)
+  p:EnableMouseWheel(true)
+  p:Hide()
+  p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  p.title:SetPoint("TOPLEFT", 10, -10)
+  p.title:SetText("Materials")
+  CR.ThemeRegisterAccentText(p.title)
+  local function ViewBtn(text, view, x)
+    local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+    b:SetSize(76, 20)
+    b:SetPoint("TOPRIGHT", x, -7)
+    b:SetText(text)
+    CR.ThemeRegisterButton(b)
+    b:SetScript("OnClick", function()
+      MatSettings().view = view
+      p.offset = 0
+      p:Refresh()
+    end)
+    b.view = view
+    return b
+  end
+  p.byRecipe = ViewBtn("By recipe", "recipe", -8)
+  p.total = ViewBtn("Total", "total", -88)
+  p.rows = {}
+  p.offset = 0
+  p.note = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  p.note:SetPoint("TOPLEFT", 10, -40)
+  p.note:SetPoint("RIGHT", p, "RIGHT", -10, 0)
+  p.note:SetJustifyH("LEFT")
+  p.note:SetWordWrap(true)
+  p:SetScript("OnMouseWheel", function(self, delta)
+    self.offset = math.max(0, (self.offset or 0) - delta)
+    self:Refresh()
+  end)
+  local function Row(i)
+    local r = p.rows[i]
+    if r then return r end
+    r = CreateFrame("Frame", nil, p)
+    r:SetHeight(MAT_ROW)
+    r:SetPoint("TOPLEFT", 8, -36 - (i - 1) * MAT_ROW)
+    r:SetPoint("RIGHT", p, "RIGHT", -8, 0)
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(MAT_ROW - 3, MAT_ROW - 3)
+    r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    r.count = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    r.count:SetPoint("RIGHT", 0, 0)
+    r.count:SetJustifyH("RIGHT")
+    r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    r.name:SetPoint("RIGHT", r.count, "LEFT", -6, 0)
+    r.name:SetJustifyH("LEFT")
+    r.name:SetWordWrap(false)
+    r:EnableMouse(true)
+    r:SetScript("OnEnter", function(self)
+      if not self.id then return end
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetItemByID(self.id)
+      GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", GameTooltip_Hide)
+    p.rows[i] = r
+    return r
+  end
+  function p:Refresh()
+    if not self:IsShown() then return end
+    local view = MatSettings().view == "recipe" and "recipe" or "total"
+    for _, b in ipairs({ self.total, self.byRecipe }) do
+      if b.LockHighlight then if b.view == view then b:LockHighlight() else b:UnlockHighlight() end end
+      CR.ThemeSetButtonActive(b, b.view == view)
+    end
+    local fc = overlay.favCart
+    local cart = DestCart(fc.list)
+    local lines, totals, order = {}, {}, {}
+    for _, it in ipairs(fc.favs or {}) do
+      local e = cart[it.recipe.spell]
+      if e and e.on then
+        local qty = e.qty or 1
+        if view == "recipe" then
+          table.insert(lines, { header = string.format("%s  x%d", it.recipe.name, qty), recipe = it.recipe })
+        end
+        for _, rg in ipairs(it.recipe.reagents or {}) do
+          local n = rg[2] * qty
+          if view == "recipe" then
+            table.insert(lines, { id = rg[1], need = n })
+          else
+            if not totals[rg[1]] then table.insert(order, rg[1]) end
+            totals[rg[1]] = (totals[rg[1]] or 0) + n
+          end
+        end
+      end
+    end
+    if view == "total" then
+      table.sort(order, function(a, b) return CR.ItemName(a) < CR.ItemName(b) end)
+      for _, id in ipairs(order) do table.insert(lines, { id = id, need = totals[id] }) end
+    end
+    self.note:SetText(#lines == 0 and "Tick recipes in Your crafts to see what they need." or "")
+    self.note:SetShown(#lines == 0)
+    local vis = math.max(1, math.floor(((tonumber(self:GetHeight()) or 300) - 44) / MAT_ROW))
+    self.offset = math.max(0, math.min(self.offset or 0, #lines - vis))
+    local shown = math.min(vis, #lines - self.offset)
+    for i = 1, shown do
+      local l, r = lines[self.offset + i], Row(i)
+      r.icon:ClearAllPoints()
+      if l.header then
+        r.id = nil
+        r.icon:SetTexture(CR.RecipeIcon(l.recipe))
+        r.icon:SetPoint("LEFT", 0, 0)
+        r.name:SetPoint("LEFT", r.icon, "RIGHT", 5, 0)
+        r.name:SetText(CR.ColorText(l.header, "ffd100"))
+        r.count:SetText("")
+      else
+        r.id = l.id
+        r.icon:SetTexture(CR.GetItemIcon(l.id) or "Interface\\Icons\\INV_Misc_QuestionMark")
+        r.icon:SetPoint("LEFT", view == "recipe" and 14 or 0, 0)
+        r.name:SetPoint("LEFT", r.icon, "RIGHT", 5, 0)
+        r.name:SetText(CR.ItemName(l.id))
+        local have = CR.HaveCount(l.id)
+        r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(have, l.need), l.need), have >= l.need and "40ff40" or "ffd100"))
+      end
+      r:Show()
+    end
+    for i = shown + 1, #self.rows do self.rows[i]:Hide() end
+    if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, self) end
+  end
+  p:SetScript("OnShow", function(self) self:Refresh() end)
+  matPanel = p
+  return p
+end
+-- open / close it (remembered), beside the profession window's right edge, past its side tabs
+ToggleMatPanel = function(show)
+  local p = MatPanel()
+  if show == nil then show = not p:IsShown() end
+  MatSettings().shown = show or nil
+  p:ClearAllPoints()
+  local host = ProfessionsFrame or overlay
+  p:SetPoint("TOPLEFT", host, "TOPRIGHT", 44, -2)
+  p:SetPoint("BOTTOMLEFT", host, "BOTTOMRIGHT", 44, 2)
+  p:SetShown(show)
 end
 
 -- The shopping line under your list (and the header's select-all tick): how many are ticked, what
@@ -2388,7 +2576,7 @@ function UpdateFavCart()
         if p then profit = profit + p * (e.qty or 1) else noPrice = noPrice + 1 end
       end
     end
-    local total, unpriced = CR.NeedsCost(CR.MultiNeeds(entries))
+    local total, unpriced = CR.NeedsCost(CR.MultiNeeds(entries, true))
     goldText = CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
       .. (unpriced > 0 and CR.ColorText(string.format(" (+%d unpriced)", unpriced), "ff9966") or "")
     profitText = CR.ColorText("Profit ", "aaaaaa") .. ((noPrice < #entries) and ProfitText(profit) or CR.ColorText("no price", "888888"))
@@ -2397,6 +2585,7 @@ function UpdateFavCart()
   fc.gold:SetText(goldText)
   fc.profit:SetText(profitText)
   fc:SetShown(#favs > 0)
+  if matPanel and matPanel:IsShown() then matPanel:Refresh() end
 end
 
 -- Right column: your destinations at the top (up to 5 rows, then it scrolls), the recipe panel under.
@@ -2409,10 +2598,12 @@ local function LayoutDestRight()
   f.favHeader:SetPoint("LEFT", f.favAll, "RIGHT", 4, 0)   -- under Open CraftRoute
   f.favList:ClearAllPoints()
   f.favList:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 8, -58)
-  f.favList:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 40)   -- (the shopping line under it)
+  f.favList:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8 + COST_BAR_H + 4)   -- (the shopping line under it)
+  -- the shopping line: the same height and gaps from the border / divider as the route cost bar
   f.favCart:ClearAllPoints()
-  f.favCart:SetPoint("BOTTOMLEFT", f.divider, "BOTTOMRIGHT", 8, 8)
-  f.favCart:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+  f.favCart:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 8)
+  f.favCart:SetPoint("LEFT", f.divider, "RIGHT", 4, 0)
+  f.favCart:SetPoint("RIGHT", f, "RIGHT", -6, 0)
   f.favEmpty:ClearAllPoints()
   f.favEmpty:SetPoint("TOPLEFT", f.favList, "TOPLEFT", 8, -8)
   f.favEmpty:SetPoint("RIGHT", f, "RIGHT", -16, 0)
@@ -2593,7 +2784,7 @@ local function DestRefresh(name)
     f.costBar.money:SetText(CR.FormatMoney(total))
     f.costBar.note:SetText(unpriced > 0 and CR.ColorText(string.format("(+%d unpriced)", unpriced), "ff9966") or "")
   end
-  f.costBar:SetShown(#favs > 0)
+  f.costBar:Hide()   -- (the Craft view's totals are under your crafts, on the right)
   if CR.RefreshBuyPop then CR.RefreshBuyPop() end
 end
 
@@ -3469,17 +3660,17 @@ local function BuildOverlay()
   frame.favAll:SetScript("OnLeave", GameTooltip_Hide)
   -- along the bottom: one Auctionator shopping list for every ticked recipe at its amount
   local fc = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-  fc:SetHeight(28)
+  fc:SetHeight(COST_BAR_H)
   CR.Backdrop(fc, 0, 0, 0, 0.55)
   fc.button = CreateFrame("Button", nil, fc, "UIPanelButtonTemplate")
-  fc.button:SetSize(28, 20)
-  fc.button:SetPoint("RIGHT", -6, 0)
+  fc.button:SetSize(24, 18)
+  fc.button:SetPoint("RIGHT", -4, 0)
   fc.button:SetText("")
   CR.ThemeRegisterButton(fc.button)
   CR.AddCartIcon(fc.button, false)
   -- right to left: the cart, what selling what they make would earn, what buying it all costs
   fc.profit = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  fc.profit:SetPoint("RIGHT", fc.button, "LEFT", -8, 0)
+  fc.profit:SetPoint("RIGHT", fc.button, "LEFT", -34, 0)   -- (the materials pop-out sits between)
   fc.profit:SetJustifyH("RIGHT")
   fc.gold = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fc.gold:SetPoint("RIGHT", fc.profit, "LEFT", -14, 0)
@@ -3499,7 +3690,7 @@ local function BuildOverlay()
       if e and e.on then table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 }) end
     end
     if #entries == 0 then return end
-    CR.CreateMultiShoppingList(entries, "CraftRoute: " .. tostring(name) .. " crafts")
+    CR.CreateMultiShoppingList(entries, "CraftRoute: " .. tostring(name) .. " crafts", true)
   end)
   fc.button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -3507,12 +3698,28 @@ local function BuildOverlay()
     GameTooltip:AddLine("Cost: what buying what they still need costs. Profit: what they'd make sold on the AH (less "
       .. "the 5% cut), minus what their materials cost, at the amounts set.", 0.8, 0.8, 0.8, true)
     GameTooltip:AddLine("One Auctionator shopping list with everything the ticked recipes need, at the amounts "
-      .. "you set - less what you have (counted once across them all). Parts you can make yourself are "
-      .. "bought as what they're made from; vendor items are left off.", 1, 1, 1, true)
+      .. "you set - their own materials, less what you have (counted once across them all). Vendor items "
+      .. "are left off.", 1, 1, 1, true)
     if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
     GameTooltip:Show()
   end)
   fc.button:SetScript("OnLeave", GameTooltip_Hide)
+  -- beside the cart: pop out the materials panel
+  fc.mats = CreateFrame("Button", nil, fc, "UIPanelButtonTemplate")
+  fc.mats:SetSize(24, 18)
+  fc.mats:SetPoint("RIGHT", fc.button, "LEFT", -2, 0)
+  fc.mats:SetText("")
+  CR.ThemeRegisterButton(fc.mats)
+  CR.AddPopoutIcon(fc.mats)
+  fc.mats:SetScript("OnClick", function() ToggleMatPanel() end)
+  fc.mats:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Materials for the selected")
+    GameTooltip:AddLine("Opens a panel beside this window: every material the ticked recipes need at their amounts - "
+      .. "all together, or recipe by recipe.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  fc.mats:SetScript("OnLeave", GameTooltip_Hide)
   frame.favCart = fc
   for _, w in ipairs({ frame.viewRoute, frame.viewDest }) do w:Show() end
   for _, w in ipairs({ frame.destSearch, frame.destFilterDD, frame.favHeader, frame.favList, frame.favEmpty, frame.favAll, frame.favCart }) do w:Hide() end

@@ -91,7 +91,9 @@ end
 -- yourself (a bolt of cloth, a cured hide - a recipe of the same profession you can make) isn't
 -- bought: what it's made from is, a level further in.
 -- What those entries still need to get: { { id, missing, name } }, in the order first met.
-function CR.MultiNeeds(entries)
+-- direct: just the recipes' own materials (Light Leather stays Light Leather - it isn't broken
+-- down into the scraps it's made from).
+function CR.MultiNeeds(entries, direct)
   local used, need, order = {}, {}, {}
   local function Add(prof, skill, id, n, depth)
     local bags, elsewhere = CR.BagsAndElsewhere(id)
@@ -99,7 +101,7 @@ function CR.MultiNeeds(entries)
     used[id] = (used[id] or 0) + take
     local short = n - take
     if short <= 0 then return end
-    local maker = depth < 3 and prof and prof.byItem[id] and prof.recipes[prof.byItem[id]]
+    local maker = not direct and depth < 3 and prof and prof.byItem[id] and prof.recipes[prof.byItem[id]]
     if maker and (maker.learn or 1) <= skill then
       local times = math.ceil(short / (maker.makes or 1))
       for _, rg in ipairs(maker.reagents or {}) do Add(prof, skill, rg[1], rg[2] * times, depth + 1) end
@@ -133,8 +135,8 @@ function CR.NeedsCost(wanted)
   return total, unpriced
 end
 
-function CR.CreateMultiShoppingList(entries, listName)
-  MakeShoppingList(listName, CR.MultiNeeds(entries))
+function CR.CreateMultiShoppingList(entries, listName, direct)
+  MakeShoppingList(listName, CR.MultiNeeds(entries, direct))
 end
 
 -- Just one step / recipe.
