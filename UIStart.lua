@@ -25,6 +25,8 @@ local GROUPS = {
   }},
 }
 
+CR.PROFESSION_GROUPS = GROUPS   -- the Professions book's pickers use the same list (UIBook.lua)
+
 local ROW_H = 24
 
 local function HasRoute(name)

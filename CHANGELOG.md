@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.39.0
+
+- The game's Professions book (K): each section you haven't learned yet shows CraftRoute's picker instead of Blizzard's "Visit a trainer..." text.
+  - **First / Second Profession:** a big icon - click it for a grid of every primary profession (crafting and gathering), click the one you want. Its name and what it does show beside the icon, and on the right the three nearest trainers for your faction with **Pin** buttons for a map waypoint. Your pick is remembered per character. A profession you've learned, or picked for the other section, is greyed out.
+  - **Cooking / Fishing / First Aid:** the nearest trainers for that one, with Pin buttons.
+  - Once a section is learned it's Blizzard's own again.
+
 ## 0.38.2
 
 - Fixed the Professions tab doing nothing when clicked (and the keybind landing on Plan instead): the tab failed to build in game, so the window fell back to Plan.
