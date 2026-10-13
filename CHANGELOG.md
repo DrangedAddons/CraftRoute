@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.48.0
+
+- Materials trackers are **per profession**: each profession gets its own pop-out window, with its own position, width, height, scale, collapsed state, sort and hidden items - and several can be open at once. The Tracker button and `/cr tracker` open the one for the profession CraftRoute is on; the pop-out on the profession window's tab opens that tab's. Each has its own mover in EllesmereUI's unlock mode ("CraftRoute Tracker: <profession>"). New ones open a little offset so they don't sit on top of each other. Your existing tracker's settings carry over to the profession it was showing.
+
 ## 0.47.0
 
 - Loot progress is now part of **EllesmereUI's loot feed** (Forever Essentials) instead of a feed of its own: the row EllesmereUI shows for an item your route needs gets "have/need" on its own second line, in whatever font, size and colour that feed's style uses - Bar, Box, Toast, and Icon Tray (on its name callout). Rows that already use that line (item level, "Quest Item") are left alone. It reads EllesmereUI's own loot-feed hooks (`EllesmereUI._LootFeed`), so it moves, sizes and themes with that feed; nothing of EllesmereUI's is changed and no row is added. Counts are the profession picked in CraftRoute: what you have (bags, bank, mail, alts if ticked) plus what the route makes on the way, as the item tooltip counts it. Needs EllesmereUI's loot feed turned on (with items shown).
