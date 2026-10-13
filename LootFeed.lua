@@ -1,5 +1,5 @@
 -- Loot progress: when you loot (or craft) something the route needs, a short row of CraftRoute's
--- own slides in - "Copper Ore  60/100 > 61/100" - and fades out (movable in EllesmereUI's unlock
+-- own slides in - "Copper Ore   61/100" - and fades out (movable in EllesmereUI's unlock
 -- mode, or with /cr feed move). /cr feed ellesmere instead writes it on the second line of
 -- EllesmereUI's own loot-feed row for the item (CraftRoute's row only when that feed isn't
 -- showing it). Items the route doesn't need don't show. The counts are the route's own: what it
@@ -8,7 +8,7 @@
 local _, CR = ...
 local GetItemCount = CR.GetItemCount   -- (C_Item's in Forever: there's no global GetItemCount)
 
-local ROW_W, ROW_H, GAP, MAX_ROWS = 280, 30, 2, 6
+local ROW_W, ROW_H, GAP, MAX_ROWS = 360, 42, 3, 6
 local SHOW_FOR, FADE_OUT = 6, 0.8
 -- beside EllesmereUI's feed (its default: bottom right, 320 in, 260 up, 300 wide)
 local DEFAULT_POS = { "BOTTOMRIGHT", "BOTTOMRIGHT", -640, 260 }
@@ -58,18 +58,18 @@ local function NewRow()
   r.bar:SetPoint("BOTTOMLEFT", 1, 1)
   r.bar:SetWidth(3)
   r.icon = r:CreateTexture(nil, "ARTWORK")
-  r.icon:SetSize(ROW_H - 6, ROW_H - 6)
-  r.icon:SetPoint("LEFT", 8, 0)
+  r.icon:SetSize(ROW_H - 8, ROW_H - 8)
+  r.icon:SetPoint("LEFT", 9, 0)
   r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-  r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  r.name:SetPoint("TOPLEFT", r.icon, "TOPRIGHT", 6, -1)
-  r.name:SetPoint("RIGHT", r, "RIGHT", -6, 0)
+  -- one line: icon, the item, and on the right what you have now of what the route needs
+  r.count = r:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  r.count:SetPoint("RIGHT", r, "RIGHT", -10, 0)
+  r.count:SetJustifyH("RIGHT")
+  r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  r.name:SetPoint("LEFT", r.icon, "RIGHT", 8, 0)
+  r.name:SetPoint("RIGHT", r.count, "LEFT", -10, 0)
   r.name:SetJustifyH("LEFT")
   r.name:SetWordWrap(false)
-  r.count = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  r.count:SetPoint("BOTTOMLEFT", r.icon, "BOTTOMRIGHT", 6, 1)
-  r.count:SetPoint("RIGHT", r, "RIGHT", -6, 0)
-  r.count:SetJustifyH("LEFT")
   r.fade = r:CreateAnimationGroup()
   local a = r.fade:CreateAnimation("Alpha")
   a:SetFromAlpha(1)
@@ -117,10 +117,7 @@ local function Fill(r)
   local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality or 1]
   r.name:SetText(CR.ItemName(r.itemID))
   if qc and qc.r then r.name:SetTextColor(qc.r, qc.g, qc.b) else r.name:SetTextColor(1, 1, 1) end
-  r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(r.before, r.need), r.need), "aaaaaa")
-    .. CR.ColorText("  >  ", "888888")
-    .. CR.ColorText(string.format("%d/%d", math.min(r.after, r.need), r.need), c)
-    .. (done and CR.ColorText("  done", "40ff40") or ""))
+  r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(r.after, r.need), r.need), c))
   r.bar:SetColorTexture(done and 0.25 or 1, done and 1 or 0.82, done and 0.25 or 0, 0.9)
 end
 
@@ -192,10 +189,7 @@ local function ShowInEllesmere(itemID, before, after, need)
       if w > 0 and w < 140 then return false end
       local done = after >= need
       r.sub:SetText(CR.ColorText("Route  ", "66ccff")
-        .. CR.ColorText(string.format("%d/%d", math.min(before, need), need), "aaaaaa")
-        .. CR.ColorText(" > ", "888888")
-        .. CR.ColorText(string.format("%d/%d", math.min(after, need), need), done and "40ff40" or "ffd100")
-        .. (done and CR.ColorText("  done", "40ff40") or ""))
+        .. CR.ColorText(string.format("%d/%d", math.min(after, need), need), done and "40ff40" or "ffd100"))
       r.sub:Show()
       -- two lines: the name moves up (as EllesmereUI lays out a row with a second line)
       if r.name and r.icon and r.value then
