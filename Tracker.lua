@@ -124,8 +124,10 @@ function CR.RefreshTracker()
   -- how many lines fit: the set height's worth, or (no height set) the whole list
   local setH = Settings().height
   -- the Shopping list button along the bottom (with Auctionator)
-  local shop = CR.HasAuctionator() and not collapsed and #list > 0
-  local bottom = 8 + (shop and 22 or 0)
+  -- the bottom line: Alts (always) and, with Auctionator, the cost and the cart
+  local bottomBar = not collapsed and #list > 0
+  local shop = bottomBar and CR.HasAuctionator()
+  local bottom = 8 + (bottomBar and 22 or 0)
   local vis = setH and math.max(1, math.floor((setH - top - bottom) / ROW_H)) or math.min(#list, MAX_ROWS)
   offset = math.max(0, math.min(offset, #list - vis))
   local scrolling = #list > vis
@@ -195,6 +197,11 @@ function CR.RefreshTracker()
     end
   end
   frame.cost:SetShown(shop)
+  frame.alts:SetShown(bottomBar)
+  frame.alts:Sync()
+  frame.alts:ClearAllPoints()
+  if shop then frame.alts:SetPoint("RIGHT", frame.shop, "LEFT", -28, 0)
+  else frame.alts:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -44, 5) end
   frame.cost:SetText(CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or ""))
   frame.note:ClearAllPoints()
@@ -228,7 +235,7 @@ function CR.RefreshTracker()
   if shop then
     SameFont(frame.cost)
     m:SetText(frame.cost:GetText() or "")
-    costW = 8 + (tonumber(m:GetStringWidth()) or 0) + 6 + 24 + 16
+    costW = 8 + (tonumber(m:GetStringWidth()) or 0) + 6 + 46 + 24 + 16
   end
   local needW = math.ceil(math.max(rowW, headW, costW, editBar and 190 or 0))   -- (All / None / Vendor fit)
   frame:SetWidth(math.min(Settings().width or needW, needW))
@@ -307,7 +314,11 @@ local function Build()
   -- beside it: what the shown materials still to buy cost
   frame.cost = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.cost:SetPoint("LEFT", frame, "BOTTOMLEFT", 8, 15)
-  frame.cost:SetPoint("RIGHT", frame.shop, "LEFT", -6, 0)
+  -- the Count alts' materials setting (the same one as elsewhere), as a short "Alts" tickbox
+  frame.alts = CR.CreateAltsCheck(frame, "Alts")
+  frame.alts:SetSize(18, 18)
+  frame.alts:Hide()
+  frame.cost:SetPoint("RIGHT", frame.alts, "LEFT", -6, 0)
   frame.cost:SetJustifyH("LEFT")
   frame.cost:SetWordWrap(false)
   frame.cost:Hide()

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.7
+
+- Materials tracker: an **Alts** tickbox on its bottom line, beside the cart - the same "Count alts' materials" setting as on the Plan tab and the profession window tab (ticking it here changes it everywhere). It shows without Auctionator too.
+
 ## 0.46.6
 
 - Materials tracker: the bottom is one compact line - **Cost** of what you still need to buy of the materials it shows (vendor or AH prices; "+N unpriced" for any without a price; hidden items and the route's own crafts left out), and the small shopping-cart button beside it.
