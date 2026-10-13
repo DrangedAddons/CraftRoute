@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.41.3
+
+- Loot feed: fixed the rows never appearing ("LootFeed.lua:226: attempt to call a nil value") - 0.41.1's wait-for-the-bags check used a game function Forever doesn't have.
+
 ## 0.41.2
 
 - Loot feed: `/cr feed why` says in chat, for every loot line, whether it got a row and why not - e.g. "Silk Cloth x1 - no row: the Leatherworking route doesn't need it (its plan runs to skill 150)", or a line it didn't recognise. `/cr feed why` again stops it.

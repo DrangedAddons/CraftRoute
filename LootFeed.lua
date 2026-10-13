@@ -4,6 +4,7 @@
 -- the route's own: what it needs in total, and what you have as its materials list counts it.
 -- /cr feed (on / off), /cr feed move (drag it), /cr feed test. Kept per character.
 local _, CR = ...
+local GetItemCount = CR.GetItemCount   -- (C_Item's in Forever: there's no global GetItemCount)
 
 local ROW_W, ROW_H, GAP, MAX_ROWS = 280, 30, 2, 6
 local SHOW_FOR, FADE_OUT = 6, 0.8
