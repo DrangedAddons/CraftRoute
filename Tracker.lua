@@ -467,6 +467,41 @@ local function Build()
   end)
 end
 
+-- A labelled slider with its value (the size panel)
+local function Slider(parent, label, lo, hi, step, get, set, fmt)
+  local f = CreateFrame("Frame", nil, parent)
+  f:SetSize(250, 34)
+  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  f.label:SetPoint("TOPLEFT", 0, 0)
+  f.label:SetText(label)
+  f.value = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  f.value:SetPoint("TOPRIGHT", 0, 0)
+  local sl = CreateFrame("Slider", nil, f, "BackdropTemplate")
+  sl:SetOrientation("HORIZONTAL")
+  sl:SetPoint("TOPLEFT", 0, -16)
+  sl:SetPoint("TOPRIGHT", 0, -16)
+  sl:SetHeight(12)
+  CR.Backdrop(sl, 0.08, 0.08, 0.1, 0.95)
+  sl:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+  sl:SetMinMaxValues(lo, hi)
+  sl:SetValueStep(step)
+  if sl.SetObeyStepOnDrag then sl:SetObeyStepOnDrag(true) end
+  sl:EnableMouseWheel(true)
+  sl:SetScript("OnMouseWheel", function(self, d) self:SetValue(self:GetValue() + d * step) end)
+  sl:SetScript("OnValueChanged", function(_, v)
+    if f.syncing then return end
+    set(v)
+    f.value:SetText(string.format(fmt, get()))
+  end)
+  function f:Sync()
+    self.syncing = true
+    sl:SetValue(get())
+    self.value:SetText(string.format(fmt, get()))
+    self.syncing = false
+  end
+  return f
+end
+
 -- New width / scale / height (nil: unchanged), kept per character.
 function CR.TrackerSetSize(w, scale, h)
   local s = Settings()
@@ -501,13 +536,13 @@ function CR.TrackerSizePanel(owner)
     CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
     p:EnableMouse(true)
     p:Hide()
-    local wsl = CR.MakeSlider(p, "Width", MIN_W, MAX_W, 10, Width, function(v) CR.TrackerSetSize(v, nil) end, "%d")
+    local wsl = Slider(p, "Width", MIN_W, MAX_W, 10, Width, function(v) CR.TrackerSetSize(v, nil) end, "%d")
     wsl:SetPoint("TOPLEFT", 12, -10)
     wsl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
-    local ssl = CR.MakeSlider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) CR.TrackerSetSize(nil, v) end, "%.2f")
+    local ssl = Slider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) CR.TrackerSetSize(nil, v) end, "%.2f")
     ssl:SetPoint("TOPLEFT", 12, -50)
     ssl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
-    local hsl = CR.MakeSlider(p, "Height (shorter scrolls)", MIN_H, MAX_H, 10,
+    local hsl = Slider(p, "Height (shorter scrolls)", MIN_H, MAX_H, 10,
       function() return Settings().height or math.floor(frame:GetHeight() + 0.5) end,
       function(v) CR.TrackerSetSize(nil, nil, v) end, "%d")
     hsl:SetPoint("TOPLEFT", 12, -90)

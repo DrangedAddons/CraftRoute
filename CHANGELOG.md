@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.47.0
+
+- Loot progress is now part of **EllesmereUI's loot feed** (Forever Essentials) instead of a feed of its own: the row EllesmereUI shows for an item your route needs gets "have/need" on its own second line, in whatever font, size and colour that feed's style uses - Bar, Box, Toast, and Icon Tray (on its name callout). Rows that already use that line (item level, "Quest Item") are left alone. It reads EllesmereUI's own loot-feed hooks (`EllesmereUI._LootFeed`), so it moves, sizes and themes with that feed; nothing of EllesmereUI's is changed and no row is added. Counts are the profession picked in CraftRoute: what you have (bags, bank, mail, alts if ticked) plus what the route makes on the way, as the item tooltip counts it. Needs EllesmereUI's loot feed turned on (with items shown).
+- Removed CraftRoute's standalone loot feed, its "Loot feed" settings button and the `/cr feed` commands.
+
 ## 0.46.10
 
 - Materials tracker: the Sort dropdown (Route order / A-Z) moved out of the gear panel to its own place in Edit, beside the Vendor button.
