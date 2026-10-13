@@ -90,7 +90,8 @@ end
 -- them all, so two recipes sharing a reagent don't both count the same stock. A reagent you make
 -- yourself (a bolt of cloth, a cured hide - a recipe of the same profession you can make) isn't
 -- bought: what it's made from is, a level further in.
-function CR.CreateMultiShoppingList(entries, listName)
+-- What those entries still need to get: { { id, missing, name } }, in the order first met.
+function CR.MultiNeeds(entries)
   local used, need, order = {}, {}, {}
   local function Add(prof, skill, id, n, depth)
     local bags, elsewhere = CR.BagsAndElsewhere(id)
@@ -119,7 +120,21 @@ function CR.CreateMultiShoppingList(entries, listName)
   end
   local wanted = {}
   for _, id in ipairs(order) do table.insert(wanted, { id = id, missing = need[id], name = CR.ItemName(id) }) end
-  MakeShoppingList(listName, wanted)
+  return wanted
+end
+
+-- What getting those costs: vendor or AH price for each, and how many have no price yet.
+function CR.NeedsCost(wanted)
+  local total, unpriced = 0, 0
+  for _, w in ipairs(wanted) do
+    local price = CR.GetUnitPrice(w.id)
+    if price then total = total + price * w.missing else unpriced = unpriced + 1 end
+  end
+  return total, unpriced
+end
+
+function CR.CreateMultiShoppingList(entries, listName)
+  MakeShoppingList(listName, CR.MultiNeeds(entries))
 end
 
 -- Just one step / recipe.

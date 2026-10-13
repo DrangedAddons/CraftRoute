@@ -2464,9 +2464,30 @@ local function DestRefresh(name)
   f.favAll:SetChecked(#favs > 0 and picked == #favs)
   f.favAll:SetShown(#favs > 0)
   f.favCart.list, f.favCart.favs = name, favs
-  f.favCart.text:SetText(picked > 0 and string.format("Generate shopping list for the %d selected", picked)
+  f.favCart.text:SetText(picked > 0 and string.format("%d selected", picked)
     or CR.ColorText("Tick recipes for a shopping list", "888888"))
   f.favCart.button:SetEnabled(picked > 0 and CR.HasAuctionator() and true or false)
+  -- the gold: what the ticked recipes at their amounts still need to buy (what you have taken off)
+  -- and the profit: each one's profit per craft (as its details show it) times its amount
+  local goldText, profitText = "", ""
+  if picked > 0 and CR.HasAuctionator() and CR.MultiNeeds then
+    local entries, profit, noPrice = {}, 0, 0
+    for _, it in ipairs(favs) do
+      local e = cart[it.recipe.spell]
+      if e and e.on then
+        table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 })
+        local p = Profit(it.recipe)
+        if p then profit = profit + p * (e.qty or 1) else noPrice = noPrice + 1 end
+      end
+    end
+    local total, unpriced = CR.NeedsCost(CR.MultiNeeds(entries))
+    goldText = CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
+      .. (unpriced > 0 and CR.ColorText(string.format(" (+%d unpriced)", unpriced), "ff9966") or "")
+    profitText = CR.ColorText("Profit ", "aaaaaa") .. ((noPrice < #entries) and ProfitText(profit) or CR.ColorText("no price", "888888"))
+      .. ((noPrice > 0 and noPrice < #entries) and CR.ColorText(string.format(" (%d no price)", noPrice), "ff9966") or "")
+  end
+  f.favCart.gold:SetText(goldText)
+  f.favCart.profit:SetText(profitText)
   f.favCart:SetShown(#favs > 0)
   ui.keepScroll = true
   f.goalDD:Hide()
@@ -3382,8 +3403,19 @@ local function BuildOverlay()
   fc.button:SetText("")
   CR.ThemeRegisterButton(fc.button)
   CR.AddCartIcon(fc.button, false)
+  -- what buying it all costs, just left of the cart
+  fc.gold = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  fc.gold:SetPoint("RIGHT", fc.button, "LEFT", -8, 0)
+  fc.gold:SetJustifyH("RIGHT")
+  -- what selling what they make would earn (their profit at the amounts set)
+  fc.profit = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  fc.profit:SetPoint("RIGHT", fc.gold, "LEFT", -14, 0)
+  fc.profit:SetJustifyH("RIGHT")
   fc.text = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  fc.text:SetPoint("RIGHT", fc.button, "LEFT", -10, 0)
+  fc.text:SetPoint("LEFT", 8, 0)
+  fc.text:SetPoint("RIGHT", fc.profit, "LEFT", -10, 0)
+  fc.text:SetJustifyH("LEFT")
+  fc.text:SetWordWrap(false)
   fc.text:SetJustifyH("RIGHT")
   fc.button:SetScript("OnClick", function()
     local name = fc.list
@@ -3399,6 +3431,8 @@ local function BuildOverlay()
   fc.button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Shopping list for the selected")
+    GameTooltip:AddLine("Cost: what buying what they still need costs. Profit: what they'd make sold on the AH (less "
+      .. "the 5% cut), minus what their materials cost, at the amounts set.", 0.8, 0.8, 0.8, true)
     GameTooltip:AddLine("One Auctionator shopping list with everything the ticked recipes need, at the amounts "
       .. "you set - less what you have (counted once across them all). Parts you can make yourself are "
       .. "bought as what they're made from; vendor items are left off.", 1, 1, 1, true)

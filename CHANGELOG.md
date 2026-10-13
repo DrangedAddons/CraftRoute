@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.49.2
+
+- Craft view: the shopping line under "Your crafts" shows **Cost** (what buying what the ticked recipes still need costs, at their amounts, less what you have - vendor or AH prices, "+N unpriced" for any without one) and **Profit** (their profit per craft, as the recipe details show it, times the amounts) beside the cart: "N selected  Profit +..  Cost ..  [cart]".
+
 ## 0.49.1
 
 - Craft view: a recipe ticked for the shopping list is highlighted with the blue selection box (it doesn't open).
