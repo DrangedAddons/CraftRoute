@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.37.1
+
+- Craft view: while the recipe list is sorted by profit, each recipe shows its profit per craft beside its level (and "Not Learned") - green, red for a loss, or "no price".
+
 ## 0.37.0
 
 - New start page for characters with no profession yet: CraftRoute (/cr or the keybind) opens on a "Pick a profession" page listing every profession - crafting, gathering and the three secondary ones - with a line on what each does and what it pairs with. Pick one to see the three nearest trainers for your faction who teach it, with their zone and distance and a **Pin** button for a map waypoint (named in WaypointUI). Professions CraftRoute has a route for get a "Show me the leveling route" button that opens their plan. Trainer locations come from TrainerSpells; without it the page says to ask a city guard. Once you've learned a profession CraftRoute opens as before.

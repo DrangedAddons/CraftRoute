@@ -954,6 +954,11 @@ local function ApplyRow(row, item)
       -- the level it's learned at, and "Not Learned" if you don't know it yet
       -- (dimmed like the name: the red at 55%)
       sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Not Learned", "8c2323")))
+      -- sorted by profit: each one's profit per craft beside it
+      if DestSort(item.list) ~= "level" then
+        local p = Profit(r)
+        sub = sub .. "   " .. (p and ProfitText(p) or CR.ColorText("no price", "666666"))
+      end
     end
     row.right:SetText("")
     -- the crafted item's rarity colour; a recipe you don't know yet is the same colour, dimmed
