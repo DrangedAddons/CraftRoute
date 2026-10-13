@@ -2268,8 +2268,8 @@ local function LayoutHeader()
     overlay.modeDD:SetWidth(avail)
     listTop = listTop - 24
   end
-  -- (the Craft view has no bar under its left list: the list reaches the bottom)
-  local listBottom = dest and 8 or (8 + COST_BAR_H + 4)
+  -- (both views keep the bar under the left list - empty in the Craft view - so the columns line up)
+  local listBottom = 8 + COST_BAR_H + 4   -- (the bar under it stays, in both views)
   if list and (overlay.listTop ~= listTop or overlay.listBottom ~= listBottom) then
     overlay.listTop, overlay.listBottom = listTop, listBottom
     list:ClearAllPoints()
@@ -2820,7 +2820,11 @@ local function DestRefresh(name)
     f.costBar.money:SetText(CR.FormatMoney(total))
     f.costBar.note:SetText(unpriced > 0 and CR.ColorText(string.format("(+%d unpriced)", unpriced), "ff9966") or "")
   end
-  f.costBar:Hide()   -- (the Craft view's totals are under your crafts, on the right)
+  -- the left bar stays (empty) so both columns line up; the totals are under your crafts
+  f.costBar.label:SetText("")
+  f.costBar.money:SetText("")
+  f.costBar.note:SetText("")
+  f.costBar:Show()
   if CR.RefreshBuyPop then CR.RefreshBuyPop() end
 end
 
@@ -3700,13 +3704,13 @@ local function BuildOverlay()
   CR.Backdrop(fc, 0, 0, 0, 0.55)
   fc.button = CreateFrame("Button", nil, fc, "UIPanelButtonTemplate")
   fc.button:SetSize(24, 18)
-  fc.button:SetPoint("RIGHT", -4, 0)
+  fc.button:SetPoint("RIGHT", -30, 0)   -- (the materials pop-out is to its right)
   fc.button:SetText("")
   CR.ThemeRegisterButton(fc.button)
   CR.AddCartIcon(fc.button, false)
   -- right to left: the cart, what selling what they make would earn, what buying it all costs
   fc.profit = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  fc.profit:SetPoint("RIGHT", fc.button, "LEFT", -34, 0)   -- (the materials pop-out sits between)
+  fc.profit:SetPoint("RIGHT", fc.button, "LEFT", -8, 0)
   fc.profit:SetJustifyH("RIGHT")
   fc.gold = fc:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   fc.gold:SetPoint("RIGHT", fc.profit, "LEFT", -14, 0)
@@ -3744,7 +3748,7 @@ local function BuildOverlay()
   -- beside the cart: pop out the materials panel
   fc.mats = CreateFrame("Button", nil, fc, "UIPanelButtonTemplate")
   fc.mats:SetSize(24, 18)
-  fc.mats:SetPoint("RIGHT", fc.button, "LEFT", -2, 0)
+  fc.mats:SetPoint("RIGHT", fc, "RIGHT", -4, 0)
   fc.mats:SetText("")
   CR.ThemeRegisterButton(fc.mats)
   CR.AddPopoutIcon(fc.mats)

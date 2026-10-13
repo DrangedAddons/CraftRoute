@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.50.5
+
+- Craft view: on the shopping line the materials pop-out is now at the far right, the cart to its left.
+- Craft view: the left column keeps its bottom bar (empty there) so both columns line up, as in the Route view.
+
 ## 0.50.4
 
 - Materials panel: always starts closed - it shuts when the profession window closes and doesn't reopen by itself.
