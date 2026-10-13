@@ -2467,10 +2467,23 @@ local function MatPanel()
   end
   p.byRecipe = ViewBtn("By recipe", "recipe", -8)
   p.total = ViewBtn("Total", "total", -88)
+  -- vendor items (thread, dyes, flux...): shown unless you untick this
+  p.vendor = CreateFrame("CheckButton", nil, p, "UICheckButtonTemplate")
+  p.vendor:SetSize(20, 20)
+  p.vendor:SetPoint("TOPLEFT", 8, -32)
+  p.vendor.label = p.vendor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  p.vendor.label:SetPoint("LEFT", p.vendor, "RIGHT", 2, 0)
+  p.vendor.label:SetText("Show vendor items")
+  p.vendor:SetHitRectInsets(0, -110, 0, 0)   -- (the label clicks too)
+  p.vendor:SetScript("OnClick", function(self)
+    MatSettings().hideVendor = (not self:GetChecked()) or nil
+    p.offset = 0
+    p:Refresh()
+  end)
   p.rows = {}
   p.offset = 0
   p.note = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  p.note:SetPoint("TOPLEFT", 10, -40)
+  p.note:SetPoint("TOPLEFT", 10, -62)
   p.note:SetPoint("RIGHT", p, "RIGHT", -10, 0)
   p.note:SetJustifyH("LEFT")
   p.note:SetWordWrap(true)
@@ -2483,7 +2496,7 @@ local function MatPanel()
     if r then return r end
     r = CreateFrame("Frame", nil, p)
     r:SetHeight(MAT_ROW)
-    r:SetPoint("TOPLEFT", 8, -36 - (i - 1) * MAT_ROW)
+    r:SetPoint("TOPLEFT", 8, -58 - (i - 1) * MAT_ROW)
     r:SetPoint("RIGHT", p, "RIGHT", -8, 0)
     r.icon = r:CreateTexture(nil, "ARTWORK")
     r.icon:SetSize(MAT_ROW - 3, MAT_ROW - 3)
@@ -2513,6 +2526,9 @@ local function MatPanel()
       if b.LockHighlight then if b.view == view then b:LockHighlight() else b:UnlockHighlight() end end
       CR.ThemeSetButtonActive(b, b.view == view)
     end
+    local hideVendor = MatSettings().hideVendor
+    self.vendor:SetChecked(not hideVendor)
+    local function Skip(id) return hideVendor and CR.IsVendorItem and CR.IsVendorItem(id) end
     local fc = overlay.favCart
     local cart = DestCart(fc.list)
     local lines, totals, order = {}, {}, {}
@@ -2525,7 +2541,9 @@ local function MatPanel()
         end
         for _, rg in ipairs(it.recipe.reagents or {}) do
           local n = rg[2] * qty
-          if view == "recipe" then
+          if Skip(rg[1]) then
+            -- (a vendor item, hidden)
+          elseif view == "recipe" then
             table.insert(lines, { id = rg[1], need = n })
           else
             if not totals[rg[1]] then table.insert(order, rg[1]) end
@@ -2540,7 +2558,7 @@ local function MatPanel()
     end
     self.note:SetText(#lines == 0 and "Tick recipes in Your crafts to see what they need." or "")
     self.note:SetShown(#lines == 0)
-    local vis = math.max(1, math.floor(((tonumber(self:GetHeight()) or 300) - 44) / MAT_ROW))
+    local vis = math.max(1, math.floor(((tonumber(self:GetHeight()) or 300) - 66) / MAT_ROW))
     self.offset = math.max(0, math.min(self.offset or 0, #lines - vis))
     local shown = math.min(vis, #lines - self.offset)
     for i = 1, shown do

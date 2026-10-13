@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.7
+
+- Materials panel: a **Show vendor items** tickbox under its title - untick it to hide what vendors sell (thread, dyes, flux) from both views. Remembered.
+
 ## 0.50.6
 
 - Craft view, "Your crafts": each recipe's "costs" and "profit" lines are for the amount set beside it (they were for one), and change as you type the amount.
