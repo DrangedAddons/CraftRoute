@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.50.1
+
+- Shopping lists: making one now asks you to **name it**, with a suggested name filled in and selected - what it's for, the amount, and the time ("CraftRoute: Heavy Leather x5 (14:32)", "CraftRoute: Leatherworking crafts, 3 recipes (14:35)", "CraftRoute: Leatherworking route 141-150 (14:40)"). Enter (or Create) makes it; type over it for your own name; Escape (or Cancel) makes nothing.
+- The list CraftRoute made before for the same thing (that recipe, that profession's crafts, its route, its tracker) is removed when you make a new one, so they don't pile up - unless you gave it your own name, then it stays.
+
 ## 0.50.0
 
 - Craft view, "Your crafts" amounts - rebuilt: each row shows its amount as a small button; clicking it opens one editor over it, empty (the old amount shows faintly), so the first key you press is the first digit. Enter or clicking away keeps it, Escape goes back. The editor isn't part of the list's rows any more - before, every list refresh hid and re-showed the box you were typing in, which lost your typing (only the top row's amount stuck).

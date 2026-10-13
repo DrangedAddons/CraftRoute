@@ -402,7 +402,7 @@ local function NewTracker(PROF)
       for _, m in ipairs(self.items or {}) do
         if not hidden[m.id] then table.insert(mats, m) end
       end
-      CR.CreateShoppingList({ prof = prof, materials = mats })
+      CR.CreateShoppingList({ prof = prof .. " tracker", materials = mats })
     end)
     frame.shop:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_TOP")

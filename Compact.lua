@@ -3690,7 +3690,8 @@ local function BuildOverlay()
       if e and e.on then table.insert(entries, { recipe = it.recipe, crafts = e.qty or 1 }) end
     end
     if #entries == 0 then return end
-    CR.CreateMultiShoppingList(entries, "CraftRoute: " .. tostring(name) .. " crafts", true)
+    CR.CreateMultiShoppingList(entries, string.format("CraftRoute: %s crafts, %d recipe%s", tostring(name), #entries,
+      #entries == 1 and "" or "s"), true, "crafts:" .. tostring(name))
   end)
   fc.button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
