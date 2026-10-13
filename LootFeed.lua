@@ -310,12 +310,42 @@ local function OnLoot(text)
   C_Timer.After(0.1, Read)
 end
 
+-- EllesmereUI's unlock mode: CraftRoute's own rows get a mover there like EllesmereUI's frames
+-- (its public RegisterUnlockElements / MakeUnlockElement - what its own modules use).
+local function RegisterUnlock()
+  if not (EllesmereUI and EllesmereUI.RegisterUnlockElements and EllesmereUI.MakeUnlockElement) then return end
+  local function Pos()
+    local p = Settings().pos or DEFAULT_POS
+    return { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
+  end
+  EllesmereUI:RegisterUnlockElements({
+    EllesmereUI.MakeUnlockElement({
+      key = "CraftRouteLootFeed",
+      label = "CraftRoute Loot Progress",
+      group = "CraftRoute",
+      getFrame = function() Build() return anchor end,
+      getSize = function() return ROW_W, ROW_H end,
+      noResize = true,
+      isHidden = function() return not Settings().enabled end,
+      savePos = function(_, point, relPoint, x, y)
+        if not point then return end
+        Settings().pos = { point, relPoint or point, x or 0, y or 0 }
+        if not EllesmereUI._unlockActive then Place() end
+      end,
+      loadPos = Pos,
+      clearPos = function() Settings().pos = nil Place() end,
+      applyPos = function() Build() Place() end,
+    }),
+  }, "CraftRoute")
+end
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("CHAT_MSG_LOOT")
 ev:SetScript("OnEvent", function(_, event, text)
   if event == "PLAYER_LOGIN" then
     Build()
+    CR.SafeCall(RegisterUnlock)
   elseif event == "CHAT_MSG_LOOT" then
     CR.SafeCall(OnLoot, text)
   end
