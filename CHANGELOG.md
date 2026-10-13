@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.41.1
+
+- Loot feed: the count could be one behind (3 Light Leather showing as 2) - it read CraftRoute's item count before that had caught up with the loot. It now waits until the item is in your bags and counts it fresh.
+
 ## 0.41.0
 
 - Loot progress feed: when you loot (or craft) something your route needs, a short row slides in for a few seconds - icon, name and **60/100 > 61/100** (green "done" once you have enough). Items the route doesn't need don't show, so it sits beside EllesmereUI's loot feed (or chat) instead of repeating it. Looting more of the same while its row is up updates that row. Hover a row to keep it and see the item. Counts are the route's own: what it needs in total, and what you have the way its materials list counts it (bags, bank, mail, alts if "Count alts" is on).

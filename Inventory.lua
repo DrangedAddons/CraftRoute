@@ -55,6 +55,7 @@ function CR.GetLocations(itemID)
 end
 
 function CR.InvalidateLocations() wipe(cache) end
+function CR.InvalidateLocation(itemID) cache[itemID] = nil end
 
 -- Crafting equipment: it has to be on the character doing the crafting (bags or equipped), so
 -- one in the bank or on an alt doesn't count - unlike materials, which can be fetched or mailed.

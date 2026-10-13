@@ -206,11 +206,19 @@ local function OnLoot(text)
   if not id then return end
   local need = RouteNeed(id)
   if not need or need <= 0 then return end
-  -- read the count once the bags have it
-  C_Timer.After(0.4, function()
+  -- read the count once the bags really have it: the loot line can come before the bag update,
+  -- and the shared count cache is only refreshed a moment after that - so wait for the bag count to
+  -- move (up to 1.5s; if it never does it was already in), then count this item fresh
+  local bags0 = GetItemCount(id, false) or 0
+  local tries = 0
+  local function Read()
+    tries = tries + 1
+    if (GetItemCount(id, false) or 0) == bags0 and tries < 15 then C_Timer.After(0.1, Read) return end
+    if CR.InvalidateLocation then CR.InvalidateLocation(id) end
     local after = CR.HaveCount(id)
     Show(id, math.max(0, after - n), after, need)
-  end)
+  end
+  C_Timer.After(0.1, Read)
 end
 
 local ev = CreateFrame("Frame")
