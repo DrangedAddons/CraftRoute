@@ -338,6 +338,35 @@ function CR.SetCartTexture(tex)
   end
   if not ok then tex:SetTexture("Interface\\CURSOR\\Buy") end
 end
+-- A "pop out" icon drawn on a button: a page (an outline open at its top-right corner) with an
+-- arrow leaving that corner - like an "open in a new window" icon.
+function CR.AddPopoutIcon(b)
+  local icon = CreateFrame("Frame", nil, b)
+  icon:SetSize(14, 14)
+  icon:SetPoint("CENTER", 0, 0)
+  local function Line(w, h)
+    local t = icon:CreateTexture(nil, "OVERLAY")
+    t:SetColorTexture(0.95, 0.85, 0.55, 1)
+    t:SetSize(w, h)
+    return t
+  end
+  -- the page: left, bottom, and the parts of the top and right that the arrow leaves free
+  Line(1.5, 11):SetPoint("BOTTOMLEFT", 0, 0)
+  Line(11, 1.5):SetPoint("BOTTOMLEFT", 0, 0)
+  Line(5, 1.5):SetPoint("BOTTOMLEFT", 0, 9.5)
+  Line(1.5, 5):SetPoint("BOTTOMLEFT", 9.5, 0)
+  -- the arrow: a shaft from the page's middle up to the top-right, and its head
+  local shaft = Line(9, 1.5)
+  shaft:SetPoint("CENTER", icon, "BOTTOMLEFT", 9, 9)
+  shaft:SetRotation(math.rad(45))
+  local h1 = Line(5, 1.5)
+  h1:SetPoint("TOPRIGHT", icon, "TOPRIGHT", 0, -0.5)
+  local h2 = Line(1.5, 5)
+  h2:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -0.5, 0)
+  b.popoutIcon = icon
+  return icon
+end
+
 function CR.AddCartIcon(b, withText)
   local icon = rawget(b, "cartIcon")
   if not icon then

@@ -2398,6 +2398,7 @@ local function DestRefresh(name)
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
   -- the cost bar: making each destination once (the route's cart isn't for this)
   f.costBar.cart:Hide()
+  if f.costBar.popout then f.costBar.popout:Hide() end
   f.costBar.money:ClearAllPoints()
   f.costBar.money:SetPoint("RIGHT", -8, 0)
   if not CR.HasAuctionator() then
@@ -2989,6 +2990,25 @@ local function BuildOverlay()
   end)
   costBar.cart:SetScript("OnLeave", GameTooltip_Hide)
   costBar.cart:Hide()
+  -- pop the materials tracker out (a small window of its own you can pin anywhere)
+  costBar.popout = CreateFrame("Button", nil, costBar, "UIPanelButtonTemplate")
+  costBar.popout:SetSize(24, 18)
+  costBar.popout:SetPoint("RIGHT", -4, 0)
+  costBar.popout:SetText("")
+  CR.ThemeRegisterButton(costBar.popout)
+  CR.AddPopoutIcon(costBar.popout)
+  costBar.popout:SetScript("OnClick", function()
+    if CR.ToggleTracker then CR.ToggleTracker(nil, PlanProfession()) end
+  end)
+  costBar.popout:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Pop out the materials")
+    GameTooltip:AddLine("A small window of the route's materials you can pin anywhere on screen - it stays "
+      .. "up with this window closed.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  costBar.popout:SetScript("OnLeave", GameTooltip_Hide)
+  costBar.popout:Hide()
   costBar.money = costBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   costBar.money:SetPoint("RIGHT", -8, 0)
   costBar.money:SetJustifyH("RIGHT")
@@ -3258,11 +3278,14 @@ local function BuildOverlay()
     if not plan then costBar:Hide() return end
     costBar:Show()
     -- the cart sits at the right end, the gold just before it
+    -- right end: pop-out, then the cart (with Auctionator), then the gold
     local cart = CR.HasAuctionator() and true or false
+    costBar.popout:Show()
+    costBar.cart:ClearAllPoints()
+    costBar.cart:SetPoint("RIGHT", costBar.popout, "LEFT", -2, 0)
     costBar.cart:SetShown(cart)
     costBar.money:ClearAllPoints()
-    if cart then costBar.money:SetPoint("RIGHT", costBar.cart, "LEFT", -6, 0)
-    else costBar.money:SetPoint("RIGHT", -8, 0) end
+    costBar.money:SetPoint("RIGHT", cart and costBar.cart or costBar.popout, "LEFT", -6, 0)
     if not CR.HasAuctionator() then
       costBar.money:SetText("")
       costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))

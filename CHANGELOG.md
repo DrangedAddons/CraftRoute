@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.46.0
+
+- Materials tracker: **resizable and scalable** - drag the grip in its bottom-right corner to make it wider or narrower (its height follows the list), or open the gear on its title bar for Width and Scale sliders and a Reset. EllesmereUI's unlock mode can resize its width too. Kept per character.
+- Profession window tab: a **pop-out** button (a page with an arrow) on the Route cost bar, beside the gold and the shopping-list cart, opens the tracker for that profession - click again to close it.
+
 ## 0.45.0
 
 - **Materials tracker**: a small window you can pin anywhere on screen, open whether or not CraftRoute or its tab is - the materials left on your route (the profession picked in CraftRoute), each with what you have of what the route needs, still-needed ones first (yellow), done ones green and greyed below. Things the route makes on the way say "+N make".

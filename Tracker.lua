@@ -4,7 +4,8 @@
 -- mode. /cr tracker, or the Tracker button on the main window. Kept per character.
 local _, CR = ...
 
-local W, ROW_H, MAX_ROWS = 250, 20, 30
+local ROW_H, MAX_ROWS = 20, 30
+local DEF_W, MIN_W, MAX_W, MIN_S, MAX_S = 250, 180, 520, 0.6, 2
 local DEFAULT_POS = { "RIGHT", "RIGHT", -60, 120 }
 
 local frame
@@ -25,6 +26,11 @@ local function Hidden(prof)
   s.hidden[prof] = s.hidden[prof] or {}
   return s.hidden[prof]
 end
+
+local function Width() return Settings().width or DEF_W end
+local function Scale() return Settings().scale or 1 end
+-- the profession it shows: the one popped out from the profession window's tab, else CraftRoute's
+local function Prof() return Settings().prof or (CraftRouteCharDB and CraftRouteCharDB.profession) end
 
 local function Place()
   local p = Settings().pos or DEFAULT_POS
@@ -94,8 +100,8 @@ end
 
 function CR.RefreshTracker()
   if not (frame and frame:IsShown()) then return end
-  local e = CR.GetPlans and CR.GetPlans()
-  local prof = CraftRouteCharDB and CraftRouteCharDB.profession
+  local prof = Prof()
+  local e = CR.GetPlans and prof and CR.GetPlans(prof)
   local hidden = Hidden(prof)
   local cur = e and e.cur
   frame.title:SetText((prof or "CraftRoute") .. (e and e.goal and cur and CR.ColorText(string.format("  %d > %d", cur, e.goal), "aaaaaa") or ""))
@@ -155,7 +161,8 @@ end
 local function Build()
   if frame then return end
   frame = CreateFrame("Frame", "CraftRouteTracker", UIParent, "BackdropTemplate")
-  frame:SetSize(W, 60)
+  frame:SetSize(Width(), 60)
+  frame:SetScale(Scale())
   frame:SetFrameStrata("MEDIUM")
   frame:SetClampedToScreen(true)
   frame:SetMovable(true)
@@ -182,12 +189,25 @@ local function Build()
     CR.RefreshTracker()
   end)
   frame.collapse:SetPoint("RIGHT", frame.close, "LEFT", -2, 0)
+  -- size and scale (a small panel)
+  frame.size = CreateFrame("Button", nil, bar)
+  frame.size:SetSize(16, 16)
+  frame.size:SetPoint("RIGHT", frame.collapse, "LEFT", -3, 0)
+  frame.size:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
+  frame.size:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  frame.size:SetScript("OnClick", function(self) CR.TrackerSizePanel(self) end)
+  frame.size:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Size and scale")
+    GameTooltip:Show()
+  end)
+  frame.size:SetScript("OnLeave", GameTooltip_Hide)
   frame.edit = HeaderButton(bar, "Edit", 40, "Pick which materials this list shows", function()
     editing = not editing
     if editing then Settings().collapsed = nil end
     CR.RefreshTracker()
   end)
-  frame.edit:SetPoint("RIGHT", frame.collapse, "LEFT", -2, 0)
+  frame.edit:SetPoint("RIGHT", frame.size, "LEFT", -3, 0)
   frame.title:SetPoint("RIGHT", frame.edit, "LEFT", -4, 0)
   frame.title:SetJustifyH("LEFT")
   frame.title:SetWordWrap(false)
@@ -200,16 +220,86 @@ local function Build()
   frame.note:SetPoint("BOTTOMLEFT", 8, 6)
   frame.note:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
   frame.note:SetJustifyH("LEFT")
+  -- the corner grip: drag to make it wider / narrower (its height follows the list)
+  local grip = CreateFrame("Button", nil, frame)
+  grip:SetSize(12, 12)
+  grip:SetPoint("BOTTOMRIGHT", -2, 2)
+  grip:SetFrameLevel(frame:GetFrameLevel() + 10)
+  grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  grip:SetScript("OnMouseDown", function(self)
+    self.x0 = GetCursorPosition() / frame:GetEffectiveScale()
+    self.w0 = frame:GetWidth()
+    self:SetScript("OnUpdate", function()
+      local x = GetCursorPosition() / frame:GetEffectiveScale()
+      CR.TrackerSetSize(self.w0 + (x - self.x0), nil)
+    end)
+  end)
+  grip:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
+  frame.grip = grip
   frame:SetScript("OnShow", function() CR.RefreshTracker() end)
   frame:SetScript("OnHide", function() editing = false end)
 end
 
--- show (true) / hide (false) / toggle (nil); remembered, so it comes back after a reload
-function CR.ToggleTracker(show)
+-- New width / scale (nil: unchanged), kept per character.
+function CR.TrackerSetSize(w, scale)
+  local s = Settings()
+  if w then s.width = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) end
+  if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
+  if not frame then return end
+  frame:SetWidth(Width())
+  frame:SetScale(Scale())
+end
+
+-- The size panel (the gear on the title bar): width and scale sliders, and Reset
+local sizePanel
+function CR.TrackerSizePanel(owner)
+  if not sizePanel then
+    local p = CreateFrame("Frame", "CraftRouteTrackerSize", frame, "BackdropTemplate")
+    p:SetSize(240, 128)
+    p:SetFrameStrata("DIALOG")
+    CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
+    p:EnableMouse(true)
+    p:Hide()
+    local wsl = CR.MakeSlider(p, "Width", MIN_W, MAX_W, 10, Width, function(v) CR.TrackerSetSize(v, nil) end, "%d")
+    wsl:SetPoint("TOPLEFT", 12, -10)
+    wsl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
+    local ssl = CR.MakeSlider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) CR.TrackerSetSize(nil, v) end, "%.2f")
+    ssl:SetPoint("TOPLEFT", 12, -50)
+    ssl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
+    local reset = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+    reset:SetSize(80, 22)
+    reset:SetPoint("BOTTOMLEFT", 12, 10)
+    reset:SetText("Reset")
+    if CR.ThemeRegisterButton then CR.ThemeRegisterButton(reset) end
+    reset:SetScript("OnClick", function()
+      Settings().width, Settings().scale = nil, nil
+      CR.TrackerSetSize()
+      wsl:Sync() ssl:Sync()
+    end)
+    p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+    p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+    p:SetScript("OnEvent", function(self)
+      if not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver()) then self:Hide() end
+    end)
+    sizePanel = p
+  end
+  sizePanel.owner = owner
+  sizePanel:ClearAllPoints()
+  sizePanel:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -4)
+  sizePanel:SetShown(not sizePanel:IsShown())
+end
+
+-- show (true) / hide (false) / toggle (nil); remembered, so it comes back after a reload. prof:
+-- the profession to show (from the profession window's tab); nil keeps CraftRoute's picked one.
+function CR.ToggleTracker(show, prof)
   Build()
-  if show == nil then show = not frame:IsShown() end
+  if show == nil then show = not frame:IsShown() or (prof ~= nil and prof ~= Prof()) end
+  Settings().prof = prof
   Settings().shown = show or nil
   frame:SetShown(show)
+  CR.RefreshTracker()
 end
 
 -- EllesmereUI's unlock mode: a mover like its own frames
@@ -222,7 +312,7 @@ local function RegisterUnlock()
       group = "CraftRoute",
       getFrame = function() Build() return frame end,
       getSize = function() Build() return frame:GetWidth(), frame:GetHeight() end,
-      noResize = true,
+      setWidth = function(_, w) CR.TrackerSetSize(w, nil) end,
       isHidden = function() return not Settings().shown end,
       savePos = function(_, point, relPoint, x, y)
         if not point then return end

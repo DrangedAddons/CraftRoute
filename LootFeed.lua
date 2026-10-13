@@ -585,6 +585,8 @@ local function Slider(parent, label, lo, hi, step, get, set, fmt)
   return f
 end
 
+CR.MakeSlider = Slider   -- (the tracker's size panel uses it too)
+
 local function Check(parent, label, get, set)
   local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
   cb:SetSize(22, 22)
