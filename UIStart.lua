@@ -81,7 +81,7 @@ function CR.CreateStartPanel(parent, opts)
   intro:SetText(IntroText())
 
   -- left: the professions, by group
-  local list = CreateFrame("Frame", nil, panel)
+  local list = CreateFrame("Frame", nil, panel, "BackdropTemplate")
   list:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -12)
   list:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 4, 4)
   list:SetWidth(opts.listW or 240)
@@ -127,7 +127,7 @@ function CR.CreateStartPanel(parent, opts)
   end
 
   -- right: the picked profession - what it is, its nearest trainers, the route
-  local info = CreateFrame("Frame", nil, panel)
+  local info = CreateFrame("Frame", nil, panel, "BackdropTemplate")
   info:SetPoint("TOPLEFT", list, "TOPRIGHT", 12, 0)
   info:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -4, 4)
   CR.Backdrop(info, 0, 0, 0, 0.35)

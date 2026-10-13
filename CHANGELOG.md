@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.38.2
+
+- Fixed the Professions tab doing nothing when clicked (and the keybind landing on Plan instead): the tab failed to build in game, so the window fell back to Plan.
+
 ## 0.38.1
 
 - The profession picker is now a **Professions** tab in the main CraftRoute window (next to Plan and Recipes): every primary and secondary profession, what each does, and Pin buttons for the nearest trainers. It's always there, for picking up a second profession too.
