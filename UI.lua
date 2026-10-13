@@ -487,6 +487,8 @@ local function CreateWindow()
   -- each tab is built on its own, so one failing doesn't leave the others blank
   local specs = { { "plan", CR.CreatePlanPanel }, { "recipes", CR.CreateRecipesPanel } }
   if CR.SHOW_CRAFT_TAB then table.insert(specs, { "craft", CR.CreateCraftPanel }) end
+  -- the start page (no profession learned yet): no tab of its own - it's where the window lands
+  table.insert(specs, { "start", CR.CreateStartPanel })
   for _, spec in ipairs(specs) do
     CR.SafeCall(function()
       local p = spec[2](frame)
@@ -502,9 +504,13 @@ end
 function CR.ShowWindow(tab)
   if not frame then CreateWindow() end
   -- the last tab used is remembered, so the window reopens where you left it
+  -- no profession learned on this character: land on the start page (pick one, find a trainer)
+  local none = CR.HasAnyProfession and not CR.HasAnyProfession()
+  if not tab and none and frame.panels.start then tab = "start" end
   tab = tab or frame.current or CraftRouteDB.lastTab or "plan"
+  if tab == "start" and not none then tab = "plan" end   -- learned one since: the start page is done
   if not frame.panels[tab] then tab = frame.panels.plan and "plan" or "recipes" end
-  CraftRouteDB.lastTab = tab
+  if tab ~= "start" then CraftRouteDB.lastTab = tab end
   frame.current = tab
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
   for key, b in pairs(frame.tabs) do

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.37.0
+
+- New start page for characters with no profession yet: CraftRoute (/cr, the minimap button or the keybind) opens on a "Pick a profession" page listing every profession - crafting, gathering and the three secondary ones - with a line on what each does and what it pairs with. Pick one to see the three nearest trainers for your faction who teach it, with their zone and distance and a **Pin** button for a map waypoint (named in WaypointUI). Professions CraftRoute has a route for get a "Show me the leveling route" button that opens their plan. Trainer locations come from TrainerSpells; without it the page says to ask a city guard. Once you've learned a profession CraftRoute opens as before.
+- The keybind (Shift+K) now opens CraftRoute's main window when the character has no crafting profession, instead of only printing a message.
+
 ## 0.36.0
 
 - Craft view: an opened recipe shows its **profit** under "Cost to make" - what the crafts sell for on the AH (less the 5% AH cut) minus their materials, in green (or red for a loss). It scales with the amount box like the cost. Items never seen on the AH use what a vendor pays ("(vendor)"); "(cost incomplete)" means some materials have no price yet. Enchants have no item, so no profit line. Needs Auctionator.

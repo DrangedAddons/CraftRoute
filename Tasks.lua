@@ -123,6 +123,11 @@ local function Trainers(profName, rank)
   return list
 end
 
+-- The nearest `max` trainers (this faction) who teach profName from `rank` up - for the start page.
+function CR.NearestTrainers(profName, rank, max)
+  return Nearest(Trainers(profName, rank), max)
+end
+
 -- NPCs named in a step's text (faction-filtered text), whole names only.
 local textCache = {}
 local function NpcsInText(text)

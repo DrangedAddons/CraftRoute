@@ -1,5 +1,6 @@
 -- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab.
--- Always the tab - never the main CraftRoute window. It opens the profession picked in
+-- Always the tab - the main CraftRoute window only when there's no crafting profession to open
+-- (its start page, if nothing's learned). It opens the profession picked in
 -- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
 -- nearest one that has (Cooking for Fishing, else your first crafting profession). Like other
 -- addons' profession openers (EllesmereUI's data bar) it calls C_TradeSkillUI.OpenTradeSkill from
@@ -37,7 +38,9 @@ function CraftRoute_KeybindPressed()
   end
   local prof = Target()
   if not prof then
-    CR.Print("No crafting profession learned on this character to open.")
+    -- no crafting profession (no profession window to open): CraftRoute's own window instead -
+    -- the start page if nothing's learned at all, where you can pick one and find its trainer
+    CR.SafeCall(CR.ShowWindow)
     return
   end
   if CR.KeybindWillOpen then CR.KeybindWillOpen() end
