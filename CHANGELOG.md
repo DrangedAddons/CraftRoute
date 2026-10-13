@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.8
+
+- Materials tracker: materials are listed in **route order** - by the step that first uses them (as a reagent, or something a step has you buy, like the hammer) - so the list follows your progress. Still-needed ones stay on top, ones you have enough of below.
+
 ## 0.46.7
 
 - Materials tracker: an **Alts** tickbox on its bottom line, beside the cart - the same "Count alts' materials" setting as on the Plan tab and the profession window tab (ticking it here changes it everywhere). It shows without Auctionator too.

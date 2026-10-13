@@ -113,9 +113,20 @@ function CR.RefreshTracker()
   for _, m in ipairs(e and e.plan and e.plan.materials or {}) do
     if editing or not hidden[m.id] then table.insert(list, m) end
   end
+  -- in route order: where each is first used (a step's reagent, or something a step has you buy);
+  -- still needed first, what you have enough of below
+  local firstAt, pos = {}, 0
+  local function Seen(id) pos = pos + 1 if id and not firstAt[id] then firstAt[id] = pos end end
+  for _, st in ipairs(e and e.plan and e.plan.steps or {}) do
+    if st.recipe then for _, rg in ipairs(st.recipe.reagents or {}) do Seen(rg[1]) end end
+    for _, it in ipairs(st.items or {}) do Seen(it[1]) end
+    for _, it in ipairs(st.has or {}) do Seen(it[1]) end
+  end
   table.sort(list, function(a, b)
     local da, db = a.have >= a.need, b.have >= b.need
     if da ~= db then return not da end
+    local fa, fb = firstAt[a.id] or math.huge, firstAt[b.id] or math.huge
+    if fa ~= fb then return fa < fb end
     return a.name < b.name
   end)
   local collapsed = Settings().collapsed
