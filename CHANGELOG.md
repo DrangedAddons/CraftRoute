@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.10
+
+- Materials tracker: the Sort dropdown (Route order / A-Z) moved out of the gear panel to its own place in Edit, beside the Vendor button.
+
 ## 0.46.9
 
 - Materials tracker: a **Sort** dropdown in its gear panel - Route order (by the step that first uses each material; the default) or Alphabetical. Either way still-needed materials stay on top. Kept per character.
