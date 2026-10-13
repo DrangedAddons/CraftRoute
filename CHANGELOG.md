@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.39.1
+
+- The profession pickers (0.39.0) now go where you asked: the **Professions page of the crafting window** (its Professions tab - "First Profession", "Second Profession", Cooking / Fishing / First Aid), not only the separate Professions book. The sections are found by their headers, and only taken over while Blizzard's "Visit a trainer..." text shows in them.
+- Clicking Blizzard's Professions tab from CraftRoute's tab now shows Blizzard's Professions page - it used to put the (empty) recipes page up instead.
+
 ## 0.39.0
 
 - The game's Professions book (K): each section you haven't learned yet shows CraftRoute's picker instead of Blizzard's "Visit a trainer..." text.

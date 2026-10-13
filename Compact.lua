@@ -2550,6 +2550,10 @@ end
 
 local lastNativeClick = 0   -- when one of Blizzard's tabs was last clicked
 local function MarkNativeClick() lastNativeClick = GetTime() end
+-- the Professions (overview) tab was the one clicked: Blizzard shows its own page - nothing of
+-- ours (and not the recipes page) goes back over it
+local overviewClickAt = 0
+local function OverviewClicked() return GetTime() - overviewClickAt < 0.6 end
 local function UserChoseNative() return GetTime() - lastNativeClick < 0.6 end
 
 -- /cr trace: report in chat whatever shows one of Blizzard's pages or hides this view, with where
@@ -2690,6 +2694,21 @@ function HookNativeTabs()
   local frame = ProfessionsFrame
   if frame then
     HookTab(frame.ProfessionsOverviewTab)
+    -- Blizzard's Professions (overview) tab: clicking it from this view always goes to Blizzard's
+    -- page - this view closes (without bringing the recipes page back over it)
+    local ov = frame.ProfessionsOverviewTab
+    if ov and ov.HookScript and not ov.crOverviewHooked then
+      ov.crOverviewHooked = true
+      pcall(ov.HookScript, ov, "OnMouseDown", function() overviewClickAt = GetTime() end)
+      pcall(ov.HookScript, ov, "OnMouseUp", function(_, button)
+        if button and button ~= "LeftButton" then return end
+        MarkNativeClick()
+        C_Timer.After(0, function()
+          if overlay and overlay:IsShown() and not InCombatLockdown() then CloseCompact(false) end
+          if CR.RefreshBook then CR.SafeCall(CR.RefreshBook) end
+        end)
+      end)
+    end
     for _, tab in ipairs(frame.rightProfessionTabs or {}) do HookTab(tab) end
     local sys = frame.TabSystem
     if sys then
@@ -2705,7 +2724,7 @@ local function OnNativeTab()
   if Keeping() then KeepNow() ReopenSoon() return end
   if GetTime() - openedAt < 0.05 then return end
   if overlay and overlay:IsShown() then
-    if UserChoseNative() then CloseCompact(true) else pcall(HidePages) end
+    if UserChoseNative() then CloseCompact(not OverviewClicked()) else pcall(HidePages) end
   end
 end
 

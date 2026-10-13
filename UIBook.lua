@@ -5,12 +5,9 @@
 -- Blizzard's own again.
 local _, CR = ...
 
-local PRIMARY = { "PrimaryProfession1", "PrimaryProfession2" }
-local SECONDARY = { "SecondaryProfession1", "SecondaryProfession2", "SecondaryProfession3" }
-local SECONDARY_NAMES = { "Cooking", "Fishing", "First Aid" }   -- the book's order
 local EMPTY_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"   -- "pick one" placeholder
 
-local hooked, built, hidden = false, {}, {}   -- (kept here, not on Blizzard's frames)
+local built, hidden, ours = {}, {}, {}   -- per section frame (kept here, not on Blizzard's frames); our overlays
 local picker   -- the shared icon grid
 
 local function Info(name)
@@ -32,22 +29,6 @@ local function Learned()
   local set = {}
   for _, n in ipairs(CR.LearnedProfessionNames and CR.LearnedProfessionNames() or {}) do set[n] = true end
   return set
-end
-
--- Blizzard's "Visit a trainer..." text in an empty section: hidden while ours shows, back after
-local function BlizzardText(f)
-  local list = {}
-  for _, k in ipairs({ "missingText", "MissingText" }) do
-    local v = rawget(f, k)
-    if type(v) == "table" and v.SetAlpha then table.insert(list, v) end
-  end
-  for _, r in ipairs({ f:GetRegions() }) do
-    if r.GetObjectType and r:GetObjectType() == "FontString" and r.GetText then
-      local t = r:GetText()
-      if type(t) == "string" and t:find("^Visit a") then table.insert(list, r) end
-    end
-  end
-  return list
 end
 
 -- Trainer rows: Pin + name and zone (distance)
@@ -242,71 +223,112 @@ local function BuildSecondary(f, prof)
   return o
 end
 
--- Which secondary each section is: its header text if it says, else the book's order
-local function SecondaryName(f, i)
-  for _, r in ipairs({ f:GetRegions() }) do
+-- The sections are found by their headers ("First Profession", "Cooking"...) wherever they sit -
+-- the crafting window's Professions page (its overview tab) or the Professions book - and are
+-- only taken over while Blizzard's "Visit a trainer..." text shows in them.
+local HEADERS = { ["First Profession"] = 1, ["Second Profession"] = 2,
+                  Cooking = "Cooking", Fishing = "Fishing", ["First Aid"] = "First Aid" }
+
+local function Regions(f)
+  local ok, list = pcall(function() return { f:GetRegions() } end)
+  return ok and list or {}
+end
+local function Children(f)
+  local ok, list = pcall(function() return { f:GetChildren() } end)
+  return ok and list or {}
+end
+
+-- every visible frame under root holding a section header; { host, kind, visit = FontStrings }
+local function Scan(root, out, depth)
+  if depth > 9 or not (root and root.IsVisible and root:IsVisible()) then return end
+  local kind, visit = nil, {}
+  for _, r in ipairs(Regions(root)) do
     if r.GetObjectType and r:GetObjectType() == "FontString" and r.GetText then
       local t = r:GetText()
-      for _, n in ipairs(SECONDARY_NAMES) do if t == n then return n end end
+      if type(t) == "string" then
+        if HEADERS[t] then kind = HEADERS[t] end
+        if t:find("^Visit a") then table.insert(visit, r) end
+      end
     end
   end
-  return SECONDARY_NAMES[i]
+  if kind then table.insert(out, { host = root, kind = kind, visit = visit }) end
+  for _, c in ipairs(Children(root)) do
+    if not ours[c] then Scan(c, out, depth + 1) end   -- (not into our own overlays)
+  end
 end
 
 function CR.RefreshBook()
-  local book = ProfessionsBookFrame
-  if not (book and book:IsShown()) then return end
+  local found = {}
+  for _, root in ipairs({ ProfessionsFrame, ProfessionsBookFrame }) do
+    if root and root:IsShown() then Scan(root, found, 0) end
+  end
+  if #found == 0 then return end
   local prof1, prof2 = nil, nil
   if GetProfessions then prof1, prof2 = GetProfessions() end
   local learned = Learned()
-  local function Section(fname, empty, make)
-    local f = _G[fname]
-    if not f then return end
-    local o = built[fname]
-    if empty and not o then o = make(f); built[fname] = o end
+  for _, sec in ipairs(found) do
+    local f, kind = sec.host, sec.kind
+    local visitShown = false
+    for _, r in ipairs(sec.visit) do if r:IsShown() then visitShown = true end end
+    local notLearned
+    if kind == 1 then notLearned = prof1 == nil
+    elseif kind == 2 then notLearned = prof2 == nil
+    else notLearned = not learned[kind] end
+    local empty = visitShown and notLearned
+    local o = built[f]
+    if empty and not o then
+      o = (type(kind) == "number") and BuildPrimary(f, kind) or BuildSecondary(f, kind)
+      built[f] = o
+      ours[o] = true   -- (Scan skips it)
+    end
     if o then
       o:SetShown(empty)
       if empty then o:Refresh() end
     end
-    -- Blizzard's own text: hidden while ours shows
+    -- Blizzard's own text: hidden while ours shows, back once the section's learned
     if empty then
-      hidden[f] = BlizzardText(f)
-      for _, r in ipairs(hidden[f]) do r:SetAlpha(0) end
+      hidden[f] = sec.visit
+      for _, r in ipairs(sec.visit) do r:SetAlpha(0) end
     elseif hidden[f] then
       for _, r in ipairs(hidden[f]) do r:SetAlpha(1) end
       hidden[f] = nil
     end
   end
-  Section(PRIMARY[1], prof1 == nil, function(f) return BuildPrimary(f, 1) end)
-  Section(PRIMARY[2], prof2 == nil, function(f) return BuildPrimary(f, 2) end)
-  for i, fname in ipairs(SECONDARY) do
-    local f = _G[fname]
-    if f then
-      local name = SecondaryName(f, i)
-      Section(fname, not learned[name], function(sf) return BuildSecondary(sf, name) end)
-    end
-  end
 end
 
-local function Hook()
-  if hooked or not ProfessionsBookFrame then return end
-  hooked = true
-  ProfessionsBookFrame:HookScript("OnShow", function() CR.SafeCall(CR.RefreshBook) end)
-  ProfessionsBookFrame:HookScript("OnHide", function() if picker then picker:Hide() end end)
-  if type(ProfessionsBookFrame_Update) == "function" then
-    hooksecurefunc("ProfessionsBookFrame_Update", function() CR.SafeCall(CR.RefreshBook) end)
-  end
+local function Soon()
   CR.SafeCall(CR.RefreshBook)
+  C_Timer.After(0.05, function() CR.SafeCall(CR.RefreshBook) end)
+  C_Timer.After(0.3, function() CR.SafeCall(CR.RefreshBook) end)
+end
+
+local hookedPF, hookedBook = false, false
+local function Hook()
+  if ProfessionsFrame and not hookedPF then
+    hookedPF = true
+    ProfessionsFrame:HookScript("OnShow", Soon)
+    ProfessionsFrame:HookScript("OnHide", function() if picker then picker:Hide() end end)
+    if ProfessionsFrame.SetTab then hooksecurefunc(ProfessionsFrame, "SetTab", Soon) end
+    if ProfessionsFrame.RightTabSelected then hooksecurefunc(ProfessionsFrame, "RightTabSelected", Soon) end
+  end
+  if ProfessionsBookFrame and not hookedBook then
+    hookedBook = true
+    ProfessionsBookFrame:HookScript("OnShow", Soon)
+    ProfessionsBookFrame:HookScript("OnHide", function() if picker then picker:Hide() end end)
+    if type(ProfessionsBookFrame_Update) == "function" then
+      hooksecurefunc("ProfessionsBookFrame_Update", Soon)
+    end
+  end
 end
 
 local watch = CreateFrame("Frame")
 watch:RegisterEvent("ADDON_LOADED")
 watch:RegisterEvent("PLAYER_LOGIN")
 watch:RegisterEvent("SKILL_LINES_CHANGED")
-watch:SetScript("OnEvent", function(_, event, name)
+watch:SetScript("OnEvent", function(_, event)
   if event == "SKILL_LINES_CHANGED" then
-    CR.SafeCall(CR.RefreshBook)
-  elseif event == "PLAYER_LOGIN" or name == "Blizzard_ProfessionsBook" then
-    Hook()
+    Soon()
+  else
+    Hook()   -- the windows load on demand: try again as each addon loads
   end
 end)
