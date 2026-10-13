@@ -439,7 +439,7 @@ local function BuildDestItems(name)
   local favs = {}
   for _, spell in ipairs(DestList(name)) do
     local r = p.recipes[spell]
-    if r then table.insert(favs, { kind = "destFav", recipe = r, prof = pn, list = name, fav = true }) end
+    if r then table.insert(favs, { kind = "destFav", recipe = r, prof = pn, list = name, fav = true, h = 44 }) end
   end
   local left = {}
   for _, r in ipairs(all) do
@@ -570,6 +570,7 @@ local function ResetRow(row)
   row.buy:Hide()
   row.buy:SetScript("OnClick", nil)
   if row.crSub then row.crSub:Hide() end
+  if row.crSub2 then row.crSub2:Hide() end
   row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
@@ -977,7 +978,11 @@ local function ApplyRow(row, item)
         -- while you type never puts the amount on another recipe
         local function Stored(self) return CartEntry(self.crList, self.crSpell).qty or 1 end
         -- clicking in selects what's there, so typing replaces it (not "1" + what you type)
-        q:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+        q:SetScript("OnEditFocusGained", function(self)
+          self:HighlightText()
+          C_Timer.After(0, function() if self:HasFocus() then self:HighlightText() end end)
+        end)
+        q:SetScript("OnMouseUp", function(self) if self:HasFocus() then self:HighlightText() end end)
         -- every keystroke: a valid amount is kept, and the totals below follow straight away
         q:SetScript("OnTextChanged", function(self, userInput)
           if not userInput or not self.crSpell then return end
@@ -1024,15 +1029,15 @@ local function ApplyRow(row, item)
     local learned = item.learned
     if learned == nil then learned = RecipeLearned(item.prof, r) == true end
     local name = r.name
-    local sub
+    local sub, profitLine
     if item.kind == "destFav" then
       local cost, unpriced = MakeCost(r)
       sub = ""
       if CR.HasAuctionator() then
-        -- what one costs to make, and what it makes you sold (as its details show it)
+        -- what one costs to make; what it makes you sold (as its details show it) goes on the line below
         sub = "costs " .. CR.FormatMoney(cost)
         local p = Profit(r)
-        if p then sub = sub .. "   profit " .. ProfitText(p) end
+        profitLine = "profit " .. (p and ProfitText(p) or CR.ColorText("no price yet", "888888"))
       end
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
@@ -1058,8 +1063,9 @@ local function ApplyRow(row, item)
     -- stops short of the star (and the expand marker)
     row.name:ClearAllPoints()
     local stop = fav and -96 or -52   -- (your list: the quantity box too)
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
-    row.name:SetPoint("RIGHT", row, "RIGHT", stop, 6)
+    local up = fav and 12 or 6        -- (your list: three lines, so the name sits higher)
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, up)
+    row.name:SetPoint("RIGHT", row, "RIGHT", stop, up)
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       row.crSub:SetJustifyH("LEFT")
@@ -1070,6 +1076,21 @@ local function ApplyRow(row, item)
     row.crSub:SetWordWrap(false)
     row.crSub:SetText(sub)
     row.crSub:Show()
+    -- your list: its profit on the third line
+    if profitLine then
+      if not row.crSub2 then
+        row.crSub2 = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.crSub2:SetJustifyH("LEFT")
+        row.crSub2:SetWordWrap(false)
+      end
+      row.crSub2:ClearAllPoints()
+      row.crSub2:SetPoint("TOPLEFT", row.crSub, "BOTTOMLEFT", 0, -2)
+      row.crSub2:SetPoint("RIGHT", row, "RIGHT", stop, 0)
+      row.crSub2:SetText(profitLine)
+      row.crSub2:Show()
+    elseif row.crSub2 then
+      row.crSub2:Hide()
+    end
     FitName(row.name, name)
     -- the star: in your destinations or not
     local star = row.crStar
@@ -1512,29 +1533,42 @@ local function CreateList(parent)
   local thumb = slider:GetThumbTexture()
   if thumb then thumb:SetSize(12, 24) end
 
-  local function Visible()
-    return math.max(1, math.floor((holder:GetHeight() + 1) / ROW_H))
-  end
+  -- an item can ask for a taller row (item.h; your crafts have a third line)
+  local function Height(item) return item and item.h or ROW_H end
+  local function Room() return (tonumber(holder:GetHeight()) or 0) + 1 end
+  -- the furthest it scrolls: the last items just fill the list
   local function MaxOffset()
-    return math.max(0, #data - Visible())
+    local y, room = 0, Room()
+    for i = #data, 1, -1 do
+      y = y + Height(data[i])
+      if y > room then return i end
+    end
+    return 0
   end
   local function Paint()
     offset = math.max(0, math.min(offset, MaxOffset()))
-    local vis = Visible()
-    for i = 1, vis do
+    local y, room, i = 0, Room(), 0
+    while true do
+      local item = data[offset + i + 1]
+      if not item then break end
+      local h = Height(item)
+      if y + h > room and i > 0 then break end
+      i = i + 1
       local row = rows[i]
       if not row then
         row = CreateRow(holder)
-        row:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(i - 1) * ROW_H)
-        row:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -14, -(i - 1) * ROW_H)
         rows[i] = row
       end
-      local item = data[offset + i]
+      row:ClearAllPoints()
+      row:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -y)
+      row:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -14, -y)
+      row:SetHeight(h)
       row.slot = i   -- its place on screen (the Craft view keeps a clicked recipe there)
-      row:SetShown(item ~= nil)
-      if item then ApplyRow(row, item) end
+      row:Show()
+      ApplyRow(row, item)
+      y = y + h
     end
-    for i = vis + 1, #rows do rows[i]:Hide() end
+    for j = i + 1, #rows do rows[j]:Hide() end
   end
   local function ApplySlider()
     local maxOff = MaxOffset()

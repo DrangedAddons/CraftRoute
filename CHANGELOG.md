@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.49.8
+
+- Craft view, "Your crafts": the rows are a little taller, with the profit on its own line under "costs ..." instead of squeezed beside it.
+- The amount boxes: clicking in one now really selects what's there, so you can just type (the click used to undo the selection).
+
 ## 0.49.7
 
 - Craft view, the amount boxes beside your crafts:
