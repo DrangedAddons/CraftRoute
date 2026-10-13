@@ -6,6 +6,7 @@ local _, CR = ...
 
 local ROW_H, MAX_ROWS = 20, 30
 local DEF_W, MIN_W, MAX_W, MIN_S, MAX_S = 250, 180, 520, 0.6, 2
+local MIN_H, MAX_H = 70, 900   -- a set height (nil: fits the list); shorter than the list scrolls
 local DEFAULT_POS = { "RIGHT", "RIGHT", -60, 120 }
 
 local frame
@@ -29,6 +30,7 @@ end
 
 local function Width() return Settings().width or DEF_W end
 local function Scale() return Settings().scale or 1 end
+local offset = 0   -- first item shown, when the list scrolls
 -- the profession it shows: the one popped out from the profession window's tab, else CraftRoute's
 local function Prof() return Settings().prof or (CraftRouteCharDB and CraftRouteCharDB.profession) end
 
@@ -115,9 +117,20 @@ function CR.RefreshTracker()
     if da ~= db then return not da end
     return a.name < b.name
   end)
-  local shown = math.min(#list, MAX_ROWS)
+  local collapsed = Settings().collapsed
+  local editBar = editing and not collapsed
+  local top = 28 + (editBar and 22 or 0)
+  -- how many lines fit: the set height's worth, or (no height set) the whole list
+  local setH = Settings().height
+  local vis = setH and math.max(1, math.floor((setH - top - 8) / ROW_H)) or math.min(#list, MAX_ROWS)
+  offset = math.max(0, math.min(offset, #list - vis))
+  local scrolling = #list > vis
+  local shown = math.min(vis, #list - offset)
+  frame.body:ClearAllPoints()
+  frame.body:SetPoint("TOPLEFT", 8, -top)
+  frame.body:SetPoint("RIGHT", frame, "RIGHT", scrolling and -16 or -8, 0)
   for i = 1, shown do
-    local m, r = list[i], Row(i)
+    local m, r = list[offset + i], Row(i)
     r.m = m
     local made = m.crafted or 0
     local done = m.have >= m.need
@@ -146,20 +159,28 @@ function CR.RefreshTracker()
   if not e then note = "No route for this profession."
   elseif #list == 0 then note = (e.plan.materials and #e.plan.materials > 0) and "Everything is hidden - Edit to show items."
     or "This part of the route needs no materials." end
-  frame.note:SetText(note or (#list > MAX_ROWS and string.format("+%d more", #list - MAX_ROWS) or ""))
-  frame.note:SetShown(frame.note:GetText() ~= "")
-  local bodyH = shown * ROW_H
-  local collapsed = Settings().collapsed
+  frame.note:SetText(note or "")
   frame.body:SetShown(not collapsed)
   frame.note:SetShown(not collapsed and frame.note:GetText() ~= "")
   -- Edit: All / None above the list
-  local editBar = editing and not collapsed
   frame.allBtn:SetShown(editBar)
   frame.noneBtn:SetShown(editBar)
-  frame.body:ClearAllPoints()
-  frame.body:SetPoint("TOPLEFT", 8, editBar and -50 or -28)
-  frame.body:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
-  frame:SetHeight(collapsed and 26 or (30 + (editBar and 22 or 0) + bodyH + (frame.note:IsShown() and 18 or 0) + 6))
+  -- the scrollbar: a thin track with a thumb for where you are
+  frame.track:SetShown(scrolling and not collapsed)
+  frame.thumb:SetShown(scrolling and not collapsed)
+  if scrolling and not collapsed then
+    local trackH = vis * ROW_H
+    frame.track:ClearAllPoints()
+    frame.track:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -top)
+    frame.track:SetHeight(trackH)
+    local thumbH = math.max(12, trackH * vis / #list)
+    local maxOff = #list - vis
+    frame.thumb:SetHeight(thumbH)
+    frame.thumb:ClearAllPoints()
+    frame.thumb:SetPoint("TOP", frame.track, "TOP", 0, -((trackH - thumbH) * (maxOff > 0 and offset / maxOff or 0)))
+  end
+  local autoH = top + shown * ROW_H + (frame.note:IsShown() and 18 or 0) + 8
+  frame:SetHeight(collapsed and 26 or (setH or autoH))
   frame.edit:SetText(editing and "Done" or "Edit")
   frame.collapse:SetText(collapsed and "+" or "-")
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
@@ -223,6 +244,19 @@ local function Build()
   frame.body:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
   frame.body:SetHeight(1)
   frame.rows = {}
+  frame.track = frame:CreateTexture(nil, "ARTWORK")
+  frame.track:SetWidth(4)
+  frame.track:SetColorTexture(1, 1, 1, 0.08)
+  frame.thumb = frame:CreateTexture(nil, "OVERLAY")
+  frame.thumb:SetWidth(4)
+  frame.thumb:SetColorTexture(1, 0.82, 0, 0.7)
+  frame.track:Hide()
+  -- the mouse wheel scrolls the list
+  frame:EnableMouseWheel(true)
+  frame:SetScript("OnMouseWheel", function(_, delta)
+    offset = math.max(0, offset - delta)
+    CR.RefreshTracker()
+  end)
   -- Edit: show every material, or none
   local function SetAll(show)
     local prof = Prof()
@@ -250,27 +284,39 @@ local function Build()
   grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
   grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
   grip:SetScript("OnMouseDown", function(self)
-    self.x0 = GetCursorPosition() / frame:GetEffectiveScale()
-    self.w0 = frame:GetWidth()
+    local x, y = GetCursorPosition()
+    local sc = frame:GetEffectiveScale()
+    self.x0, self.y0 = x / sc, y / sc
+    self.w0, self.h0 = frame:GetWidth(), frame:GetHeight()
     self:SetScript("OnUpdate", function()
-      local x = GetCursorPosition() / frame:GetEffectiveScale()
-      CR.TrackerSetSize(self.w0 + (x - self.x0), nil)
+      local cx, cy = GetCursorPosition()
+      cx, cy = cx / sc, cy / sc
+      CR.TrackerSetSize(self.w0 + (cx - self.x0), nil, self.h0 + (self.y0 - cy))
     end)
   end)
   grip:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
+  grip:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Drag to resize")
+    GameTooltip:AddLine("Shorter than the list: it scrolls (mouse wheel). The gear's Reset fits it to the list again.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  grip:SetScript("OnLeave", GameTooltip_Hide)
   frame.grip = grip
   frame:SetScript("OnShow", function() CR.RefreshTracker() end)
   frame:SetScript("OnHide", function() editing = false end)
 end
 
--- New width / scale (nil: unchanged), kept per character.
-function CR.TrackerSetSize(w, scale)
+-- New width / scale / height (nil: unchanged), kept per character.
+function CR.TrackerSetSize(w, scale, h)
   local s = Settings()
   if w then s.width = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) end
+  if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
   if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
   if not frame then return end
   frame:SetWidth(Width())
   frame:SetScale(Scale())
+  CR.RefreshTracker()
 end
 
 -- The size panel (the gear on the title bar): width and scale sliders, and Reset
@@ -278,7 +324,7 @@ local sizePanel
 function CR.TrackerSizePanel(owner)
   if not sizePanel then
     local p = CreateFrame("Frame", "CraftRouteTrackerSize", frame, "BackdropTemplate")
-    p:SetSize(240, 128)
+    p:SetSize(240, 168)
     p:SetFrameStrata("DIALOG")
     CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
     p:EnableMouse(true)
@@ -289,17 +335,22 @@ function CR.TrackerSizePanel(owner)
     local ssl = CR.MakeSlider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) CR.TrackerSetSize(nil, v) end, "%.2f")
     ssl:SetPoint("TOPLEFT", 12, -50)
     ssl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
+    local hsl = CR.MakeSlider(p, "Height (shorter scrolls)", MIN_H, MAX_H, 10,
+      function() return Settings().height or math.floor(frame:GetHeight() + 0.5) end,
+      function(v) CR.TrackerSetSize(nil, nil, v) end, "%d")
+    hsl:SetPoint("TOPLEFT", 12, -90)
+    hsl:SetPoint("RIGHT", p, "RIGHT", -12, 0)
     local reset = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
     reset:SetSize(80, 22)
     reset:SetPoint("BOTTOMLEFT", 12, 10)
     reset:SetText("Reset")
     if CR.ThemeRegisterButton then CR.ThemeRegisterButton(reset) end
     reset:SetScript("OnClick", function()
-      Settings().width, Settings().scale = nil, nil
+      Settings().width, Settings().scale, Settings().height = nil, nil, nil
       CR.TrackerSetSize()
-      wsl:Sync() ssl:Sync()
+      wsl:Sync() ssl:Sync() hsl:Sync()
     end)
-    p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+    p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() hsl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
     p:SetScript("OnEvent", function(self)
       if not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver()) then self:Hide() end
@@ -334,6 +385,7 @@ local function RegisterUnlock()
       getFrame = function() Build() return frame end,
       getSize = function() Build() return frame:GetWidth(), frame:GetHeight() end,
       setWidth = function(_, w) CR.TrackerSetSize(w, nil) end,
+      setHeight = function(_, h) CR.TrackerSetSize(nil, nil, h) end,
       isHidden = function() return not Settings().shown end,
       savePos = function(_, point, relPoint, x, y)
         if not point then return end

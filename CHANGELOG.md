@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.46.2
+
+- Materials tracker: you can make it **shorter** - drag its corner grip up / down as well as sideways, or use the new Height slider under the gear. Shorter than the list, it scrolls (mouse wheel, with a thin scrollbar on the right). The gear's Reset fits it to the list again. EllesmereUI's unlock mode can set its height too.
+
 ## 0.46.1
 
 - Materials tracker: **All** and **None** buttons in Edit - show every material, or hide them all and tick the ones you want.
