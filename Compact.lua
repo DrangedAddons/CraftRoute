@@ -2549,7 +2549,9 @@ local function PositionEntry()
 end
 
 local lastNativeClick = 0   -- when one of Blizzard's tabs was last clicked
-local function MarkNativeClick() lastNativeClick = GetTime() end
+-- a click on one of Blizzard's tabs is definite: it also ends any "keep this view up while the
+-- window loads" spell (the keybind / a profession switch), which would otherwise undo it
+local function MarkNativeClick() lastNativeClick = GetTime() ui.keepUntil = nil end
 -- the Professions (overview) tab was the one clicked: Blizzard shows its own page - nothing of
 -- ours (and not the recipes page) goes back over it
 local overviewClickAt = 0
@@ -2699,14 +2701,26 @@ function HookNativeTabs()
     local ov = frame.ProfessionsOverviewTab
     if ov and ov.HookScript and not ov.crOverviewHooked then
       ov.crOverviewHooked = true
-      pcall(ov.HookScript, ov, "OnMouseDown", function() overviewClickAt = GetTime() end)
-      pcall(ov.HookScript, ov, "OnMouseUp", function(_, button)
+      pcall(ov.HookScript, ov, "OnMouseDown", function() overviewClickAt = GetTime() MarkNativeClick() end)
+      -- the Professions page is the window's BookPage (as TrainerSpells switches to it): show it
+      -- outright, so one click always lands there - even when Blizzard thinks it's already the
+      -- selected tab (it was only covered by this view) and so does nothing itself
+      local function ShowOverview()
+        if InCombatLockdown() then return end
+        ui.keepUntil = nil
+        if overlay and overlay:IsShown() then CloseCompact(false) end
+        if frame.CraftingPage then frame.CraftingPage:Hide() end
+        if frame.BookPage then frame.BookPage:Show() end
+        if ov.SetChecked then pcall(ov.SetChecked, ov, true) end
+        if CR.RefreshBook then CR.SafeCall(CR.RefreshBook) end
+      end
+      pcall(ov.HookScript, ov, "OnMouseUp", function(self, button)
         if button and button ~= "LeftButton" then return end
+        if self.IsMouseOver and not self:IsMouseOver() then return end   -- released elsewhere: no click
+        overviewClickAt = GetTime()
         MarkNativeClick()
-        C_Timer.After(0, function()
-          if overlay and overlay:IsShown() and not InCombatLockdown() then CloseCompact(false) end
-          if CR.RefreshBook then CR.SafeCall(CR.RefreshBook) end
-        end)
+        ShowOverview()
+        C_Timer.After(0, ShowOverview)   -- and once more after anything else this click set off
       end)
     end
     for _, tab in ipairs(frame.rightProfessionTabs or {}) do HookTab(tab) end

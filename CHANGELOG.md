@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.39.2
+
+- The Professions tab (crafting window) now always selects on the first click. It could take two: right after the keybind opened the window, CraftRoute was still bringing its own view back for a couple of seconds and undid the click; and when Blizzard thought its Professions page was already selected (CraftRoute's view had only covered it) it ignored the click. A click on any of Blizzard's tabs now ends that "bring CraftRoute back" spell, and a Professions tab click shows Blizzard's Professions page outright.
+
 ## 0.39.1
 
 - The profession pickers (0.39.0) now go where you asked: the **Professions page of the crafting window** (its Professions tab - "First Profession", "Second Profession", Cooking / Fishing / First Aid), not only the separate Professions book. The sections are found by their headers, and only taken over while Blizzard's "Visit a trainer..." text shows in them.
