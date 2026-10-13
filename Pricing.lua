@@ -20,6 +20,15 @@ function CR.GetUnitPrice(itemID)
   return nil
 end
 
+-- What a crafted item sells for on the AH (Auctionator's price, never a vendor's buy price) - nil
+-- if it hasn't been seen there.
+function CR.GetAuctionPrice(itemID)
+  if not CR.HasAuctionator() or not itemID then return nil end
+  local ok, ah = pcall(Auctionator.API.v1.GetAuctionPriceByItemID, CALLER, itemID)
+  if ok and ah and ah > 0 then return ah end
+  return nil
+end
+
 -- Money with the gold / silver / copper coin icons, like vendors show it: "13 (s) 50 (c)".
 -- Units that are zero are left out (but 0 shows as "0 (c)").
 local COIN = "|TInterface\\MoneyFrame\\UI-%sIcon:0:0:2:0|t"

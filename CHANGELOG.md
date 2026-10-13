@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.36.0
+
+- Craft view: an opened recipe shows its **profit** under "Cost to make" - what the crafts sell for on the AH (less the 5% AH cut) minus their materials, in green (or red for a loss). It scales with the amount box like the cost. Items never seen on the AH use what a vendor pays ("(vendor)"); "(cost incomplete)" means some materials have no price yet. Enchants have no item, so no profit line. Needs Auctionator.
+- Craft view filter: a new **Sort >** side list - Level (default), Profit: high to low, Profit: low to high. Recipes with no price go to the end. It's kept per profession and per character, isn't counted as a filter, and the X leaves it alone. The Sort row says which order is on.
+- Craft view (GitHub issue #7): the enchant "Optional Target" box could appear over the wrong rows (overlapping the reagents or the next recipes) after opening and closing recipes. It now always sits in the opened enchant's own row, and is hidden anywhere else.
+- Craft view: a running batch's "3/10" count sits after the last button instead of on top of the shopping cart.
+
 ## 0.35.2
 
 - Blacksmithing route updated to the latest wow-professions.com guide: 185-215 is now 36x Mithril Plate Pants (432 Mithril Bar - no more Heavy Mithril Gauntlet / Shoulder choice, so no Mageweave or Heavy Leather), then 215-225 is 21x Steel Plate Helm (was 37 from 200), or 10x Mithril Spurs if you have the world-drop plans. The 40 Solid Grinding Stones at 175 are now "21 for the helms at 215", and the Golden Scale Bracers option is for stopping at 215.

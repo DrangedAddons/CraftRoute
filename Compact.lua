@@ -238,6 +238,19 @@ local function DestFilters(name)
   return db.destFilters[name]
 end
 
+-- The recipe list's order for this profession (kept per character): "level" (learn skill, the
+-- default), "profitDesc" or "profitAsc".
+local function DestSort(name)
+  local db = DB()
+  return (db and name and db.destSort and db.destSort[name]) or "level"
+end
+local function SetDestSort(name, v)
+  local db = DB()
+  if not db or not name then return end
+  db.destSort = db.destSort or {}
+  db.destSort[name] = (v ~= "level") and v or nil
+end
+
 local function IsDest(name, spell)
   for _, s in ipairs(DestList(name)) do if s == spell then return true end end
   return false
@@ -271,6 +284,32 @@ local function MakeCost(r)
     if p then total = total + p * rg[2] else unpriced = unpriced + 1 end
   end
   return total, unpriced
+end
+
+-- What one craft sells for: its items on the AH less the 5% AH cut, or (never seen on the AH) what
+-- a vendor pays for them. nil for enchants (no item) and items with neither price.
+local AH_CUT = 0.95
+local function SellValue(r)
+  if not r.item or r.item <= 0 then return nil end
+  local makes = r.makes or 1
+  local ah = CR.GetAuctionPrice and CR.GetAuctionPrice(r.item)
+  if ah then return math.floor(ah * AH_CUT) * makes, "ah" end
+  local vendor = GetItemInfo and select(11, GetItemInfo(r.item))
+  if type(vendor) == "number" and vendor > 0 then return vendor * makes, "vendor" end
+  return nil
+end
+-- Profit on one craft (sell value less the reagents' cost), how it sells, and how many reagents
+-- have no price (their cost isn't in it).
+local function Profit(r)
+  local v, how = SellValue(r)
+  if not v then return nil end
+  local cost, unpriced = MakeCost(r)
+  return v - cost, how, unpriced
+end
+-- "+1g 20s" green / "-35s" red
+local function ProfitText(p)
+  if p >= 0 then return CR.ColorText("+", "40ff40") .. CR.FormatMoney(p) end
+  return CR.ColorText("-", "ff4040") .. CR.FormatMoney(-p)
 end
 
 -- Show a name in full: if it's wider than its space, the text gets a point or two smaller
@@ -362,7 +401,21 @@ local function BuildDestItems(name)
     if ok and F.slot and next(F.slot) then ok = F.slot[RecipeSlot(r)] and true or false end
     if ok then table.insert(all, r) end
   end
+  local order = DestSort(name)
+  local profitOf = {}
+  if order ~= "level" then
+    for _, r in ipairs(all) do profitOf[r] = Profit(r) or false end
+  end
   table.sort(all, function(a, b)
+    if order ~= "level" then
+      -- by profit (high or low first); recipes with no price at the end either way
+      local pa, pb = profitOf[a], profitOf[b]
+      if (pa ~= false) ~= (pb ~= false) then return pa ~= false end
+      if pa and pb and pa ~= pb then
+        if order == "profitAsc" then return pa < pb end
+        return pa > pb
+      end
+    end
     if (a.learn or 0) ~= (b.learn or 0) then return (a.learn or 0) < (b.learn or 0) end
     return a.name < b.name
   end)
@@ -575,6 +628,18 @@ local function ShowTooltip(row)
     GameTooltip:AddLine(item.selected and "Click to close it." or "Click to open it - what it needs, where to get it, and crafting.",
       0.4, 0.8, 1, true)
     GameTooltip:AddLine(item.fav and "The star takes it off your list." or "The star adds it to your list.", 0.6, 0.6, 0.6, true)
+  elseif item.kind == "dProfit" then
+    GameTooltip:SetText("Profit", 1, 0.82, 0)
+    if item.how == "vendor" then
+      GameTooltip:AddLine("Not seen on the Auction House, so this is what a vendor pays for it, less what its materials cost.", 1, 1, 1, true)
+    elseif item.how == "ah" then
+      GameTooltip:AddLine("Its Auction House price less the 5% AH cut, less what its materials cost. Scales with the amount you craft.", 1, 1, 1, true)
+    else
+      GameTooltip:AddLine("It hasn't been seen on the Auction House and vendors don't buy it.", 1, 1, 1, true)
+    end
+    if item.unpriced > 0 then
+      GameTooltip:AddLine(string.format("%d of its materials have no price yet, so their cost isn't counted.", item.unpriced), 1, 0.6, 0.4, true)
+    end
   elseif item.kind == "dInfo" then
     GameTooltip:SetText(item.learned and "Learned" or "Not Learned", item.learned and 0.25 or 1, item.learned and 1 or 0.4, 0.25)
   elseif item.kind == "dPin" then
@@ -744,6 +809,21 @@ local function ApplyRow(row, item)
     row.name:SetText(CR.ColorText(string.format("Cost to make %d:  ", item.qty), "aaaaaa") .. item.cost)
     return
   end
+  -- what it makes you selling them (scales with the amount box, like the cost)
+  if item.kind == "dProfit" then
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    local label = CR.ColorText(string.format("Profit for %d:  ", item.qty), "aaaaaa")
+    if item.profit then
+      row.name:SetText(label .. ProfitText(item.profit)
+        .. (item.how == "vendor" and CR.ColorText("  (vendor)", "aaaaaa") or "")
+        .. (item.unpriced > 0 and CR.ColorText("  (cost incomplete)", "ff9966") or ""))
+    else
+      row.name:SetText(label .. CR.ColorText("no price for it yet", "888888"))
+    end
+    return
+  end
   if item.kind == "dPin" then
     if not row.crPin then
       row.crPin = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
@@ -844,6 +924,11 @@ local function ApplyRow(row, item)
     CR.AddCartIcon(row.crCart, fits)
     -- a batch of it running: how far it's got
     local bs = CR.CraftBatchRunning and CR.CraftBatchRunning(r.spell) and CR.CraftBatchState()
+    row.right:ClearAllPoints()
+    local last = row.crCart:IsShown() and row.crCart or (row.crAll:IsShown() and row.crAll or row.crCreate)
+    row.right:SetPoint("LEFT", last, "RIGHT", 6, 0)
+    row.right:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+    row.right:SetWordWrap(false)
     row.right:SetText(bs and CR.ColorText(string.format("%d/%d", bs.current, bs.total), "ffd100") or "")
     return
   end
@@ -2193,6 +2278,10 @@ local function ExpandOpen(name, favs)
       table.insert(out, { kind = "dCost", qty = qty,
         cost = CR.HasAuctionator() and (CR.FormatMoney(cost * qty)
           .. (unpriced > 0 and CR.ColorText(string.format("   (+%d unpriced)", unpriced), "ff9966") or "")) or "?" })
+      if CR.HasAuctionator() and r.item and r.item > 0 then
+        local p, how, pu = Profit(r)
+        table.insert(out, { kind = "dProfit", qty = qty, profit = p and p * qty, how = how, unpriced = pu or 0 })
+      end
       table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
       -- they're drawn as one panel joined to the recipe's row, closed off under the crafting row
       for i = at + 1, #out do out[i].box = (i == #out) and "last" or "mid" end
@@ -2248,6 +2337,20 @@ local function DestRefresh(name)
   f.empty:SetText("No recipes match.")
   f.empty:SetShown(#left == 0)
   list:SetShown(#left > 0)
+  -- the opened recipe is the current one for the enchant target slot (and its click covers) -
+  -- settled before the lists draw, so the slot goes into this recipe's row (#7)
+  local open
+  for _, it in ipairs(favs) do if it.selected then open = it end end
+  for _, it in ipairs(left) do if it.selected then open = it end end
+  if open then
+    f.current = { kind = "dest", recipe = open.recipe, spell = open.recipe.spell, crafts = 1 }
+    f.craftProf = open.prof
+    local learned = RecipeLearned(open.prof, open.recipe) ~= false
+    local canCast = learned and CR.TradeSkillOpenFor(open.prof) and CraftsReady(open.prof, open.recipe) > 0
+    if f.UpdateEnchant then f:UpdateEnchant(open.recipe, canCast) end
+  elseif f.UpdateEnchant then
+    f:UpdateEnchant(nil)
+  end
   local leftRows, leftAt = ExpandOpen(name, left)
   -- the clicked recipe's row stays on the same line of the list (rows above it may have closed)
   local function KeepAnchor(holder, rows, side)
@@ -2262,23 +2365,18 @@ local function DestRefresh(name)
   end
   list:SetData(leftRows, ui.keepScroll)
   KeepAnchor(list, leftRows, "left")
-  -- the opened recipe is the current one for the enchant target slot (and its click covers)
-  local open
-  for _, it in ipairs(favs) do if it.selected then open = it end end
-  for _, it in ipairs(left) do if it.selected then open = it end end
-  if open then
-    f.current = { kind = "dest", recipe = open.recipe, spell = open.recipe.spell, crafts = 1 }
-    f.craftProf = open.prof
-    local learned = RecipeLearned(open.prof, open.recipe) ~= false
-    local canCast = learned and CR.TradeSkillOpenFor(open.prof) and CraftsReady(open.prof, open.recipe) > 0
-    if f.UpdateEnchant then f:UpdateEnchant(open.recipe, canCast) end
-  elseif f.UpdateEnchant then
-    f:UpdateEnchant(nil)
-  end
   local rows, openAt = ExpandOpen(name, favs)
   f.favList:SetData(rows, ui.keepScroll)
   KeepAnchor(f.favList, rows, "right")
   ui.destAnchor = nil
+  -- the target slot only ever shows inside its recipe's (visible) target row - never left over
+  -- where an earlier row was
+  local e = f.enchant
+  if e and e:IsShown() then
+    local host = e:GetParent()
+    local hostItem = host and rawget(host, "item")
+    if not (hostItem and hostItem.kind == "dEnchant" and host:IsShown()) then e:Hide() end
+  end
   f.favEmpty:SetShown(#favs == 0)
   f.favHeader:SetText(string.format("Your crafts (%d)", #favs))
   ui.keepScroll = true
@@ -2913,7 +3011,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 6 * 22 + 18)
+  pop:SetSize(160, 7 * 22 + 18)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
@@ -2947,7 +3045,10 @@ local function BuildOverlay()
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
     return (c and c.r) and CR.ColorText(n, string.format("%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255)) or n
   end
+  local SORTS = { { "level", "Level (default)" }, { "profitDesc", "Profit: high to low" },
+                  { "profitAsc", "Profit: low to high" } }
   local SUBS = {
+    { key = "sort", label = "Sort", radio = true, options = function() return SORTS end },
     { key = "quality", label = "Quality", options = function()
         local out, have = {}, ui.destPresent and ui.destPresent.quality or {}
         for q = 0, 7 do if have[q] then table.insert(out, { q, QualityName(q) }) end end
@@ -2969,11 +3070,11 @@ local function BuildOverlay()
   pop.sub = sub
   local function OpenSub(spec, anchor)
     local opts = spec.options()
-    sub.spec = spec
+    sub.spec, sub.anchor = spec, anchor
     sub:ClearAllPoints()
     sub:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 6)
     sub:SetSize(150, math.max(1, #opts) * 22 + 12)
-    local chosen = DestFilters(PlanProfession())[spec.key] or {}
+    local chosen = spec.radio and { [DestSort(PlanProfession())] = true } or DestFilters(PlanProfession())[spec.key] or {}
     for i, o in ipairs(opts) do
       local cb = sub.boxes[i]
       if not cb then
@@ -2984,6 +3085,15 @@ local function BuildOverlay()
         cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
         cb:SetScript("OnClick", function(self)
+          if sub.spec.radio then
+            -- pick one: this order (ticking the ticked one again goes back to the default)
+            local cur = DestSort(PlanProfession())
+            SetDestSort(PlanProfession(), (cur == self.value) and "level" or self.value)
+            OpenSub(sub.spec, sub.anchor)
+            ui.keepScroll = false
+            frame:Refresh()
+            return
+          end
           local key = sub.spec.key
           local F = DestFilters(PlanProfession())
           local set = F[key] or {}
@@ -3077,10 +3187,17 @@ local function BuildOverlay()
       if F[cb.key] then n = n + 1 end
     end
     for _, b in ipairs(pop.subRows) do
-      local set, k = F[b.spec.key], 0
-      if set then for _ in pairs(set) do k = k + 1 end end
-      n = n + k
-      b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)
+      if b.spec.radio then
+        -- the sort isn't a filter: its row just says which order is on
+        local cur = DestSort(PlanProfession())
+        local tag = cur == "profitDesc" and "profit, high first" or cur == "profitAsc" and "profit, low first" or nil
+        b.label:SetText(tag and (b.spec.label .. CR.ColorText(" (" .. tag .. ")", "aaaaaa")) or b.spec.label)
+      else
+        local set, k = F[b.spec.key], 0
+        if set then for _ in pairs(set) do k = k + 1 end end
+        n = n + k
+        b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)
+      end
     end
     self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
     frame.destFilterClear:SetEnabled(n > 0)
