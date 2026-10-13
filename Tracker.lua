@@ -28,7 +28,7 @@ local function Hidden(prof)
   return s.hidden[prof]
 end
 
-local function Width() return Settings().width or DEF_W end
+local function Width() return Settings().width or (frame and tonumber(frame:GetWidth())) or DEF_W end
 local function Scale() return Settings().scale or 1 end
 local offset = 0   -- first item shown, when the list scrolls
 local sizePanelSync   -- refreshes the size panel's sliders, once it's built
@@ -123,7 +123,10 @@ function CR.RefreshTracker()
   local top = 28 + (editBar and 22 or 0)
   -- how many lines fit: the set height's worth, or (no height set) the whole list
   local setH = Settings().height
-  local vis = setH and math.max(1, math.floor((setH - top - 8) / ROW_H)) or math.min(#list, MAX_ROWS)
+  -- the Shopping list button along the bottom (with Auctionator)
+  local shop = CR.HasAuctionator() and not collapsed and #list > 0
+  local bottom = 8 + (shop and 26 or 0)
+  local vis = setH and math.max(1, math.floor((setH - top - bottom) / ROW_H)) or math.min(#list, MAX_ROWS)
   offset = math.max(0, math.min(offset, #list - vis))
   local scrolling = #list > vis
   local shown = math.min(vis, #list - offset)
@@ -180,8 +183,37 @@ function CR.RefreshTracker()
     frame.thumb:ClearAllPoints()
     frame.thumb:SetPoint("TOP", frame.track, "TOP", 0, -((trackH - thumbH) * (maxOff > 0 and offset / maxOff or 0)))
   end
-  local autoH = top + shown * ROW_H + (frame.note:IsShown() and 18 or 0) + 8
-  frame:SetHeight(collapsed and 26 or (setH or autoH))
+  -- never taller than the list: a taller setting stops after the last line
+  frame.shop:SetShown(shop)
+  frame.shop.items = list
+  frame.note:ClearAllPoints()
+  frame.note:SetPoint("BOTTOMLEFT", 8, bottom - 2)
+  frame.note:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
+  local autoH = top + shown * ROW_H + (frame.note:IsShown() and 18 or 0) + bottom
+  frame:SetHeight(collapsed and 26 or math.min(setH or autoH, autoH))
+  -- never wider than it needs to be: the longest name and count in full (and the title bar);
+  -- with no width set, exactly that
+  local m = frame.measure
+  -- measured in the font the lines really use (EllesmereUI's global font, if that's on)
+  local function SameFont(fs)
+    local font, size, flags = fs:GetFont()
+    if font and type(size) == "number" then m:SetFont(font, size, flags) else m:SetFontObject("GameFontHighlightSmall") end
+  end
+  local nameW, countW = 0, 0
+  if frame.rows[1] then SameFont(frame.rows[1].name) end
+  for _, it in ipairs(list) do
+    m:SetText(it.name)
+    nameW = math.max(nameW, tonumber(m:GetStringWidth()) or 0)
+    m:SetText(string.format("%d/%d", it.need, it.need) .. (((it.crafted or 0) > 0 and it.have < it.need)
+      and string.format(" +%d make", it.crafted) or ""))
+    countW = math.max(countW, tonumber(m:GetStringWidth()) or 0)
+  end
+  local rowW = 8 + (editing and 18 or 0) + (ROW_H - 4) + 5 + nameW + 6 + countW + 2 + 8 + (scrolling and 8 or 0)
+  SameFont(frame.title)
+  m:SetText(frame.title:GetText() or "")
+  local headW = 8 + (tonumber(m:GetStringWidth()) or 0) + 4 + 40 + 3 + 16 + 3 + 18 + 2 + 18 + 6
+  local needW = math.ceil(math.max(rowW, headW, editBar and 120 or 0))
+  frame:SetWidth(math.min(Settings().width or needW, needW))
   frame.edit:SetText(editing and "Done" or "Edit")
   frame.collapse:SetText(collapsed and "+" or "-")
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
@@ -246,6 +278,35 @@ local function Build()
   frame.body:SetPoint("RIGHT", frame, "RIGHT", -8, 0)
   frame.body:SetHeight(1)
   frame.rows = {}
+  -- Shopping list: an Auctionator list of what's still needed of the materials shown (hidden ones
+  -- left out); things the route makes itself aren't bought
+  frame.shop = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.shop:SetHeight(20)
+  frame.shop:SetPoint("BOTTOMLEFT", 8, 6)
+  frame.shop:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
+  frame.shop:SetText("Shopping list")
+  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.shop) end
+  if CR.AddCartIcon then CR.AddCartIcon(frame.shop) end
+  frame.shop:SetScript("OnClick", function(self)
+    local prof = Prof()
+    local hidden = Hidden(prof)
+    local mats = {}
+    for _, m in ipairs(self.items or {}) do
+      if not hidden[m.id] then table.insert(mats, m) end
+    end
+    CR.CreateShoppingList({ prof = prof, materials = mats })
+  end)
+  frame.shop:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Auctionator shopping list")
+    GameTooltip:AddLine("What you still need of the materials this list shows. Hidden ones are left out, and so "
+      .. "is anything the route makes itself.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.shop:SetScript("OnLeave", GameTooltip_Hide)
+  frame.shop:Hide()
+  frame.measure = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")   -- (sizing only)
+  frame.measure:Hide()
   frame.track = frame:CreateTexture(nil, "ARTWORK")
   frame.track:SetWidth(4)
   frame.track:SetColorTexture(1, 1, 1, 0.08)
@@ -325,10 +386,10 @@ function CR.TrackerSetSize(w, scale, h)
   if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
   if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
   if not frame then return end
-  frame:SetWidth(Width())
+  -- (the width itself is set by the refresh below: never wider than the list needs)
   -- a new scale keeps the window's top-left corner where it is on screen (its position is in
   -- its own scaled units, so it would otherwise drift)
-  local old, new = frame:GetScale(), Scale()
+  local old, new = tonumber(frame:GetScale()) or 1, Scale()
   if math.abs(old - new) > 0.001 then
     local l, t = frame:GetLeft(), frame:GetTop()
     frame:SetScale(new)

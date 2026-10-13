@@ -356,7 +356,7 @@ function CR.LootFeedSetSize(w, h, scale)
   if not anchor then return end
   anchor:SetSize(W(), H())
   -- a new scale keeps the feed's bottom-left corner where it is on screen (its rows grow up from it)
-  local old, new = anchor:GetScale(), Scale()
+  local old, new = tonumber(anchor:GetScale()) or 1, Scale()
   if math.abs(old - new) > 0.001 then
     local l, bottom = anchor:GetLeft(), anchor:GetBottom()
     anchor:SetScale(new)

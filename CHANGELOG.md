@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.46.4
+
+- Materials tracker: it's never taller than its list (a taller height stops after the last line) or wider than it needs to show every name and count in full - by default it's exactly that size. Set smaller, it still scrolls / narrows.
+- Materials tracker: a **Shopping list** button along the bottom (with Auctionator) - an Auctionator list of what you still need of the materials it shows; hidden ones, and things the route makes itself, are left out.
+
 ## 0.46.3
 
 - Materials tracker: **Ctrl + mouse wheel** over it scales it up / down. The Scale slider works properly now - its panel scaled along with the tracker, so the slider moved under the mouse while you dragged it.
