@@ -977,6 +977,16 @@ local function ApplyRow(row, item)
         -- the recipe it's for is q.crList / q.crSpell (set each time the row is drawn), so a refresh
         -- while you type never puts the amount on another recipe
         local function Stored(self) return CartEntry(self.crList, self.crSpell).qty or 1 end
+        -- keep what's typed (a whole number from 1): saved on every change while you're in the box,
+        -- and again on Enter / clicking away - not only on the "typed by you" flag, which this
+        -- client may not pass
+        local function Save(self)
+          if not self.crSpell then return end
+          local n = tonumber(self:GetText())
+          if n and n >= 1 then
+            CartEntry(self.crList, self.crSpell).qty = math.min(9999, math.floor(n))
+          end
+        end
         -- clicking in selects what's there, so typing replaces it (not "1" + what you type)
         q:SetScript("OnEditFocusGained", function(self)
           self:HighlightText()
@@ -984,23 +994,22 @@ local function ApplyRow(row, item)
         end)
         q:SetScript("OnMouseUp", function(self) if self:HasFocus() then self:HighlightText() end end)
         -- every keystroke: a valid amount is kept, and the totals below follow straight away
+        -- (the list setting the box's text, when you're not in it, isn't you typing)
         q:SetScript("OnTextChanged", function(self, userInput)
-          if not userInput or not self.crSpell then return end
-          local n = tonumber(self:GetText())
-          if n and n >= 1 then
-            CartEntry(self.crList, self.crSpell).qty = math.min(9999, math.floor(n))
-            UpdateFavCart()
-          end
+          if not (userInput or self:HasFocus()) then return end
+          Save(self)
+          UpdateFavCart()
         end)
-        -- left empty (or 0): back to the amount it has
+        -- leaving it: what's there is kept; left empty (or 0), it goes back to the amount it had
         q:SetScript("OnEditFocusLost", function(self)
           self:HighlightText(0, 0)
           if not self.crSpell then return end
+          Save(self)
           local n = tonumber(self:GetText())
           if not n or n < 1 then self:SetText(tostring(Stored(self))) end
           UpdateFavCart()
         end)
-        q:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        q:SetScript("OnEnterPressed", function(self) Save(self) self:ClearFocus() end)
         q:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
         row.crCartQty = q
       end
