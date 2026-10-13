@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.45.0
+
+- **Materials tracker**: a small window you can pin anywhere on screen, open whether or not CraftRoute or its tab is - the materials left on your route (the profession picked in CraftRoute), each with what you have of what the route needs, still-needed ones first (yellow), done ones green and greyed below. Things the route makes on the way say "+N make".
+  - **Edit** ticks / unticks which items it shows (click anywhere on a line); hidden ones are hidden only here, per profession. **-** collapses it to its title, **x** closes it.
+  - Drag it by its title, or move it in EllesmereUI's unlock mode ("CraftRoute Materials Tracker"). It updates as you loot, bank and craft, and comes back after a reload if it was open.
+  - Open it with the **Tracker** button at the top of the main window, or `/cr tracker`. Kept per character.
+
 ## 0.44.0
 
 - Loot feed matches **EllesmereUI's loot feed look** (Forever Essentials): its style - Bar (accent bar on a fading background), Box (solid with a border) or Toast (the gold-framed plate); Icon Tray has no room for text, so rows draw as Box then - plus its background colour and opacity, border size and colour, quality-coloured bars / borders, font and text size (the count a little larger), and how long rows stay up. Your width, height and scale still apply. "Match EllesmereUI's loot feed look" in the Loot feed panel turns it off for CraftRoute's own look; on by default when EllesmereUI is loaded.

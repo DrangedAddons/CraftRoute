@@ -424,6 +424,9 @@ local function CreateWindow()
   if CR.LootFeedButton then
     local lf = CR.LootFeedButton(frame)
     lf:SetPoint("RIGHT", versionText, "LEFT", -10, 0)
+    if CR.TrackerButton then
+      CR.TrackerButton(frame):SetPoint("RIGHT", lf, "LEFT", -6, 0)
+    end
   end
 
   frame.panels = {}
