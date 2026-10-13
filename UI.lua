@@ -443,11 +443,12 @@ local function CreateWindow()
     AddTab("plan", "Plan", 130)
     AddTab("recipes", "Recipes", 234)
   end
+  AddTab("start", "Professions", CR.SHOW_CRAFT_TAB and 442 or 338)
 
   -- Look picker: only when EllesmereUI is installed, to match its four styles.
   if CR.HasEllesmere() then
     local lookLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    lookLabel:SetPoint("TOPLEFT", CR.SHOW_CRAFT_TAB and 456 or 352, -19)
+    lookLabel:SetPoint("TOPLEFT", CR.SHOW_CRAFT_TAB and 560 or 456, -19)   -- after the tabs
     lookLabel:SetText("Look:")
     CR.ThemeRegisterAccentText(lookLabel)
     local lookDD = CR.CreateDropdown(frame, 170, function()
@@ -487,7 +488,8 @@ local function CreateWindow()
   -- each tab is built on its own, so one failing doesn't leave the others blank
   local specs = { { "plan", CR.CreatePlanPanel }, { "recipes", CR.CreateRecipesPanel } }
   if CR.SHOW_CRAFT_TAB then table.insert(specs, { "craft", CR.CreateCraftPanel }) end
-  -- the start page (no profession learned yet): no tab of its own - it's where the window lands
+  -- Professions: pick any profession, find its nearest trainer (where the window lands with no
+  -- crafting profession learned)
   table.insert(specs, { "start", CR.CreateStartPanel })
   for _, spec in ipairs(specs) do
     CR.SafeCall(function()
@@ -504,13 +506,12 @@ end
 function CR.ShowWindow(tab)
   if not frame then CreateWindow() end
   -- the last tab used is remembered, so the window reopens where you left it
-  -- no profession learned on this character: land on the start page (pick one, find a trainer)
+  -- no profession learned on this character: land on the Professions tab (pick one, find a trainer)
   local none = CR.HasAnyProfession and not CR.HasAnyProfession()
   if not tab and none and frame.panels.start then tab = "start" end
   tab = tab or frame.current or CraftRouteDB.lastTab or "plan"
-  if tab == "start" and not none then tab = "plan" end   -- learned one since: the start page is done
   if not frame.panels[tab] then tab = frame.panels.plan and "plan" or "recipes" end
-  if tab ~= "start" then CraftRouteDB.lastTab = tab end
+  CraftRouteDB.lastTab = tab
   frame.current = tab
   for key, p in pairs(frame.panels) do p:SetShown(key == tab) end
   for key, b in pairs(frame.tabs) do
@@ -528,6 +529,7 @@ function CR.ToggleWindow()
 end
 
 function CR.IsWindowShown() return frame and frame:IsShown() and true or false end
+function CR.CurrentTab() return frame and frame.current end
 
 function CR.RefreshWindow()
   if not frame or not frame:IsShown() then return end

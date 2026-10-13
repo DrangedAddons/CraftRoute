@@ -1,6 +1,6 @@
 -- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab.
--- Always the tab. With no profession learned at all it opens the (empty) professions book on
--- CraftRoute's tab there instead - its start page (UIStart.lua). It opens the profession picked in
+-- Always the tab. With no crafting profession to open (nothing learned, or only gathering) it
+-- opens the main window's Professions tab instead: pick a profession, pin its nearest trainer. It opens the profession picked in
 -- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
 -- nearest one that has (Cooking for Fishing, else your first crafting profession). Like other
 -- addons' profession openers (EllesmereUI's data bar) it calls C_TradeSkillUI.OpenTradeSkill from
@@ -40,16 +40,12 @@ function CraftRoute_KeybindPressed()
   end
   local prof = Target()
   if not prof then
-    local have = CR.LearnedProfessionNames and CR.LearnedProfessionNames() or {}
-    if #have == 0 then
-      -- no profession at all: the (empty) professions book, on CraftRoute's tab - pick one, find
-      -- its trainer. The main window's start page if the book can't be opened.
-      local ok, opened = pcall(CR.OpenBookStart)
-      if not (ok and opened) then CR.SafeCall(CR.ShowWindow) end
+    -- no crafting profession window to open: the Professions tab (pick one, find its trainer);
+    -- pressing it again while that's showing closes it
+    if CR.IsWindowShown() and CR.CurrentTab and CR.CurrentTab() == "start" then
+      CR.ToggleWindow()
     else
-      -- professions, but none with a crafting window CraftRoute has a tab in
-      CR.Print("No crafting profession window to open (this character has: " .. table.concat(have, ", ")
-        .. "). /cr opens CraftRoute's window.")
+      CR.SafeCall(CR.ShowWindow, "start")
     end
     return
   end

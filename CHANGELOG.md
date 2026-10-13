@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.38.1
+
+- The profession picker is now a **Professions** tab in the main CraftRoute window (next to Plan and Recipes): every primary and secondary profession, what each does, and Pin buttons for the nearest trainers. It's always there, for picking up a second profession too.
+- Keybind (Shift+K) with no crafting profession to open (nothing learned, or only gathering): opens the main window on the Professions tab; press it again to close. With a crafting profession it opens the crafting tab as always.
+- Removed 0.38.0's CraftRoute page in the game's Professions window - the keybind no longer goes there.
+
 ## 0.38.0
 
 - No profession learned yet: the keybind (Shift+K) now opens the game's Professions window (the one K opens - empty until you learn something) on a CraftRoute tab, with the profession picker in it - every primary and secondary profession, what each does, and Pin buttons for the nearest trainers. Opening that window yourself shows it too, with CraftRoute's tab on its right edge (click to hide / show it). Pressing the keybind again closes it. Once you've learned a profession the Professions window is Blizzard's own again and the keybind opens the crafting tab as before.
