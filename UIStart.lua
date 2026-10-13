@@ -32,8 +32,26 @@ local function HasRoute(name)
   return p and p.routes and true or false
 end
 
+-- Any profession at all on this character - gathering ones (Herbalism, Skinning) too, which
+-- CraftRoute has no route for. Asks the game directly, so it's never fooled by a skill list that
+-- hasn't been read yet.
+function CR.LearnedProfessionNames()
+  local names = {}
+  if GetProfessions and GetProfessionInfo then
+    for _, index in pairs({ GetProfessions() }) do
+      local name = index and GetProfessionInfo(index)
+      if name then table.insert(names, name) end
+    end
+  end
+  for name in pairs(CR.skill or {}) do
+    local seen = false
+    for _, n in ipairs(names) do if n == name then seen = true end end
+    if not seen then table.insert(names, name) end
+  end
+  return names
+end
 function CR.HasAnyProfession()
-  return next(CR.skill or {}) ~= nil
+  return #CR.LearnedProfessionNames() > 0
 end
 
 function CR.CreateStartPanel(parent)

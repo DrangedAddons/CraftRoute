@@ -31,6 +31,8 @@ end
 
 function CraftRoute_KeybindPressed()
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
+  -- read the professions fresh: the list from login can be empty or out of date
+  if CR.ScanSkills then pcall(CR.ScanSkills) end
   -- the window's already up (any profession): show CraftRoute's tab, or close the window
   if ProfessionsFrame and ProfessionsFrame:IsShown() and CR.KeybindToggleView then
     local prof = Target()
@@ -38,9 +40,15 @@ function CraftRoute_KeybindPressed()
   end
   local prof = Target()
   if not prof then
-    -- no crafting profession (no profession window to open): CraftRoute's own window instead -
-    -- the start page if nothing's learned at all, where you can pick one and find its trainer
-    CR.SafeCall(CR.ShowWindow)
+    local have = CR.LearnedProfessionNames and CR.LearnedProfessionNames() or {}
+    if #have == 0 then
+      -- no profession at all: CraftRoute's start page (pick one, find its trainer)
+      CR.SafeCall(CR.ShowWindow)
+    else
+      -- professions, but none with a crafting window CraftRoute has a tab in
+      CR.Print("No crafting profession window to open (this character has: " .. table.concat(have, ", ")
+        .. "). /cr opens CraftRoute's window.")
+    end
     return
   end
   if CR.KeybindWillOpen then CR.KeybindWillOpen() end

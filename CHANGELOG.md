@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.37.3
+
+- Keybind: reads your professions fresh on every press. It only opens CraftRoute's main window (the start page) when the character has no profession at all; a character with only professions that have no crafting window (e.g. Herbalism, Skinning) gets a chat line saying so instead. The start page also counts gathering professions as "learned", so it no longer shows for a gatherer.
+
 ## 0.37.2
 
 - Craft view: the X beside Filter also puts the sort back to Level (it's clickable whenever a filter or a profit sort is on).
