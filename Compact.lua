@@ -4264,6 +4264,13 @@ local function Install()
     hooksecurefunc(ProfessionsFrame, "SetTab", OnNativeTab)
   end
   ProfessionsFrame:HookScript("OnShow", function()
+    -- the shopping amounts in your list start at 1 each time the window opens (the ticks stay)
+    local db = DB()
+    if db and db.destCart and not Keeping() then
+      for _, cart in pairs(db.destCart) do
+        for _, e in pairs(cart) do e.qty = nil end
+      end
+    end
     KeepNow()
     ReopenSoon()
     C_Timer.After(0, PositionEntry)
