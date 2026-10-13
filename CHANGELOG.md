@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.49.5
+
+- Craft view: the shopping line reads "N selected  Cost ..  Profit ..  [cart]" - cost on the left, profit beside the cart.
+
 ## 0.49.4
 
 - Craft view: shopping amounts start at 1 for a recipe you haven't set, and remember the last amount you entered (0.49.3 reset them every time the window opened - undone).
