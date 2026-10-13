@@ -13,7 +13,7 @@ BINDING_HEADER_CRAFTROUTE = "CraftRoute"
 BINDING_NAME_CRAFTROUTE_PROFESSION_TAB = "CraftRoute Profession Tab"
 
 local function SkillLine(name)
-  local s = name and name ~= "Fishing" and CR.skill[name]
+  local s = name and not CR.NO_WINDOW[name] and CR.skill[name]
   return s and s.skillLine
 end
 

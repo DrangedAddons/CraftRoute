@@ -88,7 +88,15 @@ end
 function CR.GetProfession(name) return CR.professions[name] end
 
 -- Professions with a route, primary crafting professions first.
-local ORDER = { Cooking = 50, Fishing = 51, ["First Aid"] = 52 }
+local ORDER = { Herbalism = 40, Mining = 41, Skinning = 42, Cooking = 50, Fishing = 51, ["First Aid"] = 52 }
+
+-- Professions with no crafting window to open (their route is in the main window only), and the
+-- icon their gathering steps show
+CR.NO_WINDOW = { Fishing = true, Herbalism = true, Skinning = true }
+CR.GATHER_ICON = {
+  Fishing = "Interface\\Icons\\Trade_Fishing", Mining = "Interface\\Icons\\Trade_Mining",
+  Herbalism = "Interface\\Icons\\Trade_Herbalism", Skinning = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01",
+}
 function CR.SupportedProfessions()
   local list = {}
   for name, p in pairs(CR.professions) do
@@ -208,6 +216,8 @@ local PROFESSION_COLORS = {
   Leatherworking = { 0.80, 0.53, 0.28 },
   Tailoring      = { 0.86, 0.38, 0.64 },
   Mining         = { 0.60, 0.66, 0.74 },
+  Herbalism      = { 0.42, 0.76, 0.36 },
+  Skinning       = { 0.72, 0.55, 0.40 },
   Cooking        = { 0.96, 0.58, 0.22 },
   ["First Aid"]  = { 0.88, 0.24, 0.24 },
   Fishing        = { 0.28, 0.60, 0.94 },

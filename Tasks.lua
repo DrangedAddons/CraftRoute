@@ -385,7 +385,7 @@ function CR.StepTask(st, profName)
   else
     -- guide step
     t.kind = "guide"
-    t.icon = (skillName == "Fishing") and "Interface\\Icons\\Trade_Fishing" or "Interface\\Icons\\INV_Misc_Note_01"
+    t.icon = (CR.GATHER_ICON and CR.GATHER_ICON[skillName]) or "Interface\\Icons\\INV_Misc_Note_01"
     t.title = FirstSentence(text)
     if st.learnStep then Cond(learned, skillName .. " learned") end
     if st.learns then Prep(learned, skillName .. " learned") end
@@ -414,7 +414,7 @@ function CR.StepTask(st, profName)
     -- (the solo Fishing guide's tips and shopping steps sit beside a "fish here" step over the
     -- same range, so only the chosen spot is the fishing itself)
     local activity = not st.trainCap and not st.learnStep
-      and ((st.yields and #st.yields > 0) or st.catches or st.chosen or st.ownSkill == "Fishing")
+      and ((st.yields and #st.yields > 0) or st.catches or st.chosen or st.gather or st.ownSkill == "Fishing")
     if activity and st.to and st.to > (st.from or 0) then
       Cond(cur >= st.to, string.format("%s %d (you: %d)", skillName, st.to, cur))
       t.progress = { from = st.from or 0, to = st.to, cur = cur }

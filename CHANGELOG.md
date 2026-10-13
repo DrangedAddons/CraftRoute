@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 0.40.0
+
+- New routes for the gathering professions: **Mining**, **Herbalism** and **Skinning** (1-300). They follow wow-professions.com's Classic guides as stand-ins until Forever guides exist - gathering barely differs.
+  - Each band lists the zones to farm for your faction; where there's more than one, pick the one you like (Choose one). Every zone step has a "reach skill N" objective and progress bar; the training ranks (Journeyman, Expert, Artisan) come up as steps with trainer pins, like the other professions.
+  - Mining: buy a Mining Pick first (it only has to be in your bags); notes on smelting Silver from 75 and Gold from 155, and Rich Thorium from 275. Skinning: buy a Skinning Knife first; one path per faction. Herbalism: which herbs each band has and the skill some of them need.
+  - Herbalism and Skinning have no crafting window, so (like Fishing) their route is in the main window; Mining's also shows in the Smelting window's CraftRoute tab.
+  - "Check for guide updates" now watches these three guides too.
+
 ## 0.39.2
 
 - The Professions tab (crafting window) now always selects on the first click. It could take two: right after the keybind opened the window, CraftRoute was still bringing its own view back for a couple of seconds and undid the click; and when Blizzard thought its Professions page was already selected (CraftRoute's view had only covered it) it ignored the click. A click on any of Blizzard's tabs now ends that "bring CraftRoute back" spell, and a Professions tab click shows Blizzard's Professions page outright.

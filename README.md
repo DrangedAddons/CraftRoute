@@ -51,6 +51,6 @@ Optional companions:
 
 ## Notes
 
-Routes follow the beta guides and are kept in step as the guides change. Most guides stop at 225 until the level cap allows more; past that, CraftRoute fills in the cheapest trainer or vendor recipes. Mining, Herbalism and Skinning will be added once Forever guides exist for them.
+Routes follow the beta guides and are kept in step as the guides change. Most guides stop at 225 until the level cap allows more; past that, CraftRoute fills in the cheapest trainer or vendor recipes. Mining, Herbalism and Skinning follow wow-professions.com's Classic guides for now (gathering barely differs), until Forever guides exist for them.
 
 See `CHANGELOG.md` for what's new.

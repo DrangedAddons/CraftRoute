@@ -34,7 +34,7 @@ local CAST_NAME = { Mining = "Smelting" }   -- the spell that opens the window, 
 function CR.OpenProfessionMacro(profName)
   local route = profName and CR.Route(profName)
   profName = route and route.recipeProf or profName
-  if not profName or profName == "Fishing" then return nil end
+  if not profName or CR.NO_WINDOW[profName] then return nil end
   local _, _, learned = CR.GetSkill(profName)
   if not learned or CR.TradeSkillOpenFor(profName) then return nil end
   return "/cast " .. (CAST_NAME[profName] or profName)
