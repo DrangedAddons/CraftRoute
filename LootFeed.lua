@@ -84,12 +84,23 @@ local function NewRow()
       GameTooltip:SetOwner(self, "ANCHOR_LEFT")
       GameTooltip:SetItemByID(self.itemID)
       GameTooltip:AddLine("CraftRoute: the route needs " .. (self.need or "?") .. ".", 0.4, 0.8, 1, true)
+      GameTooltip:AddLine("Shift+drag to move the feed.", 0.6, 0.6, 0.6, true)
       GameTooltip:Show()
     end
   end)
   r:SetScript("OnLeave", function(self)
     GameTooltip:Hide()
     self.fade:Play()
+  end)
+  -- Shift+drag a row to move the whole feed
+  r:RegisterForDrag("LeftButton")
+  r:SetScript("OnDragStart", function()
+    if IsShiftKeyDown() then anchor:StartMoving() end
+  end)
+  r:SetScript("OnDragStop", function()
+    anchor:StopMovingOrSizing()
+    local point, _, rel, x, y = anchor:GetPoint()
+    Settings().pos = { point, rel, x, y }
   end)
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, r) end
   table.insert(pool, r)

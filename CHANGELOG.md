@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.41.4
+
+- Loot feed: Shift+drag any row to move the feed (the position is kept per character). `/cr feed move` still shows a bar to drag it by when no row is up.
+
 ## 0.41.3
 
 - Loot feed: fixed the rows never appearing ("LootFeed.lua:226: attempt to call a nil value") - 0.41.1's wait-for-the-bags check used a game function Forever doesn't have.
