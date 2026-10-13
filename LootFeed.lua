@@ -55,18 +55,153 @@ local function Release(r)
 end
 
 local pool = {}
+---------------------------------------------------------------------------
+-- The look: EllesmereUI's loot feed settings (Forever Essentials: style, background, border,
+-- quality colours, text size, how long rows stay) when "Match EllesmereUI's loot feed look" is on,
+-- else CraftRoute's own. Our width / height / scale always apply.
+---------------------------------------------------------------------------
+local EUI_DEFAULTS = {   -- EllesmereUI's own defaults, for settings it hasn't saved
+  style = "BAR", bgR = 0.05, bgG = 0.05, bgB = 0.05, bgA = 0.3, borderSize = 1,
+  borderR = 0, borderG = 0, borderB = 0, qualityBorder = true, barWidth = 3, textSize = 13, duration = 5,
+}
+local TOAST_GOLD, TOAST_EDGE = { 0.69, 0.54, 0.23 }, { 0.35, 0.27, 0.14 }
+local TOAST_TOP, TOAST_BOTTOM = { 0.19, 0.14, 0.09 }, { 0.055, 0.04, 0.024 }
+local CR_BACKDROP = { bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 }
+
+local function MatchEllesmere()
+  return Settings().matchEllesmere ~= false and EllesmereUI and EllesmereUI.IS_FOREVER and EllesmereUI.PP and true or false
+end
+local function EG(k)
+  local db = EllesmereUIDB and EllesmereUIDB.lootFeed
+  local v = db and db[k]
+  if v == nil then v = EUI_DEFAULTS[k] end
+  return v
+end
+local function Accent()
+  local c = EllesmereUI and EllesmereUI.ELLESMERE_GREEN
+  if c then return c.r, c.g, c.b end
+  return 0.05, 0.82, 0.62
+end
+local function Gradient(tex, dir, r1, g1, b1, a1, r2, g2, b2, a2)
+  tex:SetColorTexture(1, 1, 1, 1)
+  if CreateColor and tex.SetGradient then
+    tex:SetGradient(dir, CreateColor(r1, g1, b1, a1), CreateColor(r2, g2, b2, a2))
+  else
+    tex:SetColorTexture(r1, g1, b1, a1)
+  end
+end
+local function Font(fs, size, fallback)
+  if MatchEllesmere() and EllesmereUI.ApplyModuleFont then
+    if pcall(EllesmereUI.ApplyModuleFont, fs, nil, size, "essentials") then return end
+  end
+  fs:SetFontObject(fallback)
+end
+
+-- Lay a row out in the current look. qc: the item's quality colour (or nil); done: has enough.
+local function StyleRow(r, qc, done)
+  local h = H()
+  local PP = EllesmereUI and EllesmereUI.PP
+  if not MatchEllesmere() then
+    -- CraftRoute's own: dark plate, 1 px theme border, gold / green bar for in progress / done
+    r:SetBackdrop(CR_BACKDROP)
+    r:SetBackdropColor(0.05, 0.05, 0.07, 0.75)
+    r:SetBackdropBorderColor(CR.ThemeBorderColor())
+    r.bg:Hide()
+    r.iconBg:Hide()
+    if r.euiBorder and PP then pcall(PP.HideBorder, r) end
+    r.bar:ClearAllPoints()
+    r.bar:SetPoint("TOPLEFT", 1, -1)
+    r.bar:SetPoint("BOTTOMLEFT", 1, 1)
+    r.bar:SetWidth(3)
+    r.bar:SetColorTexture(done and 0.25 or 1, done and 1 or 0.82, done and 0.25 or 0, 0.9)
+    r.bar:Show()
+    r.icon:ClearAllPoints()
+    r.icon:SetSize(h - 8, h - 8)
+    r.icon:SetPoint("LEFT", 9, 0)
+    r.name:SetFontObject("GameFontHighlight")
+    r.count:SetFontObject("GameFontNormalLarge")
+    r.fadeAlpha:SetStartDelay(SHOW_FOR)
+    return
+  end
+  -- EllesmereUI's look (its Icon Tray has no room for text: rows as Box then)
+  local style = EG("style")
+  if style == "TRAY" then style = "BOX" end
+  local bar, toast = style == "BAR", style == "TOAST"
+  r:SetBackdrop(nil)
+  r.bg:Show()
+  if toast then
+    local a = EG("bgA")
+    Gradient(r.bg, "VERTICAL", TOAST_BOTTOM[1], TOAST_BOTTOM[2], TOAST_BOTTOM[3], a, TOAST_TOP[1], TOAST_TOP[2], TOAST_TOP[3], a)
+  else
+    local cr, cg, cb, ca = EG("bgR"), EG("bgG"), EG("bgB"), EG("bgA")
+    Gradient(r.bg, "HORIZONTAL", cr, cg, cb, ca, cr, cg, cb, bar and 0 or ca)
+  end
+  -- its accent bar (Bar): the item's quality colour, or the accent
+  r.bar:ClearAllPoints()
+  r.bar:SetPoint("TOPLEFT")
+  r.bar:SetPoint("BOTTOMLEFT")
+  local bw = EG("barWidth")
+  local useQ = qc and EG("qualityBorder")
+  if bar and bw > 0 then
+    r.bar:SetWidth(bw)
+    if useQ then r.bar:SetColorTexture(qc.r, qc.g, qc.b, 1) else r.bar:SetColorTexture(Accent()) end
+    r.bar:Show()
+  else
+    r.bar:Hide()
+  end
+  -- the icon: inset beside the bar (Bar), framed in the quality colour (Toast), or full height (Box)
+  r.icon:ClearAllPoints()
+  local edge = toast and 2 or 1
+  if bar then
+    r.icon:SetSize(h - 8, h - 8)
+    r.icon:SetPoint("LEFT", bw > 0 and bw + 5 or 4, 0)
+  elseif toast then
+    r.icon:SetSize(h - 10, h - 10)
+    r.icon:SetPoint("LEFT", 6, 0)
+  else
+    r.icon:SetSize(h, h)
+    r.icon:SetPoint("LEFT")
+  end
+  r.iconBg:ClearAllPoints()
+  r.iconBg:SetPoint("TOPLEFT", r.icon, "TOPLEFT", -edge, edge)
+  r.iconBg:SetPoint("BOTTOMRIGHT", r.icon, "BOTTOMRIGHT", edge, -edge)
+  if toast then
+    if useQ then r.iconBg:SetColorTexture(qc.r, qc.g, qc.b, 1)
+    else r.iconBg:SetColorTexture(TOAST_EDGE[1], TOAST_EDGE[2], TOAST_EDGE[3], 1) end
+  else
+    r.iconBg:SetColorTexture(0, 0, 0, 1)
+  end
+  r.iconBg:SetShown(bar or toast)
+  -- its border (not on Bar): gold on Toast, else the quality or border colour
+  local size = EG("borderSize")
+  if PP and not bar and size > 0 then
+    if not r.euiBorder then
+      r.euiBorder = pcall(PP.CreateBorder, r, 0, 0, 0, 1, 1, "OVERLAY", 2)
+    end
+    local br, bgc, bb
+    if toast then br, bgc, bb = TOAST_GOLD[1], TOAST_GOLD[2], TOAST_GOLD[3]
+    elseif useQ then br, bgc, bb = qc.r, qc.g, qc.b
+    else br, bgc, bb = EG("borderR"), EG("borderG"), EG("borderB") end
+    pcall(PP.UpdateBorder, r, size, br, bgc, bb, 1)
+    pcall(PP.ShowBorder, r)
+  elseif r.euiBorder and PP then
+    pcall(PP.HideBorder, r)
+  end
+  local ts = EG("textSize")
+  Font(r.name, ts, "GameFontHighlight")
+  Font(r.count, ts + 3, "GameFontNormalLarge")
+  r.fadeAlpha:SetStartDelay(EG("duration"))
+end
+
 local function NewRow()
   for _, r in ipairs(pool) do if r.free then r.free = false return r end end
   local r = CreateFrame("Frame", nil, anchor, "BackdropTemplate")
   r:SetSize(W(), H())
-  CR.Backdrop(r, 0.05, 0.05, 0.07, 0.75)
+  r.bg = r:CreateTexture(nil, "BACKGROUND")
+  r.bg:SetAllPoints()
   r.bar = r:CreateTexture(nil, "ARTWORK")
-  r.bar:SetPoint("TOPLEFT", 1, -1)
-  r.bar:SetPoint("BOTTOMLEFT", 1, 1)
-  r.bar:SetWidth(3)
-  r.icon = r:CreateTexture(nil, "ARTWORK")
-  r.icon:SetSize(H() - 8, H() - 8)
-  r.icon:SetPoint("LEFT", 9, 0)
+  r.iconBg = r:CreateTexture(nil, "ARTWORK")
+  r.icon = r:CreateTexture(nil, "ARTWORK", nil, 1)
   r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
   -- one line: icon, the item, and on the right what you have now of what the route needs
   r.count = r:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -83,6 +218,7 @@ local function NewRow()
   a:SetToAlpha(0)
   a:SetDuration(FADE_OUT)
   a:SetStartDelay(SHOW_FOR)
+  r.fadeAlpha = a
   r.fade:SetScript("OnFinished", function() Release(r) end)
   -- hovering holds it (and shows the item)
   r:EnableMouse(true)
@@ -111,7 +247,6 @@ local function NewRow()
     local point, _, rel, x, y = anchor:GetPoint()
     Settings().pos = { point, rel, x, y }
   end)
-  if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, r) end
   table.insert(pool, r)
   return r
 end
@@ -125,7 +260,9 @@ local function Fill(r)
   r.name:SetText(CR.ItemName(r.itemID))
   if qc and qc.r then r.name:SetTextColor(qc.r, qc.g, qc.b) else r.name:SetTextColor(1, 1, 1) end
   r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(r.after, r.need), r.need), c))
-  r.bar:SetColorTexture(done and 0.25 or 1, done and 1 or 0.82, done and 0.25 or 0, 0.9)
+  StyleRow(r, qc and qc.r and qc or nil, done)
+  -- CraftRoute's own look: the EllesmereUI global font, if that's on
+  if not MatchEllesmere() and CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, r) end
 end
 
 local function Show(itemID, before, after, need)
@@ -221,7 +358,7 @@ function CR.LootFeedSetSize(w, h, scale)
   anchor:SetScale(Scale())
   for _, r in ipairs(pool) do
     r:SetSize(W(), H())
-    r.icon:SetSize(H() - 8, H() - 8)
+    if r.itemID and not r.free then Fill(r) end
   end
   Layout()
 end
@@ -483,6 +620,11 @@ local function BuildPanel(owner)
   Add(Check(p, "Show loot progress for the route", function() return s().enabled end,
     function(v) s().enabled = v end), 24)
   if EllesmereUI and EllesmereUI.IS_FOREVER then
+    Add(Check(p, "Match EllesmereUI's loot feed look", function() return s().matchEllesmere ~= false end,
+      function(v)
+        s().matchEllesmere = v
+        for _, r in ipairs(rows) do Fill(r) end
+      end), 24)
     Add(Check(p, "Put the count in EllesmereUI's loot feed", function() return s().inEllesmere end,
       function(v) s().inEllesmere = v end), 30)
   else

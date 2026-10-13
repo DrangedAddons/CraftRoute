@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.44.0
+
+- Loot feed matches **EllesmereUI's loot feed look** (Forever Essentials): its style - Bar (accent bar on a fading background), Box (solid with a border) or Toast (the gold-framed plate); Icon Tray has no room for text, so rows draw as Box then - plus its background colour and opacity, border size and colour, quality-coloured bars / borders, font and text size (the count a little larger), and how long rows stay up. Your width, height and scale still apply. "Match EllesmereUI's loot feed look" in the Loot feed panel turns it off for CraftRoute's own look; on by default when EllesmereUI is loaded.
+
 ## 0.43.0
 
 - Loot feed settings: a **Loot feed** button at the top right of the main CraftRoute window opens a small panel - show it or not, put the count in EllesmereUI's loot feed instead, and sliders for the rows' **width**, **height** and the feed's **scale** (mouse wheel works on them too), plus Test, Move and Reset (size and place back to default). Kept per character. In EllesmereUI's unlock mode "CraftRoute Loot Progress" can now be resized as well as moved.
