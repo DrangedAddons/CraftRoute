@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.50.4
+
+- Materials panel: always starts closed - it shuts when the profession window closes and doesn't reopen by itself.
+- Craft view: one amount per recipe - the amount you set beside a recipe in your list is also its opened details' amount ("Cost to make N", "Profit for N") and its Create box's; the details update as you type it, and changing the Create box updates your list's amount too.
+
 ## 0.50.3
 
 - Materials panel: opens right against the profession window's edge, over its side tabs (close it to get back to them).

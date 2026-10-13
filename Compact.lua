@@ -905,6 +905,7 @@ local function ApplyRow(row, item)
     if not row.crQty:HasFocus() then row.crQty:SetText(tostring(item.qty)) end
     local function SetQty()
       ui.destQty[r.spell] = math.max(1, tonumber(row.crQty:GetText()) or 1)
+      if item.list then CartEntry(item.list, r.spell).qty = ui.destQty[r.spell] end   -- (and your list's)
       ui.keepScroll = true
       if overlay then overlay:Refresh() end
     end
@@ -2318,7 +2319,7 @@ local function SetDestWidgets(on)
   if not f.viewRoute then return end
   for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList, f.favAll, f.favCart }) do w:SetShown(on) end
   if not on and qtyEd and qtyEd:IsShown() then qtyEd:ClearFocus() end
-  if on and MatSettings().shown then ToggleMatPanel(true) elseif matPanel then matPanel:Hide() end
+  if not on and matPanel then matPanel:Hide() end
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
@@ -2354,17 +2355,35 @@ function CR.OpenQtyEditor(btn)
     e.hint:SetPoint("CENTER")
     local function Save()
       local n = tonumber(e:GetText())
-      if e.spell and n and n >= 1 then CartEntry(e.list, e.spell).qty = math.min(9999, math.floor(n)) end
+      if e.spell and n and n >= 1 then
+        n = math.min(9999, math.floor(n))
+        CartEntry(e.list, e.spell).qty = n
+        ui.destQty[e.spell] = n   -- (the opened recipe's cost / profit and Create box follow it)
+        return true
+      end
     end
     e:SetScript("OnTextChanged", function()
       e.hint:SetShown(e:GetText() == "")
-      if e.spell then Save() UpdateFavCart() end   -- the totals follow as you type
+      if e.spell and Save() then
+        UpdateFavCart()   -- the totals follow as you type
+        -- this recipe open below: its cost / profit lines too (the editor isn't a list row, so this
+        -- refresh doesn't disturb your typing)
+        if ui.destSelected == e.spell and overlay then
+          ui.keepScroll = true
+          overlay:Refresh()
+        end
+      end
     end)
     e:SetScript("OnEnterPressed", function() e:ClearFocus() end)
     e:SetScript("OnEscapePressed", function() e.cancel = true e:ClearFocus() end)
     e:SetScript("OnEditFocusLost", function()
       if e.spell then
-        if e.cancel then CartEntry(e.list, e.spell).qty = e.old or nil else Save() end
+        if e.cancel then
+          CartEntry(e.list, e.spell).qty = e.old or nil
+          ui.destQty[e.spell] = e.old or nil
+        else
+          Save()
+        end
         local b = e.btn
         if b and b.crSpell == e.spell and b.crList == e.list then
           b.text:SetText(tostring(CartEntry(e.list, e.spell).qty or 1))
@@ -2374,6 +2393,7 @@ function CR.OpenQtyEditor(btn)
       e.cancel, e.spell, e.btn = false, false, false
       e:Hide()
       UpdateFavCart()
+      if overlay then ui.keepScroll = true overlay:Refresh() end
     end)
     e.cancel, e.spell, e.btn, e.list, e.old = false, false, false, false, false
     qtyEd = e
@@ -2553,7 +2573,6 @@ end
 ToggleMatPanel = function(show)
   local p = MatPanel()
   if show == nil then show = not p:IsShown() end
-  MatSettings().shown = show or nil
   p:ClearAllPoints()
   local host = ProfessionsFrame or overlay
   -- right against the window, over its side tabs (CraftRoute's too) - close it to get at them
@@ -2635,7 +2654,8 @@ local function ExpandOpen(name, favs)
       at = #out
       local r, pn = f.recipe, f.prof
       local learned = RecipeLearned(pn, r) == true
-      local qty = math.max(1, ui.destQty[r.spell] or 1)
+      -- the amount: the one set beside it in your list (or in the Create box), else 1
+      local qty = math.max(1, ui.destQty[r.spell] or CartEntry(name, r.spell).qty or 1)
       local cost, unpriced = MakeCost(r)
       local source, places = "", {}
       if not learned and CR.RecipeSource then
@@ -2671,7 +2691,7 @@ local function ExpandOpen(name, favs)
         local p, how, pu = Profit(r)
         table.insert(out, { kind = "dProfit", qty = qty, profit = p and p * qty, how = how, unpriced = pu or 0 })
       end
-      table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty })
+      table.insert(out, { kind = "dCraft", recipe = r, prof = pn, learned = learned, qty = qty, list = name })
       -- they're drawn as one panel joined to the recipe's row, closed off under the crafting row
       for i = at + 1, #out do out[i].box = (i == #out) and "last" or "mid" end
     end
@@ -4568,6 +4588,8 @@ local function Install()
     WatchTrainerSpells()
   end)
   ProfessionsFrame:HookScript("OnHide", function()
+    -- the materials panel doesn't come back by itself: open it again when you want it
+    if matPanel then matPanel:Hide() end
     if Keeping() then return end   -- switching profession from this view: it stays open
     local wasOpen = overlay and overlay:IsShown()
     if wasOpen then
