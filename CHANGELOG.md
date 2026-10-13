@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.38.0
+
+- No profession learned yet: the keybind (Shift+K) now opens the game's Professions window (the one K opens - empty until you learn something) on a CraftRoute tab, with the profession picker in it - every primary and secondary profession, what each does, and Pin buttons for the nearest trainers. Opening that window yourself shows it too, with CraftRoute's tab on its right edge (click to hide / show it). Pressing the keybind again closes it. Once you've learned a profession the Professions window is Blizzard's own again and the keybind opens the crafting tab as before.
+
 ## 0.37.3
 
 - Keybind: reads your professions fresh on every press. It only opens CraftRoute's main window (the start page) when the character has no profession at all; a character with only professions that have no crafting window (e.g. Herbalism, Skinning) gets a chat line saying so instead. The start page also counts gathering professions as "learned", so it no longer shows for a gatherer.

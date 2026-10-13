@@ -54,7 +54,9 @@ function CR.HasAnyProfession()
   return #CR.LearnedProfessionNames() > 0
 end
 
-function CR.CreateStartPanel(parent)
+-- opts.listW: the profession list's width (narrower in the professions book)
+function CR.CreateStartPanel(parent, opts)
+  opts = opts or {}
   local panel = CreateFrame("Frame", nil, parent)
   local selected = "Alchemy"
 
@@ -75,7 +77,7 @@ function CR.CreateStartPanel(parent)
   local list = CreateFrame("Frame", nil, panel)
   list:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -12)
   list:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 4, 4)
-  list:SetWidth(240)
+  list:SetWidth(opts.listW or 240)
   CR.Backdrop(list, 0, 0, 0, 0.35)
 
   local buttons = {}
@@ -164,7 +166,7 @@ function CR.CreateStartPanel(parent)
   end
 
   info.route = CreateFrame("Button", nil, info, "UIPanelButtonTemplate")
-  info.route:SetSize(200, 24)
+  info.route:SetSize(opts.listW and 190 or 200, 24)
   info.route:SetPoint("BOTTOMLEFT", 12, 12)
   info.route:SetText("Show me the leveling route")
   CR.ThemeRegisterButton(info.route)
@@ -229,4 +231,117 @@ function CR.CreateStartPanel(parent)
 
   panel:SetScript("OnShow", function(self) self:Refresh() end)
   return panel
+end
+
+---------------------------------------------------------------------------
+-- The professions book (K / the Professions micro button): with no profession learned it's
+-- empty, so CraftRoute's tab sits on its side and opens the start page over it - shown straight
+-- away when the book opens for a character with nothing learned.
+---------------------------------------------------------------------------
+local TAB_ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"
+local book   -- { tab, page } once built
+
+local function BuildBook()
+  local parent = ProfessionsBookFrame
+  if book or not parent then return book end
+  book = {}
+  local page = CreateFrame("Frame", "CraftRouteBookPage", parent, "BackdropTemplate")
+  page:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, -24)
+  page:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -4, 4)
+  page:SetFrameLevel(parent:GetFrameLevel() + 300)
+  CR.Backdrop(page, 0.05, 0.05, 0.07, 0.98)
+  page:EnableMouse(true)
+  page:Hide()
+  page:SetScript("OnShow", function() if book and book.start then book.start:Refresh() end end)
+  local start = CR.CreateStartPanel(page, { listW = 190 })
+  start:SetPoint("TOPLEFT", 10, -8)
+  start:SetPoint("BOTTOMRIGHT", -10, 8)
+  book.page, book.start = page, start
+  if CR.ApplyTheme then pcall(CR.ApplyTheme, page) end
+
+  -- the side tab, like the one on the crafting window
+  local tab = CreateFrame("Button", "CraftRouteBookTab", parent)
+  tab:SetSize(36, 36)
+  tab:SetPoint("TOPLEFT", parent, "TOPRIGHT", 0, -40)
+  tab:SetFrameLevel(parent:GetFrameLevel() + 320)
+  tab.bg = tab:CreateTexture(nil, "BACKGROUND")
+  tab.bg:SetPoint("TOPLEFT", -2, 2)
+  tab.bg:SetPoint("BOTTOMRIGHT", 2, -2)
+  tab.bg:SetColorTexture(0, 0, 0, 0.8)
+  tab:SetNormalTexture(TAB_ICON)
+  local nt = tab:GetNormalTexture()
+  if nt then nt:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+  tab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  tab.glow = tab:CreateTexture(nil, "OVERLAY")
+  tab.glow:SetAllPoints()
+  tab.glow:SetColorTexture(1, 0.82, 0.2, 0.3)
+  tab.glow:Hide()
+  tab:SetScript("OnClick", function()
+    page:SetShown(not page:IsShown())
+    tab.glow:SetShown(page:IsShown())
+  end)
+  tab:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("CraftRoute")
+    GameTooltip:AddLine("Pick a profession and find its nearest trainer.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  tab:SetScript("OnLeave", GameTooltip_Hide)
+  book.tab = tab
+
+  -- opening the book: with nothing learned, the tab is there and its page shows straight away;
+  -- once something's learned the book is Blizzard's own again
+  parent:HookScript("OnShow", function()
+    local none = not CR.HasAnyProfession()
+    tab:SetShown(none)
+    page:SetShown(none)
+    tab.glow:SetShown(none)
+  end)
+  parent:HookScript("OnHide", function() page:Hide() end)
+  return book
+end
+
+local function TryBuild()
+  if ProfessionsBookFrame then CR.SafeCall(BuildBook) end
+end
+local watch = CreateFrame("Frame")
+watch:RegisterEvent("ADDON_LOADED")
+watch:RegisterEvent("PLAYER_LOGIN")
+watch:SetScript("OnEvent", function(_, event, name)
+  if event == "PLAYER_LOGIN" or name == "Blizzard_ProfessionsBook" then TryBuild() end
+end)
+
+-- The keybind with no profession learned: open the professions book on CraftRoute's page (or
+-- close it, if it's already showing). True if it could.
+function CR.OpenBookStart()
+  if not ProfessionsBookFrame then
+    if ProfessionsBook_LoadUI then pcall(ProfessionsBook_LoadUI)
+    elseif C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_ProfessionsBook")
+    elseif LoadAddOn then pcall(LoadAddOn, "Blizzard_ProfessionsBook") end
+  end
+  TryBuild()
+  local f = ProfessionsBookFrame
+  if not f then return false end
+  if f:IsShown() then
+    if book and not book.page:IsShown() then
+      book.page:Show()
+      book.tab:Show()
+      book.tab.glow:Show()
+    elseif HideUIPanel then
+      HideUIPanel(f)
+    else
+      f:Hide()
+    end
+    return true
+  end
+  if ToggleProfessionsBook then
+    ToggleProfessionsBook()
+  elseif ProfessionMicroButton and ProfessionMicroButton.Click then
+    ProfessionMicroButton:Click()
+  elseif ShowUIPanel then
+    ShowUIPanel(f)
+  else
+    f:Show()
+  end
+  return f:IsShown()
 end
