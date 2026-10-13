@@ -1012,7 +1012,13 @@ local function ApplyRow(row, item)
     local sub
     if item.kind == "destFav" then
       local cost, unpriced = MakeCost(r)
-      sub = CR.HasAuctionator() and ("makes for " .. CR.FormatMoney(cost)) or ""
+      sub = ""
+      if CR.HasAuctionator() then
+        -- what one costs to make, and what it makes you sold (as its details show it)
+        sub = "costs " .. CR.FormatMoney(cost)
+        local p = Profit(r)
+        if p then sub = sub .. "   profit " .. ProfitText(p) end
+      end
       local can = learned and CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else

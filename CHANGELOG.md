@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.49.6
+
+- Craft view, "Your crafts": under each name it now says "costs ..." (was "makes for ...") followed by its profit per craft ("profit +.." green, or red for a loss).
+
 ## 0.49.5
 
 - Craft view: the shopping line reads "N selected  Cost ..  Profit ..  [cart]" - cost on the left, profit beside the cart.
