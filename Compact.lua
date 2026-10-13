@@ -2549,15 +2549,18 @@ local function MatPanel()
   matPanel = p
   return p
 end
--- open / close it (remembered), beside the profession window's right edge, past its side tabs
+-- open / close it (remembered), against the profession window's right edge
 ToggleMatPanel = function(show)
   local p = MatPanel()
   if show == nil then show = not p:IsShown() end
   MatSettings().shown = show or nil
   p:ClearAllPoints()
   local host = ProfessionsFrame or overlay
-  p:SetPoint("TOPLEFT", host, "TOPRIGHT", 44, -2)
-  p:SetPoint("BOTTOMLEFT", host, "BOTTOMRIGHT", 44, 2)
+  -- right against the window, over its side tabs (CraftRoute's too) - close it to get at them
+  p:SetPoint("TOPLEFT", host, "TOPRIGHT", 0, 0)
+  p:SetPoint("BOTTOMLEFT", host, "BOTTOMRIGHT", 0, 0)
+  p:SetFrameStrata(host:GetFrameStrata())
+  p:SetFrameLevel(host:GetFrameLevel() + 600)
   p:SetShown(show)
 end
 

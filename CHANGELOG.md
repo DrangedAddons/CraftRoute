@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.3
+
+- Materials panel: opens right against the profession window's edge, over its side tabs (close it to get back to them).
+
 ## 0.50.2
 
 - Materials panel: a small **<** button at its top left tucks it back in. The pop-out button beside the cart still opens / closes it as before.
