@@ -1,9 +1,13 @@
 # CraftRoute changelog
 
+## 0.50.11
+
+- Yes Chris, this was necessary.
+
 ## 0.50.10
 
 - Skill-up colours: the number beside "you:" uses the colour of the band your skill is in for that recipe (orange, yellow, green, grey, or red when you cannot learn it yet).
-- The recipe colour bar, and the profession bar at the top of the profession window, use the bar texture from EllesmereUI's Resource & Cast Bars when one is set. The profession's colour stays. With none set, the recipe colour bar stays flat and the profession bar stays as it was.
+- The recipe colour bar, and the profession bar at the top of the profession window, use the bar texture from EllesmereUI's Resource & Cast Bars when one is set. The profession's colour stays. With none set, the recipe colour bar stays flat and the profession bar stays as it was. Yes Chris, this was necessary.
 
 ## 0.50.9
 
