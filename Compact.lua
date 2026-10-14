@@ -1296,6 +1296,7 @@ local function ApplyRow(row, item)
     row.barRight:Show()
   end
   row:ShowSelected(item.selected and true or false)
+  if item.selected and item.open then row.selEdges[2]:Hide() end   -- open: joins its rows below
   row.icon:SetTexture(CR.RecipeIcon(st.recipe))
   row.icon:Show()
   row.icon:ClearAllPoints()
@@ -1726,13 +1727,19 @@ local function BuildItems()
       if taskOf[st] then table.insert(items, TaskItem(taskOf[st])) end   -- learn the recipe first
       local key = StepKey(st)
       local open = IsOpen(key)
+      local sel = key == ui.selectedKey
       table.insert(items, {
-        kind = "step", step = st, key = key, open = open, selected = key == ui.selectedKey,
+        kind = "step", step = st, key = key, open = open, selected = sel,
       })
       if open then
+        local at = #items
         AddReagents(items, st.recipe.reagents or {}, st.crafts or 1, 1, CraftProf(name), key, {})
         if not st.recipe.reagents or #st.recipe.reagents == 0 then
           table.insert(items, { kind = "note", text = CR.ColorText("No reagents.", "808080") })
+        end
+        -- the selected step: its rows join its header in one blue box (as the Craft view's open recipe)
+        if sel then
+          for i = at + 1, #items do items[i].box = (i == #items) and "last" or "mid" end
         end
       end
     end

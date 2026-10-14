@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.16
+
+- Route view: the selected step's blue box now takes in its opened rows (its reagents) as well as its title row - the step and its details read as one, as in the Craft view.
+
 ## 0.50.15
 
 - Route view: a step to do keeps its orange title when it's the selected step too (it turned white, and the current step is usually selected).
