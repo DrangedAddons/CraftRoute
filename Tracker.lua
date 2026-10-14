@@ -459,9 +459,35 @@ local function NewTracker(PROF)
     frame.unsnap = CreateFrame("Button", nil, frame)
     frame.unsnap:SetSize(14, 14)
     frame.unsnap:SetPoint("CENTER", frame, "BOTTOMLEFT", 14, 15)
-    frame.unsnap.icon = frame.unsnap:CreateTexture(nil, "ARTWORK")
-    frame.unsnap.icon:SetAllPoints()
-    frame.unsnap.icon:SetTexture("Interface\PetBattles\PetBattle-LockIcon")
+    -- the icon: a lock art this client has (checked - a missing one draws nothing), else one
+    -- drawn from plain bars (shackle over a body)
+    local parts = {}
+    local atlas
+    for _, a in ipairs({ "Monuments-Lock", "Forge-Lock", "communities-icon-lock", "AdventureMapIcon-Lock",
+                         "Garr_LockedBuilding", "QuestSharing-Padlock" }) do
+      if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(a) then atlas = a break end
+    end
+    if atlas then
+      local t = frame.unsnap:CreateTexture(nil, "ARTWORK")
+      t:SetAllPoints()
+      t:SetAtlas(atlas)
+      table.insert(parts, t)
+    else
+      local function Bar(w, h, x, y)
+        local t = frame.unsnap:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(1, 1, 1, 1)
+        t:SetSize(w, h)
+        t:SetPoint("BOTTOMLEFT", frame.unsnap, "BOTTOMLEFT", x, y)
+        table.insert(parts, t)
+      end
+      Bar(10, 7, 2, 0)    -- body
+      Bar(2, 5, 3, 7)     -- shackle: left
+      Bar(2, 5, 9, 7)     --          right
+      Bar(8, 2, 3, 11)    --          top
+    end
+    frame.unsnap.icon = { SetVertexColor = function(_, r, g, b)
+      for _, t in ipairs(parts) do t:SetVertexColor(r, g, b) end
+    end }
     frame.unsnap.icon:SetVertexColor(0.9, 0.8, 0.55)
     frame.unsnap:SetScript("OnEnter", function(self)
       self.icon:SetVertexColor(1, 1, 1)

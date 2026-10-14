@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.56.1
+
+- Materials trackers: the unsnap lock is visible now (its icon wasn't in this client's art, so it drew nothing). It uses a lock icon the client has, or draws a small one.
+
 ## 0.56.0
 
 - Materials trackers: a snapped tracker shows a small **lock** in its bottom-left corner (left of the cost). Click it to unsnap that tracker from the ones it's connected to - it stays where it is as its own window; any snapped onto it come free where they are too (still carrying the ones snapped to them). A tracker docked to the profession window stays docked.
