@@ -2163,6 +2163,78 @@ local function FillInset(bar)
   return FILL_INSET_X, FILL_INSET_TOP, h - FILL_INSET_TOP - FILL_INSET_BOTTOM
 end
 
+-- Blizzard's skill-bar art, per profession: the texture on its rank bar's Fill (and, if it has
+-- one, the flipbook intro that plays on it), noted whenever its bar shows a profession and kept
+-- (account-wide) in CraftRouteDB.barArt[profession] = { static = atlas / file, flip = { atlas,
+-- rows, cols, frames, w, h, dur } }. Our bar then wears the same art.
+local function BlizzardBar()
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  return page and (page.RankBar or page.ProfessionRankBar)
+end
+local function BarProfession()
+  local info = C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+  return info and info.professionName
+end
+-- settled: read after the intro has had time to finish (its art is then the static one)
+local function CaptureBarArt(settled)
+  local nb, prof = BlizzardBar(), BarProfession()
+  local fill = nb and nb.Fill
+  if not (fill and prof and fill.GetTexture) then return end
+  CraftRouteDB.barArt = CraftRouteDB.barArt or {}
+  local art = CraftRouteDB.barArt[prof] or {}
+  local atlas = fill.GetAtlas and fill:GetAtlas()
+  local file = not atlas and fill:GetTexture()
+  local playing
+  -- a flipbook on the fill (the intro): its grid and timing
+  for _, owner in ipairs({ fill, nb }) do
+    for _, g in ipairs(owner.GetAnimationGroups and { owner:GetAnimationGroups() } or {}) do
+      for _, a in ipairs({ g:GetAnimations() }) do
+        if a.GetObjectType and a:GetObjectType() == "FlipBook" then
+          local target = a.GetTarget and a:GetTarget()
+          local ta = target and target.GetAtlas and target:GetAtlas()
+          art.flip = {
+            atlas = ta or (art.flip and art.flip.atlas) or atlas,
+            rows = a:GetFlipBookRows(), cols = a:GetFlipBookColumns(), frames = a:GetFlipBookFrames(),
+            w = a:GetFlipBookFrameWidth(), h = a:GetFlipBookFrameHeight(), dur = g:GetDuration(),
+          }
+          if g:IsPlaying() then playing = true end
+        end
+      end
+    end
+  end
+  -- the static art: what the fill wears once nothing's playing on it
+  if (atlas or file) and (settled or not playing) and not (art.flip and atlas and atlas == art.flip.atlas and playing) then
+    art.static = atlas or file
+    art.isAtlas = atlas ~= nil
+  end
+  if art.static or art.flip then CraftRouteDB.barArt[prof] = art end
+end
+
+-- the art for this profession's bar, if Blizzard's has been seen
+local function BarArt(prof)
+  return CraftRouteDB and CraftRouteDB.barArt and prof and CraftRouteDB.barArt[prof]
+end
+
+-- set the texture to atlas / file, showing just the left `ratio` of it (the bar's filled part)
+local function SetCropped(tex, art, ratio)
+  ratio = math.max(ratio, 0.001)
+  if art.isAtlas and C_Texture and C_Texture.GetAtlasInfo then
+    local info = C_Texture.GetAtlasInfo(art.static)
+    if info and info.file then
+      tex:SetTexture(info.file)
+      local l, r = info.leftTexCoord, info.rightTexCoord
+      tex:SetTexCoord(l, l + (r - l) * ratio, info.topTexCoord, info.bottomTexCoord)
+      return true
+    end
+    tex:SetAtlas(art.static)   -- (no atlas info: the whole art, squeezed)
+    return true
+  elseif not art.isAtlas then
+    tex:SetTexture(art.static)
+    tex:SetTexCoord(0, ratio, 0, 1)
+    return true
+  end
+end
+
 local function UpdateRankBar()
   local bar = overlay and overlay.rankBar
   if not bar then return end
@@ -2190,14 +2262,48 @@ local function UpdateRankBar()
   fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
   fill:SetHeight(height)
 
-  -- the profession's own colour. A Resource & Cast Bars texture replaces the
-  -- default status-bar art; None keeps that art. The colour stays either way.
-  fill:SetTexture(CR.ResourceBarPath() or "Interface\\TargetingFrame\\UI-StatusBar")
-  fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
-  local r, g, b = CR.ProfessionColor(name)
-  fill:SetVertexColor(r, g, b, 0.95)
+  -- Blizzard's own art for this profession (once its bar has been seen), at its own colours.
+  -- Otherwise the profession's colour: a Resource & Cast Bars texture replaces the default
+  -- status-bar art; None keeps that art. The colour stays either way.
+  local art = BarArt(DestProf(name) or name)
+  local intro = rawget(bar, "intro")
+  if not (intro and intro:IsPlaying()) then
+    if art and art.static and SetCropped(fill, art, ratio) then
+      fill:SetVertexColor(1, 1, 1, 1)
+    else
+      fill:SetTexture(CR.ResourceBarPath() or "Interface\\TargetingFrame\\UI-StatusBar")
+      fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
+      local r, g, b = CR.ProfessionColor(name)
+      fill:SetVertexColor(r, g, b, 0.95)
+    end
+  end
   fill:SetShown(ratio > 0)
   fill:SetWidth(math.max(1, track * ratio))
+end
+
+-- Blizzard's intro on our bar: its flipbook, once, then the static art.
+local function PlayBarIntro()
+  local bar = overlay and overlay.rankBar
+  local art = bar and BarArt(DestProf(PlanProfession()) or PlanProfession())
+  local f = art and art.flip
+  if not (f and f.atlas and (f.frames or 0) > 1 and bar.fill:IsShown()) then return end
+  if not rawget(bar, "intro") then
+    bar.intro = bar.fill:CreateAnimationGroup()
+    bar.introAnim = bar.intro:CreateAnimation("FlipBook")
+    bar.intro:SetScript("OnFinished", function() UpdateRankBar() end)
+  end
+  local ok = pcall(function()
+    bar.fill:SetAtlas(f.atlas)
+    bar.fill:SetVertexColor(1, 1, 1, 1)
+    local a = bar.introAnim
+    a:SetFlipBookRows(f.rows or 1)
+    a:SetFlipBookColumns(f.cols or 1)
+    a:SetFlipBookFrames(f.frames)
+    a:SetFlipBookFrameWidth(f.w or 0)
+    a:SetFlipBookFrameHeight(f.h or 0)
+    a:SetDuration(f.dur and f.dur > 0 and f.dur or 1)
+  end)
+  if ok then bar.intro:Stop() bar.intro:Play() end
 end
 
 -- /cr rankbar: what Blizzard's rank bar is made of (to match its art if this client differs).
@@ -2205,6 +2311,11 @@ function CR.DebugRankBar()
   local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
   local nb = page and (page.RankBar or page.ProfessionRankBar)
   if not nb then CR.Print("No Blizzard rank bar found (open a profession first).") return end
+  for prof, art in pairs(CraftRouteDB.barArt or {}) do
+    local f = art.flip
+    CR.Print(string.format("Captured %s: static=%s%s", prof, tostring(art.static),
+      f and string.format(" flipbook=%s %dx%d %d frames %.2fs", tostring(f.atlas), f.rows or 0, f.cols or 0, f.frames or 0, f.dur or 0) or ""))
+  end
   CR.Print(string.format("RankBar %s  %.0fx%.0f", nb:GetName() or "?", nb:GetWidth() or 0, nb:GetHeight() or 0))
   for key, v in pairs(nb) do
     if type(v) == "table" and v.GetObjectType then
@@ -3162,6 +3273,7 @@ local function OpenCompact()
   PositionEntry()
   overlay:Refresh()
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, overlay) end   -- EllesmereUI global font, if loaded
+  pcall(PlayBarIntro)   -- Blizzard's skill-bar intro, on ours
 end
 
 local function ToggleCompact()
@@ -4637,8 +4749,11 @@ local function BuildOverlay()
     SyncOpenProfession()
     if ui.openProf ~= before then
       pcall(MirrorBlizzardBackground)   -- (another profession: its own art)
+      pcall(CaptureBarArt)
+      C_Timer.After(3, function() pcall(CaptureBarArt, true) UpdateRankBar() end)
       ui.keepScroll = false
       frame:Refresh()
+      pcall(PlayBarIntro)
     end
   end)
   frame:SetScript("OnShow", function() PositionEntry() end)
@@ -4708,6 +4823,9 @@ local function Install()
     hooksecurefunc(ProfessionsFrame, "SetTab", OnNativeTab)
   end
   ProfessionsFrame:HookScript("OnShow", function()
+    -- Blizzard's skill-bar art for this profession: now (the intro's flipbook), and once settled
+    C_Timer.After(0.1, function() pcall(CaptureBarArt) end)
+    C_Timer.After(3, function() pcall(CaptureBarArt, true) UpdateRankBar() end)
     KeepNow()
     ReopenSoon()
     C_Timer.After(0, PositionEntry)

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.52.0
+
+- Profession window tab: the skill bar wears **Blizzard's own skill-bar art for each profession**. Whenever Blizzard's bar shows a profession, CraftRoute notes the texture on its fill - and, if it has one, the animated intro that plays before it settles - and keeps them per profession. CraftRoute's bar then shows that art, filled to your skill, and plays the same intro each time the tab opens or you switch profession. A profession whose Blizzard bar hasn't been seen yet keeps the previous look (EllesmereUI bar texture or the profession colour) until it has. `/cr rankbar` lists what's been captured.
+
 ## 0.51.0
 
 - Profession window tab: it now has **Blizzard's own page background** - the large background and border art of Blizzard's crafting page (header, recipe list and recipe panels) is copied onto the tab in the same place, with the same art, crop, colour and transparency (so an EllesmereUI skin of that page carries over). It's picked up each time the tab opens and when you switch profession. CraftRoute's own plain header band only shows if nothing could be copied. `/cr bg` lists what was copied.
