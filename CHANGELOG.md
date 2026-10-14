@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.15
+
+- Route view: a step to do keeps its orange title when it's the selected step too (it turned white, and the current step is usually selected).
+
 ## 0.50.14
 
 - Route view: steps to do (not crafts) no longer start with "To do:" - their title is orange instead, which says the same and leaves more room for it. "Done:" and "At N:" steps are unchanged.
