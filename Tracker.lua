@@ -134,7 +134,7 @@ local function NewTracker(PROF)
   local frame, sizePanel, sizePanelSync
   local editing, offset = false, 0
   local Refresh, SetSize, SizePanel, Toggle, Build, RegisterUnlock
-  local Close, Detach, BeginDrag, EndDrag
+  local Close, Detach, BeginDrag, EndDrag, Unsnap, Linked
   local function Settings()
     local t = Root()
     t.byProf[PROF] = t.byProf[PROF] or {}
@@ -323,6 +323,11 @@ local function NewTracker(PROF)
       end
     end
     frame.cost:SetShown(shop)
+    local linked = bottomBar and Linked()
+    frame.unsnap:SetShown(linked)
+    frame.cost:ClearAllPoints()
+    frame.cost:SetPoint("LEFT", frame, "BOTTOMLEFT", linked and 24 or 8, 15)
+    frame.cost:SetPoint("RIGHT", frame.alts, "LEFT", -6, 0)
     frame.alts:SetShown(bottomBar)
     frame.alts:Sync()
     frame.alts:ClearAllPoints()
@@ -361,7 +366,7 @@ local function NewTracker(PROF)
     if shop then
       SameFont(frame.cost)
       m:SetText(frame.cost:GetText() or "")
-      costW = 8 + (tonumber(m:GetStringWidth()) or 0) + 6 + 46 + 24 + 16
+      costW = 8 + (tonumber(m:GetStringWidth()) or 0) + 6 + 46 + 24 + 16 + (frame.unsnap:IsShown() and 16 or 0)
     end
     local needW = math.ceil(math.max(rowW, headW, costW, editBar and 286 or 0))   -- (All / None / Vendor / Sort fit)
     frame:SetWidth(math.min(Settings().width or needW, needW))
@@ -450,6 +455,24 @@ local function NewTracker(PROF)
     frame.cost:SetJustifyH("LEFT")
     frame.cost:SetWordWrap(false)
     frame.cost:Hide()
+    -- snapped to other trackers: a lock, bottom left - click it to take this one out of the group
+    frame.unsnap = CreateFrame("Button", nil, frame)
+    frame.unsnap:SetSize(14, 14)
+    frame.unsnap:SetPoint("CENTER", frame, "BOTTOMLEFT", 14, 15)
+    frame.unsnap.icon = frame.unsnap:CreateTexture(nil, "ARTWORK")
+    frame.unsnap.icon:SetAllPoints()
+    frame.unsnap.icon:SetTexture("Interface\PetBattles\PetBattle-LockIcon")
+    frame.unsnap.icon:SetVertexColor(0.9, 0.8, 0.55)
+    frame.unsnap:SetScript("OnEnter", function(self)
+      self.icon:SetVertexColor(1, 1, 1)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText("Unsnap")
+      GameTooltip:AddLine("Detach this tracker from the ones snapped to it. It stays where it is, as its own window.", 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    frame.unsnap:SetScript("OnLeave", function(self) self.icon:SetVertexColor(0.9, 0.8, 0.55) GameTooltip_Hide() end)
+    frame.unsnap:SetScript("OnClick", function() GameTooltip_Hide() Unsnap() end)
+    frame.unsnap:Hide()
     frame.shop:SetScript("OnClick", function(self)
       local prof = Prof()
       local hidden = Hidden(prof)
@@ -680,6 +703,26 @@ local function NewTracker(PROF)
     Settings().free, Settings().snapTo = nil, nil
     docked = false
     Toggle(false)
+    CR.RefreshTracker()
+  end
+  -- snapped to another shown tracker, or one is snapped to it
+  function Linked()
+    local to = Settings().snapTo
+    if to and trackers[to] and trackers[to].Shown() then return true end
+    for prof, t in pairs(trackers) do
+      if prof ~= PROF and t.Settings().snapTo == PROF and t.Shown() then return true end
+    end
+    return false
+  end
+  -- the lock: out of its group, right where it is. The ones snapped to it come free where they
+  -- are too (still carrying any snapped to them); a docked one stays docked.
+  function Unsnap()
+    for prof, t in pairs(trackers) do
+      if prof ~= PROF and t.Settings().snapTo == PROF and t.Shown() then t.Detach() end
+    end
+    local to = Settings().snapTo
+    if to and trackers[to] and trackers[to].Shown() then Detach() end
+    CR.RefreshTracker()
   end
   -- no longer snapped: a free window right where it is on screen
   function Detach()
@@ -734,6 +777,7 @@ local function NewTracker(PROF)
       end
     end
     if snapped then Place() end
+    CR.RefreshTracker()   -- (the locks of the group it left or joined)
     -- the group's open-or-not memory follows its root: docked closes with the window
     local root = trackers[RootOf(PROF)]
     for _, m in ipairs(Members(RootOf(PROF))) do
@@ -818,6 +862,7 @@ function CR.ToggleTracker(show, prof, dock)
     end)
   end
   Tracker(prof).Toggle(show, dock)
+  CR.RefreshTracker()   -- (its group's locks)
 end
 
 -- The main window's "Tracker" button

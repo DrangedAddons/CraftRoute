@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.56.0
+
+- Materials trackers: a snapped tracker shows a small **lock** in its bottom-left corner (left of the cost). Click it to unsnap that tracker from the ones it's connected to - it stays where it is as its own window; any snapped onto it come free where they are too (still carrying the ones snapped to them). A tracker docked to the profession window stays docked.
+
 ## 0.55.1
 
 - Shopping lists always list a recipe's **own** materials: a step's Shopping List for Hillman's Leather Gloves asks for the Medium Leather it's missing - not the Light Leather and scraps that leather could be made from. What earlier route steps make for it (a component crafted in a previous step) is still counted as covered and not bought.
