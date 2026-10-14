@@ -693,21 +693,37 @@ local function ApplyRow(row, item)
     row.icon:Show()
     row.icon:ClearAllPoints()
     row.icon:SetPoint("LEFT", 6, 0)
+    local text
     if t.waiting then
-      row.name:SetText(CR.ColorText(string.format("At %d: ", t.waiting), "66aaff") .. (t.title or ""))
+      text = CR.ColorText(string.format("At %d: ", t.waiting), "66aaff") .. (t.title or "")
       if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.7, 0.7, 0.7) end
     elseif t.done then
-      row.name:SetText(CR.ColorText("Done: ", "40c040") .. (t.title or ""))
+      text = CR.ColorText("Done: ", "40c040") .. (t.title or "")
       if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.6, 0.6, 0.6) end
     else
-      row.name:SetText(CR.ColorText("To do: ", "ff9933") .. (t.title or ""))
+      text = CR.ColorText("To do: ", "ff9933") .. (t.title or "")
       if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.82, 0) end
     end
-    row.name:ClearAllPoints()
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-    row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+    -- the title gets the whole line; the skill it's at goes just under it (as the route's steps)
     local from = item.action.from
-    row.right:SetText(from and from > 0 and tostring(from) or "")
+    local sub = from and from > 0 and tostring(from) or nil
+    row.right:SetText("")
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, sub and 6 or 0)
+    row.name:SetPoint("RIGHT", row, "RIGHT", -8, sub and 6 or 0)
+    FitName(row.name, text)   -- (a title that still doesn't fit gets a point smaller, not cut off)
+    if sub then
+      if not row.crSub then
+        row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        row.crSub:SetJustifyH("LEFT")
+      end
+      row.crSub:ClearAllPoints()
+      row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
+      row.crSub:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+      row.crSub:SetWordWrap(false)
+      row.crSub:SetText(CR.ColorText(sub, "b0b0b0"))
+      row.crSub:Show()
+    end
     row:SetScript("OnClick", function()
       ui.selectedKey = item.key
       ui.keepScroll = true
