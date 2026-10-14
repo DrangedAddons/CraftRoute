@@ -846,6 +846,7 @@ local function NewTracker(PROF)
            Docked = function() return docked and frame and frame:IsShown() end,
            IsDocked = function() return docked end,
            Frame = function() return frame end,
+           Reflow = function() if frame and frame:IsShown() then Place() end end,
            Detach = function() Detach() end,
            BeginDrag = function() BeginDrag() end, EndDrag = function() EndDrag() end,
            ScaleAlone = function(sc) SetSize(nil, sc, nil, true) end,
@@ -917,6 +918,14 @@ ev:SetScript("OnEvent", function()
     if st.shown then Tracker(prof).Toggle(true) end
   end
   for _, t in pairs(trackers) do CR.SafeCall(t.RegisterUnlock) end
+  -- snapped ones onto the ones they're snapped to: only now are those all back (they came back in
+  -- no particular order). Again a moment later, after any mover has placed them from its own save.
+  local function Reflow()
+    for _, t in pairs(trackers) do t.Reflow() end
+    CR.RefreshTracker()
+  end
+  Reflow()
+  if C_Timer then C_Timer.After(1, Reflow) end
   loggedIn = true   -- (trackers made from here on register their own mover)
   -- bags, the plan, the picked profession changing: refresh
   CR.OnChange(CR.RefreshTracker)

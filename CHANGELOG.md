@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.56.2
+
+- Materials trackers: snapped trackers stay snapped after a reload. They come back one by one, and one coming back before the tracker it's snapped to was left at an old position - now they're all put back on each other once they're all up.
+
 ## 0.56.1
 
 - Materials trackers: the unsnap lock is visible now (its icon wasn't in this client's art, so it drew nothing). It uses a lock icon the client has, or draws a small one.
