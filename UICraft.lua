@@ -1136,9 +1136,7 @@ function CR.CreateCraftPanel(parent)
   band.segs = {}
   for i, key in ipairs({ "orange", "yellow", "green", "grey" }) do
     local t = band:CreateTexture(nil, "ARTWORK")
-    local hex = CR.DIFF_COLORS[key]
-    t:SetColorTexture(tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255,
-      tonumber(hex:sub(5, 6), 16) / 255, 0.9)
+    t.crBand = key
     t:SetHeight(8)
     band.segs[i] = t
   end
@@ -1152,20 +1150,24 @@ function CR.CreateCraftPanel(parent)
     -- scale: from learn skill to a little past grey
     local lo, hi = r.learn or 1, (r.x or 1) + 10
     if hi <= lo then hi = lo + 1 end
-    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * (BAND_W - 2) + 1 end
+    local inner = BAND_W - 2
+    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * inner + 1 end
     local edges = { lo, r.y, r.g, r.x, hi }
+    local path = CR.ResourceBarPath()
     for i, t in ipairs(band.segs) do
       local a, b = X(math.max(lo, edges[i])), X(math.max(lo, edges[i + 1]))
       t:ClearAllPoints()
       t:SetPoint("LEFT", band, "LEFT", a, 0)
       t:SetWidth(math.max(0.01, b - a))
       t:SetShown(b - a > 0.5)
+      CR.PaintSkillSegment(t, CR.DIFF_COLORS[t.crBand], path, (a - 1) / inner, (b - 1) / inner)
     end
+    band:SetBackdropBorderColor(0, 0, 0, 1)
     band.marker:ClearAllPoints()
     band.marker:SetPoint("CENTER", band, "LEFT", X(skill), 0)
-    -- condensed (GitHub #9): the thresholds in their colours, then your skill
-    bandText:SetText(string.format("|cffff8040%d|r|cff808080 - |r|cffffff00%d|r|cff808080 - |r|cff40bf40%d|r|cff808080 - |r|cff9d9d9d%d|r     |cffffd100you:|r |cffffffff%d|r",
-      r.learn or 1, r.y, r.g, r.x, skill))
+    -- condensed (GitHub #9): the thresholds in their colours, then your skill in its band
+    bandText:SetText(string.format("|cffff8040%d|r|cff808080 - |r|cffffff00%d|r|cff808080 - |r|cff40bf40%d|r|cff808080 - |r|cff9d9d9d%d|r     |cffffd100you:|r %s",
+      r.learn or 1, r.y, r.g, r.x, CR.SkillLevelText(r, skill)))
   end
 
   local reagentBox = CreateFrame("Frame", nil, main, "BackdropTemplate")

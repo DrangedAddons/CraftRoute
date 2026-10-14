@@ -229,6 +229,43 @@ local function EachFontString(root, fn, depth)
   end
 end
 
+-- Global Settings > Textures > Resource & Cast Bars > Bar Texture.
+-- The same key the resource bars use for health, power and class bars:
+-- _ERB_AceDB.profile.general.barTexture. "none" has no file (those bars draw
+-- white). This returns nil then, and the skill bar stays flat colour.
+function CR.ResourceBarPath()
+  if not CR.HasEllesmere() or type(EllesmereUI.ResolveTexturePath) ~= "function" then return nil end
+  local db = _G._ERB_AceDB
+  local general = db and db.profile and db.profile.general
+  local key = general and general.barTexture
+  if type(key) ~= "string" or key == "" or key == "none" then return nil end
+  local lookup = _G._ERB_BarTextures
+  if not lookup and type(EllesmereUI.BuildBarTextureTables) == "function" then
+    local ok, built = pcall(EllesmereUI.BuildBarTextureTables, true)
+    if ok then lookup = built end
+  end
+  local ok, path = pcall(EllesmereUI.ResolveTexturePath, lookup, key, nil)
+  if not ok or type(path) ~= "string" or path == "" then return nil end
+  return path
+end
+
+-- One segment of the skill-up bar. path nil: flat colour. Otherwise the
+-- Resource & Cast Bars texture, cropped to this segment's slice of the bar
+-- and tinted with the band colour. u0/u1 are 0..1 across the inner width.
+function CR.PaintSkillSegment(tex, hex, path, u0, u1)
+  local r = tonumber(hex:sub(1, 2), 16) / 255
+  local g = tonumber(hex:sub(3, 4), 16) / 255
+  local b = tonumber(hex:sub(5, 6), 16) / 255
+  if path then
+    tex:SetTexture(path)
+    tex:SetTexCoord(u0, u1, 0, 1)
+    tex:SetVertexColor(r, g, b, 0.9)
+  else
+    tex:SetTexCoord(0, 1, 0, 1)
+    tex:SetColorTexture(r, g, b, 0.9)
+  end
+end
+
 -- nil path: EllesmereUI is not loaded, or its getter failed. Callers restore.
 local function EllesmereFont()
   if not CR.HasEllesmere() or type(EllesmereUI.GetFontPath) ~= "function" then return nil end

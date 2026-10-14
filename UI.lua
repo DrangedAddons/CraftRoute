@@ -345,6 +345,14 @@ end
 
 function CR.ColorText(text, hex) return "|cff" .. hex .. text .. "|r" end
 
+-- The number beside "you:" on the skill-up colour line. Same cuts as the bar
+-- (CR.Difficulty): orange, yellow, green, grey, or red when the recipe is not learnable yet.
+function CR.SkillLevelText(r, skill)
+  skill = skill or 0
+  local key = CR.Difficulty(r, skill)
+  return CR.ColorText(tostring(skill), CR.DIFF_COLORS[key] or "ffffff")
+end
+
 local function QualityHex(q)
   local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
   if c and c.hex then return c.hex:sub(5) end -- "|cffRRGGBB"

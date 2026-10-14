@@ -2151,8 +2151,9 @@ local function UpdateRankBar()
   fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
   fill:SetHeight(height)
 
-  -- the profession's own colour
-  fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  -- the profession's own colour. A Resource & Cast Bars texture replaces the
+  -- default status-bar art; None keeps that art. The colour stays either way.
+  fill:SetTexture(CR.ResourceBarPath() or "Interface\\TargetingFrame\\UI-StatusBar")
   fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
   local r, g, b = CR.ProfessionColor(name)
   fill:SetVertexColor(r, g, b, 0.95)
@@ -3872,9 +3873,7 @@ local function BuildOverlay()
   band.segs = {}
   for i, key in ipairs({ "orange", "yellow", "green", "grey" }) do
     local t = band:CreateTexture(nil, "ARTWORK")
-    local hex = CR.DIFF_COLORS[key]
-    t:SetColorTexture(tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255,
-      tonumber(hex:sub(5, 6), 16) / 255, 0.9)
+    t.crBand = key
     t:SetHeight(6)
     band.segs[i] = t
   end
@@ -3885,15 +3884,20 @@ local function BuildOverlay()
     local lo, hi = r.learn or 1, (r.x or 1) + 10   -- from learn to a little past grey
     if hi <= lo then hi = lo + 1 end
     local w = tonumber(self:GetWidth()) or BAND_W
-    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * (w - 2) + 1 end
+    local inner = w - 2
+    if inner < 1 then inner = 1 end
+    local function X(v) return math.max(0, math.min(1, (v - lo) / (hi - lo))) * inner + 1 end
     local edges = { lo, r.y, r.g, r.x, hi }
+    local path = CR.ResourceBarPath()
     for i, t in ipairs(self.segs) do
       local a, b = X(math.max(lo, edges[i])), X(math.max(lo, edges[i + 1]))
       t:ClearAllPoints()
       t:SetPoint("LEFT", self, "LEFT", a, 0)
       t:SetWidth(math.max(0.01, b - a))
       t:SetShown(b - a > 0.5)
+      CR.PaintSkillSegment(t, CR.DIFF_COLORS[t.crBand], path, (a - 1) / inner, (b - 1) / inner)
     end
+    self:SetBackdropBorderColor(0, 0, 0, 1)
     self.marker:ClearAllPoints()
     self.marker:SetPoint("CENTER", self, "LEFT", X(skill), 0)
     self.r, self.skill = r, skill
@@ -3907,7 +3911,7 @@ local function BuildOverlay()
     local dash = "|cff808080 - |r"
     GameTooltip:AddDoubleLine(string.format("|cffff8040%d|r%s|cffffff00%d|r%s|cff40bf40%d|r%s|cff9d9d9d%d|r",
       self.r.learn or 1, dash, self.r.y, dash, self.r.g, dash, self.r.x),
-      string.format("|cffffd100you:|r |cffffffff%d|r", self.skill), 1, 1, 1, 1, 1, 1)
+      "|cffffd100you:|r " .. CR.SkillLevelText(self.r, self.skill), 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()
   end)
   band:SetScript("OnLeave", GameTooltip_Hide)
