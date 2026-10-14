@@ -2175,6 +2175,16 @@ local function BarProfession()
   local info = C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
   return info and info.professionName
 end
+-- the word Blizzard puts in this profession's art names (its own helper, if there is one)
+local function ProfKit()
+  local info = C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+  if info and Professions and Professions.GetAtlasKitSpecifier then
+    local ok, kit = pcall(Professions.GetAtlasKitSpecifier, info)
+    if ok and type(kit) == "string" and kit ~= "" then return kit end
+  end
+  return info and info.professionName
+end
+
 -- settled: read after the intro has had time to finish (its art is then the static one)
 local function CaptureBarArt(settled)
   local nb, prof = BlizzardBar(), BarProfession()
@@ -2207,12 +2217,47 @@ local function CaptureBarArt(settled)
     art.static = atlas or file
     art.isAtlas = atlas ~= nil
   end
-  if art.static or art.flip then CraftRouteDB.barArt[prof] = art end
+  if art.static or art.flip then
+    art.kit = art.kit or ProfKit()
+    art.derived = nil
+    CraftRouteDB.barArt[prof] = art
+  end
 end
 
--- the art for this profession's bar, if Blizzard's has been seen
+local fillHooked = false
+local function AtlasExists(a)
+  return a and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(a) ~= nil
+end
+-- A profession whose Blizzard bar hasn't been seen: its art worked out from one that has - the
+-- same art name with this profession's word in it (only if that art exists).
+local function DeriveBarArt(prof)
+  if prof ~= BarProfession() then return nil end   -- (its word is only known while it's open)
+  local kit = ProfKit()
+  if not kit then return nil end
+  for _, src in pairs(CraftRouteDB.barArt or {}) do
+    if src.kit and src.isAtlas and src.static and not src.derived then
+      local esc = src.kit:gsub("%p", "%%%0")
+      local static = src.static:gsub(esc, kit)
+      local flipAtlas = src.flip and src.flip.atlas and src.flip.atlas:gsub(esc, kit)
+      if static ~= src.static and AtlasExists(static) then
+        local art = { static = static, isAtlas = true, kit = kit, derived = true }
+        if flipAtlas and AtlasExists(flipAtlas) then
+          art.flip = {}
+          for k, v in pairs(src.flip) do art.flip[k] = v end
+          art.flip.atlas = flipAtlas
+        end
+        CraftRouteDB.barArt[prof] = art
+        return art
+      end
+    end
+  end
+end
+
+-- the art for this profession's bar, if Blizzard's has been seen (or can be worked out)
 local function BarArt(prof)
-  return CraftRouteDB and CraftRouteDB.barArt and prof and CraftRouteDB.barArt[prof]
+  if not (CraftRouteDB and prof) then return nil end
+  local art = CraftRouteDB.barArt and CraftRouteDB.barArt[prof]
+  return art or DeriveBarArt(prof)
 end
 
 -- set the texture to atlas / file, showing just the left `ratio` of it (the bar's filled part)
@@ -2222,8 +2267,19 @@ local function SetCropped(tex, art, ratio)
     local info = C_Texture.GetAtlasInfo(art.static)
     if info and info.file then
       tex:SetTexture(info.file)
-      local l, r = info.leftTexCoord, info.rightTexCoord
-      tex:SetTexCoord(l, l + (r - l) * ratio, info.topTexCoord, info.bottomTexCoord)
+      local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+      -- the static art is the intro's own sheet: Blizzard's bar rests on its last frame, so show
+      -- that frame's cell (the whole sheet would show every frame side by side)
+      local f = art.flip
+      if f and f.atlas == art.static and (f.frames or 0) > 1 then
+        local cols, rows = math.max(1, f.cols or 1), math.max(1, f.rows or 1)
+        local last = f.frames - 1
+        local cw, ch = (r - l) / cols, (b - t) / rows
+        l = l + (last % cols) * cw
+        t = t + math.floor(last / cols) * ch
+        r, b = l + cw, t + ch
+      end
+      tex:SetTexCoord(l, l + (r - l) * ratio, t, b)
       return true
     end
     tex:SetAtlas(art.static)   -- (no atlas info: the whole art, squeezed)
@@ -2233,6 +2289,52 @@ local function SetCropped(tex, art, ratio)
     tex:SetTexCoord(0, ratio, 0, 1)
     return true
   end
+end
+
+-- Our bar on exactly Blizzard's spot: its frame, background, fill origin / height, rank text and
+-- dropdown arrow placed where Blizzard's are on screen, so flicking between its page and this
+-- tab nothing moves. Returns the fill's left / top inset, height and full width - nil if
+-- Blizzard's bar can't be measured (then the fixed layout stays).
+local function AlignToBlizzardBar(bar)
+  local nb = BlizzardBar()
+  if type(nb) ~= "table" or not nb.GetLeft or type(nb.Fill) ~= "table" then return nil end
+  local nl, nt, nw, nh = nb:GetLeft(), nb:GetTop(), nb:GetWidth(), nb:GetHeight()
+  local ol, ot = overlay:GetLeft(), overlay:GetTop()
+  if not (nl and nt and ol and ot and nw and nw > 40 and nh and nh > 8) then return nil end
+  local ns, os = nb:GetEffectiveScale(), overlay:GetEffectiveScale()
+  local k = ns / os   -- Blizzard's units -> ours
+  bar:ClearAllPoints()
+  bar:SetPoint("TOPLEFT", overlay, "TOPLEFT", (nl * ns - ol * os) / os, (nt * ns - ot * os) / os)
+  bar:SetSize(nw * k, nh * k)
+  -- a part of Blizzard's bar: its offset from the bar's top-left, in our units
+  local function Off(region, cx)
+    if type(region) ~= "table" or not region.GetLeft then return nil end
+    local l, t, w, h = region:GetLeft(), region:GetTop(), region:GetWidth(), region:GetHeight()
+    if not (l and t) then return nil end
+    if cx then return (l + (w or 0) / 2 - nl) * k, (t - (h or 0) / 2 - nt) * k end
+    return (l - nl) * k, (t - nt) * k, (w or 0) * k, (h or 0) * k
+  end
+  local bx, by, bw, bh = Off(nb.Background)
+  if bx and bw > 0 and bh > 0 then
+    bar.bg:ClearAllPoints()
+    bar.bg:SetPoint("TOPLEFT", bar, "TOPLEFT", bx, by)
+    bar.bg:SetSize(bw, bh)
+  end
+  local rt = nb.Rank and nb.Rank.Text
+  local tx, ty = Off(rt, true)
+  if tx then
+    bar.text:ClearAllPoints()
+    bar.text:SetPoint("CENTER", bar, "TOPLEFT", tx, ty)
+  end
+  local ax, ay = Off(nb.ExpansionDropdownButton, true)
+  if ax then
+    bar.arrow:ClearAllPoints()
+    bar.arrow:SetPoint("CENTER", bar, "TOPLEFT", ax, ay)
+  end
+  -- the fill: Blizzard's own top-left and height; full, it spans the bar less 8 (as its art does)
+  local fx, fy, _, fh = Off(nb.Fill)
+  if not fx or fh < 4 then return nil end
+  return fx, -fy, fh, math.max(1, nw * k - 8 - fx)
 end
 
 local function UpdateRankBar()
@@ -2257,6 +2359,9 @@ local function UpdateRankBar()
   -- it used to stop well short of the right end and leave black in the track.
   local left, top, height = FillInset(bar)
   local track = math.max(1, width - 2 * left)
+  -- on Blizzard's exact spot, when its bar can be measured
+  local al, at, ah, aw = AlignToBlizzardBar(bar)
+  if al then left, top, height, track = al, at, ah, aw end
   local fill = bar.fill
   fill:ClearAllPoints()
   fill:SetPoint("TOPLEFT", bar, "TOPLEFT", left, -top)
@@ -4821,6 +4926,19 @@ local function Install()
   end
   if ProfessionsFrame.SetTab then
     hooksecurefunc(ProfessionsFrame, "SetTab", OnNativeTab)
+  end
+  -- Blizzard setting its skill bar's art (a profession loading - even behind this tab): note it
+  local nb = BlizzardBar()
+  if type(nb) == "table" and type(nb.Fill) == "table" and not fillHooked then
+    fillHooked = true   -- (kept here, not written onto Blizzard's texture)
+    for _, m in ipairs({ "SetAtlas", "SetTexture" }) do
+      if type(nb.Fill[m]) == "function" then
+        hooksecurefunc(nb.Fill, m, function()
+          C_Timer.After(0, function() pcall(CaptureBarArt) end)
+          C_Timer.After(3, function() pcall(CaptureBarArt, true) UpdateRankBar() end)
+        end)
+      end
+    end
   end
   ProfessionsFrame:HookScript("OnShow", function()
     -- Blizzard's skill-bar art for this profession: now (the intro's flipbook), and once settled

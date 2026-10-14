@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.52.1
+
+- Skill bar art: when it settles it now shows the intro's **last frame** (where Blizzard's bar stops), not the whole animation sheet squeezed into the bar.
+- Skill bar art for every profession: CraftRoute notes Blizzard's art whenever its bar changes it (even with the CraftRoute tab in front), and works out a profession it hasn't seen yet from one it has - the same art with that profession's name in it, if the game has it. Before, only professions whose Blizzard page you'd looked at got their art.
+- The skill bar sits exactly where Blizzard's does: its frame, background, fill, text and arrow are placed on Blizzard's bar's own position and size, read when the tab opens, so nothing moves when you flick between the two.
+
 ## 0.52.0
 
 - Profession window tab: the skill bar wears **Blizzard's own skill-bar art for each profession**. Whenever Blizzard's bar shows a profession, CraftRoute notes the texture on its fill - and, if it has one, the animated intro that plays before it settles - and keeps them per profession. CraftRoute's bar then shows that art, filled to your skill, and plays the same intro each time the tab opens or you switch profession. A profession whose Blizzard bar hasn't been seen yet keeps the previous look (EllesmereUI bar texture or the profession colour) until it has. `/cr rankbar` lists what's been captured.
