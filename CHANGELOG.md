@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.9
+
+- The route planner and both profession windows do less repeated work while they are open. Item names, prices, trainer lists, and whether a recipe is ready are remembered between refreshes instead of looked up again every time. The screens are the same.
+
 ## 0.50.8
 
 - Skill-up colours tooltip (the colour band under a recipe) condensed, as suggested in GitHub issue #9: the four thresholds in their colours - "30 - 50 - 60 - 70" - with "you: 85" on the right, instead of "30 learn · 50 yellow · 60 green · 70 grey · you: 85".

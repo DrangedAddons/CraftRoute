@@ -4,6 +4,7 @@ _G.CraftRoute = CR
 CR.professions = {}   -- [profName] = { recipes, names, byItem, routes }
 CR.callbacks = {}
 CR.extraNames = {}    -- fallback names for items that aren't recipe reagents (lures, quest items)
+CR.itemNames = {}     -- itemID -> name, filled as recipe files register (one lookup, no GetItemInfo)
 
 -- The Forever client uses the retail-style C_Item API; the old globals may not exist.
 local C_Item = C_Item or {}
@@ -14,17 +15,24 @@ CR.IsEquippedItem = C_Item.IsEquippedItem or IsEquippedItem or function() return
 
 -- Route text can carry faction-only parts: "{H:Horde text}" and "{A:Alliance text}".
 -- The other faction's parts are removed, so players only see what applies to them.
+-- The same source line is cleaned on every plan rebuild; keep the result for the session.
+local factionTextCache = {}
 function CR.FactionText(s)
   if not s or not s:find("{", 1, true) then return s end
   local mine = UnitFactionGroup("player") == "Alliance" and "A" or "H"
-  s = s:gsub("{([HA]):([^}]*)}", function(f, text) return f == mine and text or "" end)
+  local cacheKey = mine .. "\0" .. s
+  local hit = factionTextCache[cacheKey]
+  if hit ~= nil then return hit end
+  local out = s:gsub("{([HA]):([^}]*)}", function(f, text) return f == mine and text or "" end)
   -- Tidy separators left behind by removed parts ("A, , B" / "by , B" / "B, ").
   local prev
   repeat
-    prev = s
-    s = s:gsub(",%s*,", ","):gsub("by%s*,%s*", "by "):gsub(",%s*/", " /"):gsub(",%s*$", "")
-  until s == prev
-  return (s:gsub("  +", " "):gsub(" %.", "."):gsub("^ ", ""))
+    prev = out
+    out = out:gsub(",%s*,", ","):gsub("by%s*,%s*", "by "):gsub(",%s*/", " /"):gsub(",%s*$", "")
+  until out == prev
+  out = out:gsub("  +", " "):gsub(" %.", "."):gsub("^ ", "")
+  factionTextCache[cacheKey] = out
+  return out
 end
 
 -- Runs fn, printing any error to chat (script errors are hidden by default).
@@ -67,7 +75,10 @@ function CR.RegisterRecipes(profName, recipes, names)
       end
     end
   end
-  for id, n in pairs(names) do p.names[id] = n end
+  for id, n in pairs(names) do
+    p.names[id] = n
+    if not CR.itemNames[id] then CR.itemNames[id] = n end
+  end
 end
 
 -- Called by Data/<Prof>Route.lua
@@ -288,6 +299,60 @@ end
 ---------------------------------------------------------------------------
 -- Known recipes (scanned whenever the profession window is open)
 ---------------------------------------------------------------------------
+-- One pass of the open profession window, shared by every learned/craftable check
+-- until the next plan refresh. Calling GetRecipeInfo per recipe on each of those
+-- checks was most of the cost of the Craft (destinations) view.
+local liveRecipes = { prof = nil, token = -1, map = {} }
+local liveToken = 0
+
+function CR.BumpLiveRecipes()
+  liveToken = liveToken + 1
+end
+
+function CR.LiveRecipeInfo(profName, spell)
+  if not profName or not spell then return nil end
+  if not (C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs and C_TradeSkillUI.GetRecipeInfo) then return nil end
+  if not (CR.TradeSkillOpenFor and CR.TradeSkillOpenFor(profName)) then return nil end
+  if liveRecipes.prof ~= profName or liveRecipes.token ~= liveToken then
+    local map = {}
+    for _, recipeID in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or {}) do
+      local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, recipeID)
+      if ok and info then map[recipeID] = info end
+    end
+    liveRecipes.prof, liveRecipes.token, liveRecipes.map = profName, liveToken, map
+  end
+  return liveRecipes.map[spell]
+end
+
+-- nil: the profession window has never shown this recipe, so learned-or-not is unknown.
+-- true/false: the open window said so, or (true only) a previous scan saved it.
+function CR.RecipeLearned(profName, recipe)
+  if not recipe then return nil end
+  local info = CR.LiveRecipeInfo(profName, recipe.spell)
+  if info and info.learned ~= nil then return info.learned end
+  if not profName then return nil end
+  local known = CR.ProfTable("known", profName)
+  if known[recipe.spell] then return true end
+  return nil
+end
+
+-- How many can be made from bags right now. While that profession's window is open,
+-- numAvailable comes from the single live scan above.
+function CR.CraftsReady(profName, recipe)
+  if not recipe then return 0 end
+  local info = CR.LiveRecipeInfo(profName, recipe.spell)
+  if info and type(info.numAvailable) == "number" then return info.numAvailable end
+  local n = math.huge
+  for _, rg in ipairs(recipe.reagents or {}) do
+    local per = rg[2] or 1
+    if per < 1 then per = 1 end
+    local bags = CR.GetItemCount(rg[1], false) or 0
+    n = math.min(n, math.floor(bags / per))
+  end
+  if n == math.huge then return 0 end
+  return n
+end
+
 function CR.ScanTradeSkill()
   if C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs and C_TradeSkillUI.GetRecipeInfo then
     local profName
@@ -328,6 +393,7 @@ function CR.NotifyChanged()
   pending = true
   C_Timer.After(0.25, function()
     pending = false
+    CR.BumpLiveRecipes()
     CR.InvalidatePlan()
     CR.InvalidateLocations()
     for _, fn in ipairs(CR.callbacks) do CR.SafeCall(fn) end
@@ -349,7 +415,7 @@ end
 for _, event in ipairs({
   "ADDON_LOADED", "PLAYER_LOGIN", "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPDATE",
   "TRADE_SKILL_LIST_UPDATE", "NEW_RECIPE_LEARNED", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED",
-  "PLAYERBANKSLOTS_CHANGED", "GET_ITEM_INFO_RECEIVED", "PLAYER_LEVEL_UP", "PLAYER_EQUIPMENT_CHANGED",
+  "PLAYERBANKSLOTS_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_EQUIPMENT_CHANGED",
   "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
 }) do
   SafeRegister(event)

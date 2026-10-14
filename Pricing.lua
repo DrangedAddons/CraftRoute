@@ -10,23 +10,57 @@ function CR.HasAuctionator()
 end
 
 -- Returns unitPrice (copper), source ("vendor" | "ah") or nil if unknown.
+-- A plan build asks for the same reagent from auto-fill, forks, and the material list.
+-- Remember each answer for a few seconds so those calls share one Auctionator lookup.
+local PRICE_TTL = 5
+local priceCache = {}
+local ahCache = {}
+
+function CR.InvalidatePrices()
+  wipe(priceCache)
+  wipe(ahCache)
+end
+
 function CR.GetUnitPrice(itemID)
-  if not CR.HasAuctionator() then return nil end
-  local api = Auctionator.API.v1
-  local ok, vendor = pcall(api.GetVendorPriceByItemID, CALLER, itemID)
-  if ok and vendor and vendor > 0 then return vendor, "vendor" end
-  local ok2, ah = pcall(api.GetAuctionPriceByItemID, CALLER, itemID)
-  if ok2 and ah and ah > 0 then return ah, "ah" end
-  return nil
+  if not itemID then return nil end
+  local now = GetTime and GetTime() or 0
+  local cached = priceCache[itemID]
+  if cached and (now - cached.t) < PRICE_TTL then
+    if not cached.ok then return nil end
+    return cached.price, cached.src
+  end
+  local price, src
+  if CR.HasAuctionator() then
+    local api = Auctionator.API.v1
+    local ok, vendor = pcall(api.GetVendorPriceByItemID, CALLER, itemID)
+    if ok and vendor and vendor > 0 then
+      price, src = vendor, "vendor"
+    else
+      local ok2, ah = pcall(api.GetAuctionPriceByItemID, CALLER, itemID)
+      if ok2 and ah and ah > 0 then price, src = ah, "ah" end
+    end
+  end
+  priceCache[itemID] = { t = now, ok = price ~= nil, price = price, src = src }
+  return price, src
 end
 
 -- What a crafted item sells for on the AH (Auctionator's price, never a vendor's buy price) - nil
 -- if it hasn't been seen there.
 function CR.GetAuctionPrice(itemID)
-  if not CR.HasAuctionator() or not itemID then return nil end
-  local ok, ah = pcall(Auctionator.API.v1.GetAuctionPriceByItemID, CALLER, itemID)
-  if ok and ah and ah > 0 then return ah end
-  return nil
+  if not itemID then return nil end
+  local now = GetTime and GetTime() or 0
+  local cached = ahCache[itemID]
+  if cached and (now - cached.t) < PRICE_TTL then
+    if not cached.ok then return nil end
+    return cached.price
+  end
+  local price
+  if CR.HasAuctionator() then
+    local ok, ah = pcall(Auctionator.API.v1.GetAuctionPriceByItemID, CALLER, itemID)
+    if ok and ah and ah > 0 then price = ah end
+  end
+  ahCache[itemID] = { t = now, ok = price ~= nil, price = price }
+  return price
 end
 
 -- Money with the gold / silver / copper coin icons, like vendors show it: "13 (s) 50 (c)".

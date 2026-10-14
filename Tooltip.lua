@@ -58,7 +58,8 @@ function CR.AddTooltipLines(tooltip, itemID)
   for _, name in ipairs(TooltipProfessions()) do
     local entry = CR.GetPlans(name)
     if entry then
-      local m, f = entry.plan.byId[itemID], entry.full.byId[itemID]
+      local full = CR.FullPlan(entry)
+      local m, f = entry.plan.byId[itemID], full and full.byId[itemID]
       if m or f then
         table.insert(blocks, { entry = entry, m = m, f = f, name = name })
         local p = m or f

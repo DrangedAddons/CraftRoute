@@ -214,6 +214,7 @@ end
 -- (From a fix contributed against 0.28.13 - CraftRoute used to force Expressway.)
 ---------------------------------------------------------------------------
 local fontApplied = setmetatable({}, { __mode = "k" })   -- FontString/EditBox -> "path|flags|shadow" it has
+local fontEpoch = 0   -- bumped when a widget is created after the last full walk
 
 local function EachFontString(root, fn, depth)
   depth = depth or 0
@@ -270,11 +271,31 @@ local function ApplyOneFont(obj, path, flags, shadow, key)
   end
 end
 
+-- A new row or lazy font string. Styles that widget now, and makes the next
+-- ApplyThemeFonts on a parent walk once so anything created beside it is caught.
+function CR.NoteThemeFonts(obj)
+  fontEpoch = fontEpoch + 1
+  if not obj then return end
+  local path, flags, shadow = EllesmereFont()
+  local key = path and (path .. "|" .. (flags or "") .. "|" .. tostring(shadow)) or nil
+  local kind = obj.GetObjectType and obj:GetObjectType()
+  if kind == "FontString" or kind == "EditBox" then
+    ApplyOneFont(obj, path, flags, shadow, key)
+  else
+    EachFontString(obj, function(fs) ApplyOneFont(fs, path, flags, shadow, key) end)
+  end
+end
+
 function CR.ApplyThemeFonts(root)
   if not root then return end
   local path, flags, shadow = EllesmereFont()
   local key = path and (path .. "|" .. (flags or "") .. "|" .. tostring(shadow)) or nil
+  -- Refresh runs after every craft. Skip the tree walk when nothing new was created
+  -- and the face is unchanged. NoteThemeFonts bumps fontEpoch for a new widget.
+  if root.crFontKey == key and root.crFontEpoch == fontEpoch then return end
   EachFontString(root, function(obj) ApplyOneFont(obj, path, flags, shadow, key) end)
+  root.crFontKey = key
+  root.crFontEpoch = fontEpoch
 end
 
 ---------------------------------------------------------------------------

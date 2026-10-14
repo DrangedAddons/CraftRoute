@@ -49,18 +49,14 @@ end
 -- Learned? and how many can be made from what's in your bags right now.
 local function RecipeState(prof, r)
   local learned, available
-  if TS.GetRecipeInfo and CR.TradeSkillOpenFor(prof.name) then
-    local ok, info = pcall(TS.GetRecipeInfo, r.spell)
-    if ok and info then learned, available = info.learned, info.numAvailable end
+  -- One scan of the open profession window, shared with Compact and the task list.
+  local info = CR.LiveRecipeInfo(prof.name, r.spell)
+  if info then
+    learned = info.learned
+    if type(info.numAvailable) == "number" then available = info.numAvailable end
   end
   if learned == nil then learned = CR.ProfTable("known", prof.name)[r.spell] or nil end
-  if available == nil then
-    available = math.huge
-    for _, rg in ipairs(r.reagents) do
-      available = math.min(available, math.floor((GetItemCount(rg[1], false) or 0) / rg[2]))
-    end
-    if available == math.huge then available = 0 end
-  end
+  if available == nil then available = CR.CraftsReady(prof.name, r) end
   return learned, available
 end
 
@@ -76,6 +72,43 @@ local function Craft(r, count)
       if link and tonumber(link:match("enchant:(%d+)")) == r.spell then DoTradeSkill(i, count) return end
     end
     CR.Print("Couldn't find " .. r.name .. " in the profession window.")
+  end
+end
+
+-- Shared with the profession-window view. A closed window is reported and no batch
+-- starts: opening the window is a secure click, not something this call can do.
+-- A spell that isn't in the recipe data is still handed to the client.
+function CR.CraftSpell(spell, count, profName)
+  if InCombatLockdown() then CR.Print("Can't craft in combat.") return end
+  count = math.max(1, math.floor(count or 1))
+  if profName and not CR.TradeSkillOpenFor(profName) then
+    CR.OpenTradeSkill(profName)
+    return
+  end
+  local r
+  if profName then
+    local p = CR.professions[profName]
+    r = p and p.recipes[spell]
+  end
+  if not r then
+    for _, p in pairs(CR.professions) do
+      r = p.recipes[spell]
+      if r then break end
+    end
+  end
+  if r then Craft(r, count) return end
+  if CR.StartCraftBatch then CR.StartCraftBatch(spell, nil, count) end
+  if TS.CraftRecipe then
+    local ok, err = pcall(TS.CraftRecipe, spell, count)
+    if not ok then CR.Print("|cffff4040Couldn't craft:|r " .. tostring(err)) end
+  elseif DoTradeSkill and GetNumTradeSkills then
+    for i = 1, GetNumTradeSkills() do
+      local link = GetTradeSkillRecipeLink and GetTradeSkillRecipeLink(i)
+      if link and tonumber(link:match("enchant:(%d+)")) == spell then DoTradeSkill(i, count) return end
+    end
+    CR.Print("Couldn't find that recipe in the profession window.")
+  else
+    CR.Print("This client has no CraftRecipe. Use /cr.")
   end
 end
 
@@ -189,10 +222,11 @@ end
 -- Is the target still where we left it? If it moved, find it again by item.
 local function ResolveTarget(t, fits)
   if not t then return nil end
-  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+  local list = CR.EnchantCandidates(fits)
+  for _, c in ipairs(list) do
     if c.itemID == t.itemID and c.equipSlot == t.equipSlot and c.bag == t.bag and c.slot == t.slot then return c end
   end
-  for _, c in ipairs(CR.EnchantCandidates(fits)) do
+  for _, c in ipairs(list) do
     if c.itemID == t.itemID then return c end
   end
 end
@@ -360,17 +394,24 @@ function CR.CoverHover(cover, button, hoverFrame)
   end)
 end
 
+-- Follow the target while the cover is shown. A hidden secure button still receives
+-- OnUpdate for the rest of the session, and GetLeft/GetBottom in PlaceOver forces layout,
+-- so the script is set only while the cover is shown and cleared when it hides.
+local function TrackCover(self)
+  if InCombatLockdown() then return end
+  if not self.target or not self.target:IsVisible() then
+    self:SetScript("OnUpdate", nil)
+    self:Hide()
+    return
+  end
+  PlaceOver(self, self.target)
+end
+
 local function SecureEnchantButton(target, onClick, opts)
   opts = opts or {}
   local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
   b:SetSize(1, 1)
   b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
-  -- follow the target while shown (window dragged / resized); never touched in combat
-  b:SetScript("OnUpdate", function(self)
-    if InCombatLockdown() then return end
-    if not target:IsVisible() then self:Hide() return end
-    PlaceOver(self, target)
-  end)
   b:RegisterForClicks("AnyUp", "AnyDown")
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "")
@@ -426,6 +467,7 @@ local function SyncSecureButtons(enchanting)
       b:SetFrameLevel(b.target:GetFrameLevel() + 5)
     end
     b:SetShown(show and true or false)
+    b:SetScript("OnUpdate", show and TrackCover or nil)
   end
 end
 
@@ -438,7 +480,10 @@ end
 
 function CR.HideSecureEnchantButtons()
   if InCombatLockdown() then return end
-  for _, b in ipairs(secureButtons) do b:Hide() end
+  for _, b in ipairs(secureButtons) do
+    b:SetScript("OnUpdate", nil)
+    b:Hide()
+  end
 end
 
 ---------------------------------------------------------------------------

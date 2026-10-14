@@ -154,6 +154,7 @@ local function NewTracker(PROF)
     -- in Edit, clicking anywhere on the line ticks / unticks it
     r:SetScript("OnClick", function(self) if editing then self.check:Click() end end)
     frame.rows[i] = r
+    if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
     return r
   end
 

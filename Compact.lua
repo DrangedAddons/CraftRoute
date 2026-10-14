@@ -162,51 +162,9 @@ local function ProfessionOf(recipe)
   end
 end
 
-local function RecipeLearned(profName, recipe)
-  if not recipe then return nil end
-  if C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo and CR.TradeSkillOpenFor(profName) then
-    local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, recipe.spell)
-    if ok and info and info.learned ~= nil then return info.learned end
-  end
-  local known = CR.ProfTable("known", profName)
-  if known[recipe.spell] then return true end
-  return nil
-end
-
-local function CraftsReady(profName, recipe)
-  if not recipe then return 0 end
-  if C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo and CR.TradeSkillOpenFor(profName) then
-    local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, recipe.spell)
-    if ok and info and type(info.numAvailable) == "number" then return info.numAvailable end
-  end
-  local n = math.huge
-  for _, rg in ipairs(recipe.reagents or {}) do
-    local bags = select(1, CR.BagsAndElsewhere(rg[1]))
-    n = math.min(n, math.floor(bags / math.max(1, rg[2])))
-  end
-  if n == math.huge then return 0 end
-  return n
-end
-
-local function CraftSpell(spell, count, profName)
-  if InCombatLockdown() then CR.Print("Can't craft in combat.") return end
-  count = math.max(1, math.floor(count or 1))
-  if profName and not CR.TradeSkillOpenFor(profName) then
-    CR.OpenTradeSkill(profName)   -- just says how: opening needs a click on an Open button
-    return
-  end
-  if C_TradeSkillUI and C_TradeSkillUI.CraftRecipe then
-    if CR.StartCraftBatch then   -- "3/50" progress at the bottom of the recipe page
-      local name
-      for _, p in pairs(CR.professions) do if p.recipes[spell] then name = p.recipes[spell].name break end end
-      CR.StartCraftBatch(spell, name, count)
-    end
-    local ok, err = pcall(C_TradeSkillUI.CraftRecipe, spell, count)
-    if not ok then CR.Print("Couldn't craft: " .. tostring(err)) end
-  else
-    CR.Print("This client has no CraftRecipe. Use /cr.")
-  end
-end
+-- Learned / how many you can make / actually crafting live in Core.lua and UICraft.lua
+-- (CR.RecipeLearned, CR.CraftsReady, CR.CraftSpell). This view used to keep its own copies,
+-- and each one called GetRecipeInfo per recipe.
 
 ---------------------------------------------------------------------------
 -- Destinations: after the route - the recipes you want to keep handy or aim to make. Picked from
@@ -312,7 +270,10 @@ local function SellValue(r)
   local makes = r.makes or 1
   local ah = CR.GetAuctionPrice and CR.GetAuctionPrice(r.item)
   if ah then return math.floor(ah * AH_CUT) * makes, "ah" end
-  local vendor = GetItemInfo and select(11, GetItemInfo(r.item))
+  -- GetItemInfo on a cache miss asks the client to load the item. The profit sort walks
+  -- every recipe; skip the ask when the client hasn't seen this item yet.
+  local cached = not (C_Item and C_Item.IsItemDataCachedByID) or C_Item.IsItemDataCachedByID(r.item)
+  local vendor = cached and GetItemInfo and select(11, GetItemInfo(r.item))
   if type(vendor) == "number" and vendor > 0 then return vendor * makes, "vendor" end
   return nil
 end
@@ -385,14 +346,22 @@ local SLOT_OF_ENCHANT = {
   ["Off-Hand"] = "offhand", ["Necklace"] = "neck",
 }
 local function RecipeSlot(r)
+  if r._slot then return r._slot end
+  local slot
   local _, kind = CR.EnchantSlotFor(r)
-  if kind then return SLOT_OF_ENCHANT[kind] or "other" end
-  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-  if f and r.item and r.item > 0 then
-    local loc = select(4, f(r.item))
-    return type(loc) == "string" and SLOT_OF_INVTYPE[loc] or "other"
+  if kind then
+    slot = SLOT_OF_ENCHANT[kind] or "other"
+  else
+    local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if f and r.item and r.item > 0 then
+      local loc = select(4, f(r.item))
+      slot = type(loc) == "string" and SLOT_OF_INVTYPE[loc] or "other"
+    else
+      slot = "other"
+    end
   end
-  return "other"
+  r._slot = slot
+  return slot
 end
 
 -- Left: every recipe (searched / filtered). Right: your destinations, in the order you added them.
@@ -406,11 +375,11 @@ local function BuildDestItems(name)
   for _, r in pairs(p.recipes) do
     ui.destPresent.quality[r.q or 1] = true
     ui.destPresent.slot[RecipeSlot(r)] = true
-    local learned = RecipeLearned(pn, r) == true
+    local learned = CR.RecipeLearned(pn, r) == true
     learnedOf[r.spell] = learned
     local F, ok = DestFilters(name), q == "" or r.name:lower():find(q, 1, true)
     if ok and (F.learned or F.unlearned) then ok = (F.learned and learned) or (F.unlearned and not learned) end
-    if ok and F.mats then ok = CraftsReady(pn, r) > 0 end
+    if ok and F.mats then ok = CR.CraftsReady(pn, r) > 0 end
     if ok and F.skillup then
       local diff = CR.Difficulty(r, CR.GetSkill(pn))
       ok = diff ~= "grey" and diff ~= "red"
@@ -802,6 +771,7 @@ local function ApplyRow(row, item)
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       row.crSub:SetJustifyH("LEFT")
+      if CR.NoteThemeFonts then CR.NoteThemeFonts(row.crSub) end
     end
     row.crSub:ClearAllPoints()
     row.crSub:SetPoint("TOPLEFT", row, "TOPLEFT", 32, -2)
@@ -874,6 +844,7 @@ local function ApplyRow(row, item)
         b:SetSize(w, 20)
         b:SetText(text)
         CR.ThemeRegisterButton(b)
+        if CR.NoteThemeFonts then CR.NoteThemeFonts(b) end
         return b
       end
       row.crQty = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
@@ -882,6 +853,7 @@ local function ApplyRow(row, item)
       row.crQty:SetNumeric(true)
       row.crQty:SetMaxLetters(4)
       row.crQty:SetJustifyH("CENTER")
+      if CR.NoteThemeFonts then CR.NoteThemeFonts(row.crQty) end
       row.crCreate = Btn(56, "Create")
       row.crAll = Btn(92, "Create All")
       -- the shopping list: "Shopping list", or a small cart icon when the row is short of room
@@ -912,19 +884,19 @@ local function ApplyRow(row, item)
     row.crQty:SetScript("OnEnterPressed", function(self) self:ClearFocus() SetQty() end)
     row.crQty:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     row.crQty:SetScript("OnEditFocusLost", SetQty)
-    local can = item.learned and CraftsReady(prof, r) or 0
+    local can = item.learned and CR.CraftsReady(prof, r) or 0
     row.crCreate:SetEnabled(item.learned and can > 0 and not InCombatLockdown())
     row.crAll:SetText(string.format("Create All [%d]", can))
     row.crAll:SetEnabled(can > 0 and not InCombatLockdown())
     local isEnchant = CR.EnchantSlotFor(r) and true or false
     row.crCreate:SetScript("OnClick", function()
-      CraftSpell(r.spell, math.max(1, tonumber(row.crQty:GetText()) or item.qty), prof)
+      CR.CraftSpell(r.spell, math.max(1, tonumber(row.crQty:GetText()) or item.qty), prof)
     end)
     row.crAll:SetScript("OnClick", function()
-      local n = CraftsReady(prof, r)
+      local n = CR.CraftsReady(prof, r)
       if n > 0 then
         ui.destQty[r.spell] = n
-        CraftSpell(r.spell, n, prof)
+        CR.CraftSpell(r.spell, n, prof)
       end
     end)
     row.crCart:SetScript("OnClick", function()
@@ -984,6 +956,7 @@ local function ApplyRow(row, item)
         CR.Backdrop(b, 0.02, 0.02, 0.02, 0.9)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         b.text:SetPoint("CENTER")
+        if CR.NoteThemeFonts then CR.NoteThemeFonts(b.text) end
         local hl = b:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(1, 1, 1, 0.1)
@@ -1012,7 +985,7 @@ local function ApplyRow(row, item)
       b:Show()
     end
     local learned = item.learned
-    if learned == nil then learned = RecipeLearned(item.prof, r) == true end
+    if learned == nil then learned = CR.RecipeLearned(item.prof, r) == true end
     local name = r.name
     local sub, profitLine
     if item.kind == "destFav" then
@@ -1026,7 +999,7 @@ local function ApplyRow(row, item)
         local p = Profit(r)
         profitLine = "profit " .. (p and ProfitText(p * n) or CR.ColorText("no price yet", "888888"))
       end
-      local can = learned and CraftsReady(item.prof, r) or 0
+      local can = learned and CR.CraftsReady(item.prof, r) or 0
       if can > 0 then sub = sub .. CR.ColorText("   " .. can .. " now", "40ff40") end
     else
       -- the level it's learned at, and "Not Learned" if you don't know it yet
@@ -1056,6 +1029,7 @@ local function ApplyRow(row, item)
     if not row.crSub then
       row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       row.crSub:SetJustifyH("LEFT")
+      if CR.NoteThemeFonts then CR.NoteThemeFonts(row.crSub) end
     end
     row.crSub:ClearAllPoints()
     row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
@@ -1069,6 +1043,7 @@ local function ApplyRow(row, item)
         row.crSub2 = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         row.crSub2:SetJustifyH("LEFT")
         row.crSub2:SetWordWrap(false)
+        if CR.NoteThemeFonts then CR.NoteThemeFonts(row.crSub2) end
       end
       row.crSub2:ClearAllPoints()
       row.crSub2:SetPoint("TOPLEFT", row.crSub, "BOTTOMLEFT", 0, -2)
@@ -1255,7 +1230,7 @@ local function ApplyRow(row, item)
           local n = info.count or 0
           a:SetText((info.smelting and "Smelt " or "Make ") .. n)
           a:SetEnabled(n > 0 and not InCombatLockdown())
-          a:SetScript("OnClick", function() CraftSpell(info.recipe.spell, n, info.prof.name) end)
+          a:SetScript("OnClick", function() CR.CraftSpell(info.recipe.spell, n, info.prof.name) end)
         end
       else
         a:SetText(info.convert.uses > 1 and "Combine" or "Split")
@@ -1500,6 +1475,7 @@ local function CreateRow(parent)
     local holder = self:GetParent()
     if holder and holder.Wheel then holder:Wheel(delta) elseif list and list.Wheel then list:Wheel(delta) end
   end)
+  if CR.NoteThemeFonts then CR.NoteThemeFonts(row) end
   return row
 end
 
@@ -2065,10 +2041,10 @@ local function FillSchematic(info)
   rscroll:UpdateBar()
   if C_Timer then C_Timer.After(0, function() rscroll:UpdateBar() end) end
 
-  local learned = RecipeLearned(profName, recipe)
+  local learned = CR.RecipeLearned(profName, recipe)
   local enchantFits = CR.EnchantSlotFor(recipe)
   local open = CR.TradeSkillOpenFor(profName)
-  local ready = CraftsReady(profName, recipe)
+  local ready = CR.CraftsReady(profName, recipe)
   local canCraft = open and learned ~= false and not enchantFits
   local enchantTarget
   if frame.UpdateEnchant then
@@ -2517,6 +2493,7 @@ local function MatPanel()
     end)
     r:SetScript("OnLeave", GameTooltip_Hide)
     p.rows[i] = r
+    if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
     return r
   end
   function p:Refresh()
@@ -2673,7 +2650,7 @@ local function ExpandOpen(name, favs)
     if f.selected then
       at = #out
       local r, pn = f.recipe, f.prof
-      local learned = RecipeLearned(pn, r) == true
+      local learned = CR.RecipeLearned(pn, r) == true
       -- the amount: the one set beside it in your list (or in the Create box), else 1
       local qty = math.max(1, ui.destQty[r.spell] or CartEntry(name, r.spell).qty or 1)
       local cost, unpriced = MakeCost(r)
@@ -2732,7 +2709,7 @@ local function FillDestDetail(info)
     return
   end
   local r = st.recipe
-  local learned = RecipeLearned(info.profName, r) == true
+  local learned = CR.RecipeLearned(info.profName, r) == true
   if learned then
     f.destInfo:SetText(CR.ColorText("Learned", "40ff40"))
     return
@@ -2774,8 +2751,8 @@ local function DestRefresh(name)
   if open then
     f.current = { kind = "dest", recipe = open.recipe, spell = open.recipe.spell, crafts = 1 }
     f.craftProf = open.prof
-    local learned = RecipeLearned(open.prof, open.recipe) ~= false
-    local canCast = learned and CR.TradeSkillOpenFor(open.prof) and CraftsReady(open.prof, open.recipe) > 0
+    local learned = CR.RecipeLearned(open.prof, open.recipe) ~= false
+    local canCast = learned and CR.TradeSkillOpenFor(open.prof) and CR.CraftsReady(open.prof, open.recipe) > 0
     if f.UpdateEnchant then f:UpdateEnchant(open.recipe, canCast) end
   elseif f.UpdateEnchant then
     f:UpdateEnchant(nil)
@@ -4330,6 +4307,7 @@ local function BuildOverlay()
       if overlay then overlay:Refresh() end
     end)
     flyout.rows[i] = row
+    if CR.NoteThemeFonts then CR.NoteThemeFonts(row) end
     return row
   end
   local function ShowFlyout()
@@ -4458,23 +4436,23 @@ local function BuildOverlay()
 
   frame.create:SetScript("OnClick", function()
     local st = frame.current
-    if not st or not st.recipe or RecipeLearned(frame.craftProf, st.recipe) == false then return end
+    if not st or not st.recipe or CR.RecipeLearned(frame.craftProf, st.recipe) == false then return end
     if CR.EnchantSlotFor(st.recipe) then
       -- The secure cover takes this click when it is the top frame, and that is what
       -- answers the replace prompt. This runs only when the click reaches the button.
       EnchantButtonClick()
       return
     end
-    CraftSpell(st.recipe.spell, tonumber(frame.countBox:GetText()) or 1, frame.craftProf)
+    CR.CraftSpell(st.recipe.spell, tonumber(frame.countBox:GetText()) or 1, frame.craftProf)
   end)
   frame.createAll:SetScript("OnClick", function()
     local st = frame.current
-    if not st or not st.recipe or RecipeLearned(frame.craftProf, st.recipe) == false then return end
+    if not st or not st.recipe or CR.RecipeLearned(frame.craftProf, st.recipe) == false then return end
     if CR.EnchantSlotFor(st.recipe) then return end
-    local n = CraftsReady(frame.craftProf, st.recipe)
+    local n = CR.CraftsReady(frame.craftProf, st.recipe)
     if n > 0 then
       frame.countBox:SetText(tostring(n))   -- the quantity box shows what was just queued
-      CraftSpell(st.recipe.spell, n, frame.craftProf)
+      CR.CraftSpell(st.recipe.spell, n, frame.craftProf)
     end
   end)
   frame.openBtn:SetScript("OnClick", function()
@@ -4488,8 +4466,16 @@ local function BuildOverlay()
     end,
     function() return frame:IsShown() and frame.openBtn:IsShown() and CR.OpenProfessionMacro(frame.craftProf) ~= nil end)
 
-  local watch = 0
+  -- The batch bar, the Blizzard-page check, and the enchant covers used to run every frame.
+  -- GetLeft/GetBottom inside the cover sync forces a layout. 0.1s is enough for the bar.
+  -- The label, structure text, and profession sync stay on the slower tick.
+  local watch, slow = 0, 0
   frame:SetScript("OnUpdate", function(_, elapsed)
+    elapsed = elapsed or 0
+    watch = watch + elapsed
+    slow = slow + elapsed
+    if watch < 0.1 then return end
+    watch = 0
     local bs = CR.CraftBatchState and CR.CraftBatchState()
     if bs and frame.icon:IsShown() then
       frame.batchBar:Show()
@@ -4524,9 +4510,8 @@ local function BuildOverlay()
       pcall(HidePages)   -- not your choice (a craft finished, the list refreshed): stay here
     end
     SyncEnchantSecure()
-    watch = watch + elapsed
-    if watch < 0.4 then return end
-    watch = 0
+    if slow < 0.4 then return end
+    slow = 0
     -- the main window can be closed from its own X: keep the button's label right
     frame.mainBtn:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
     -- "Anvil required" turns green as you walk up to one

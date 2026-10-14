@@ -183,6 +183,7 @@ function CR.CreateList(name, parent, width, height, createRow, updateRow)
     hl:SetColorTexture(1, 1, 1, 0.08)
     createRow(row)
     list.rows[i] = row
+    if CR.NoteThemeFonts then CR.NoteThemeFonts(row) end
     return row
   end
 
@@ -287,6 +288,8 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
         bhl:SetAllPoints()
         bhl:SetColorTexture(0.2, 0.6, 1, 0.3)
         menu.buttons[i] = b
+        -- The menu is parented to UIParent, so the window's font walk never sees it.
+        if CR.NoteThemeFonts then CR.NoteThemeFonts(b) end
       end
       local selected = getter() == o.value
       b.text:SetText((selected and "|cff33ccff> |r" or "   ") .. o.text)

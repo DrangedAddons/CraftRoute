@@ -18,6 +18,7 @@ local EXTRA_NPCS = {
 }
 
 local npcIndex   -- [name] = { { name, uiMapID, x, y, faction }, ... }
+local indexedOn  -- which table Index last finished (ApplyTrainerSpells replaces CR.npcIndex)
 local function AddNpc(name, loc, faction)
   if type(name) ~= "string" or name == "" or type(loc) ~= "table" or not loc.uiMapID or not loc.x then return end
   local list = npcIndex[name]
@@ -28,14 +29,29 @@ local function AddNpc(name, loc, faction)
   table.insert(list, { name = name, uiMapID = loc.uiMapID, x = loc.x, y = loc.y, faction = faction })
 end
 
-local function Index()
-  if npcIndex then return npcIndex end
-  npcIndex = {}
+local function AddTrainersAndExtras()
   for _, trainers in pairs(type(TrainerSpellsProfessionTrainers) == "table" and TrainerSpellsProfessionTrainers or {}) do
     for _, t in ipairs(trainers) do
       for _, loc in ipairs(t.locations or {}) do AddNpc(t.names and t.names.enUS, loc, t.faction) end
     end
   end
+  for name, locs in pairs(EXTRA_NPCS) do
+    if not npcIndex[name] then for _, l in ipairs(locs) do AddNpc(name, l, l.faction) end end
+  end
+end
+
+local function Index()
+  -- Vendor NPCs are recorded while ApplyTrainerSpells walks sourceLocations. Reuse that
+  -- table. Still add profession trainers and the few guide NPCs it doesn't list.
+  if CR.npcIndex and CR.tsVendors then
+    if indexedOn == CR.npcIndex then return npcIndex end
+    npcIndex = CR.npcIndex
+    AddTrainersAndExtras()
+    indexedOn = npcIndex
+    return npcIndex
+  end
+  if npcIndex then return npcIndex end
+  npcIndex = {}
   for _, bySkill in pairs(type(TrainerSpellsBuiltin_ProfessionRecipe) == "table" and TrainerSpellsBuiltin_ProfessionRecipe or {}) do
     for _, entries in pairs(bySkill) do
       for _, data in pairs(entries) do
@@ -45,9 +61,8 @@ local function Index()
       end
     end
   end
-  for name, locs in pairs(EXTRA_NPCS) do
-    if not npcIndex[name] then for _, l in ipairs(locs) do AddNpc(name, l, l.faction) end end
-  end
+  AddTrainersAndExtras()
+  indexedOn = npcIndex
   return npcIndex
 end
 
@@ -82,7 +97,37 @@ end
 
 -- Places for this faction, nearest first (same continent by distance, then the rest), with
 -- .zone, .dist (yards, same continent only) and .far (other continent).
+-- The same trainer list is asked for on every row. Remember the answer until the player
+-- moves into another ~5% of the map (or the place list itself changes).
+local nearestCache = {}
+local nearestSeq = 0
+local listIDs = setmetatable({}, { __mode = "k" })
+local function PlaceListID(places)
+  local id = listIDs[places]
+  if not id then
+    nearestSeq = nearestSeq + 1
+    id = nearestSeq
+    listIDs[places] = id
+  end
+  return id
+end
 local function Nearest(places, max)
+  max = max or 3
+  local mapID, bx, by = 0, 0, 0
+  if C_Map and C_Map.GetBestMapForUnit then
+    mapID = C_Map.GetBestMapForUnit("player") or 0
+    if mapID ~= 0 and C_Map.GetPlayerMapPosition then
+      local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+      if pos then
+        local x, y = pos:GetXY()
+        bx = math.floor((x or 0) * 20)
+        by = math.floor((y or 0) * 20)
+      end
+    end
+  end
+  local key = PlaceListID(places) .. "\0" .. mapID .. "\0" .. bx .. "," .. by .. "\0" .. max
+  local hit = nearestCache[key]
+  if hit then return hit end
   local out = {}
   local pc, px, py = PlayerWorld()
   for _, p in ipairs(places) do
@@ -103,23 +148,31 @@ local function Nearest(places, max)
   local seen, trimmed = {}, {}
   for _, e in ipairs(out) do
     if not seen[e.name] then seen[e.name] = true; table.insert(trimmed, e) end
-    if #trimmed >= (max or 3) then break end
+    if #trimmed >= max then break end
   end
+  nearestCache[key] = trimmed
   return trimmed
 end
 
 -- Profession trainers who teach up to `rank` (1 Apprentice ... 4 Artisan) or beyond.
+-- The list is stable for the session; callers must not rewrite its entries.
+local trainerCache = {}
 local function Trainers(profName, rank)
+  rank = rank or 1
+  local key = (profName or "") .. "\0" .. rank
+  local cached = trainerCache[key]
+  if cached then return cached end
   local list = {}
   local trainers = type(TrainerSpellsProfessionTrainers) == "table" and TrainerSpellsProfessionTrainers[profName]
   for _, t in ipairs(trainers or {}) do
-    if (t.rank or 1) >= (rank or 1) then
+    if (t.rank or 1) >= rank then
       for _, loc in ipairs(t.locations or {}) do
         table.insert(list, { name = t.names and t.names.enUS or "?", uiMapID = loc.uiMapID, x = loc.x, y = loc.y,
                              faction = t.faction })
       end
     end
   end
+  trainerCache[key] = list
   return list
 end
 
@@ -216,7 +269,14 @@ local function FirstSentence(text)
   return s
 end
 
+local emptyPlaces = {}
 local function TrainerCost(profName, spell)
+  local p = CR.professions[profName]
+  local r = p and p.recipes[spell]
+  if r and r.cost then return r.cost end
+  local costs = CR.tsCost and CR.tsCost[profName]
+  if costs then return costs[spell] end
+  -- ApplyTrainerSpells hasn't run: walk the addon tables once for this spell.
   local data = type(TrainerSpellsBuiltin_Profession) == "table" and TrainerSpellsBuiltin_Profession[profName]
   for _, bucket in pairs(data or {}) do
     local e = bucket[spell]
@@ -225,6 +285,8 @@ local function TrainerCost(profName, spell)
 end
 
 local function RecipeVendors(profName, spell)
+  local vendors = CR.tsVendors and CR.tsVendors[profName]
+  if vendors then return vendors[spell] or emptyPlaces end
   local list = {}
   local data = type(TrainerSpellsBuiltin_ProfessionRecipe) == "table" and TrainerSpellsBuiltin_ProfessionRecipe[profName]
   for _, bucket in pairs(data or {}) do
@@ -243,12 +305,13 @@ local function KeyOf(st)
     (st.text or ""):sub(1, 48))
 end
 
--- Has this recipe been learned? nil when it can't be told (the profession was never opened).
+-- Has this recipe been learned? nil when it can't be told (the profession was never opened
+-- and no saved scan exists). false only when a scan exists and this spell isn't in it.
+-- That nil-vs-false split is what the learn-task uses; the profession window's own check
+-- (CR.RecipeLearned) stays nil when unknown.
 local function RecipeLearned(profName, r)
-  if CR.TradeSkillOpenFor and CR.TradeSkillOpenFor(profName) and C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo then
-    local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, r.spell)
-    if ok and info and info.learned ~= nil then return info.learned end
-  end
+  local info = CR.LiveRecipeInfo and CR.LiveRecipeInfo(profName, r.spell)
+  if info and info.learned ~= nil then return info.learned end
   local known = CR.ProfTable("known", profName)
   if not next(known) then return nil end
   return known[r.spell] and true or false
@@ -257,20 +320,34 @@ end
 local function Check(ok, text) return { ok = ok and true or false, text = text } end
 
 -- Is a quest with this title in the quest log? nil when the log can't be read.
+-- A readable answer is kept until QUEST_LOG_UPDATE. An unreadable log is not cached.
+local questCache = {}
+do
+  local qf = CreateFrame("Frame")
+  if pcall(qf.RegisterEvent, qf, "QUEST_LOG_UPDATE") then
+    qf:SetScript("OnEvent", function() wipe(questCache) end)
+  end
+end
 local function QuestInLog(title)
+  if questCache[title] ~= nil then return questCache[title] end
+  local found
   if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
+    found = false
     for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
       local info = C_QuestLog.GetInfo(i)
-      if info and not info.isHeader and info.title == title then return true end
+      if info and not info.isHeader and info.title == title then found = true; break end
     end
-    return false
   elseif GetNumQuestLogEntries and GetQuestLogTitle then
+    found = false
     for i = 1, GetNumQuestLogEntries() or 0 do
       local name, _, _, isHeader = GetQuestLogTitle(i)
-      if not isHeader and name == title then return true end
+      if not isHeader and name == title then found = true; break end
     end
-    return false
+  else
+    return nil
   end
+  questCache[title] = found
+  return found
 end
 
 -- The rank's quest (st.quest = its title): picked up, or done once the rank it rewards is
@@ -296,7 +373,19 @@ end
 
 -- The task for a train / guide step, or nil.
 function CR.StepTask(st, profName)
-  if st.recipe or (st.kind ~= "train" and st.kind ~= "guide") then return nil end
+  -- One task object per plan step. The step table is new on every plan build, so bag
+  -- counts and skill checks are redone when the plan is. A second caller in the same
+  -- refresh (the route list and the action list) reuses that object.
+  if st._taskProf == profName then
+    if st._taskNil then return nil end
+    if st._task then return st._task end
+  end
+  local function Finish(t)
+    st._taskProf = profName
+    if t then st._task, st._taskNil = t, nil else st._task, st._taskNil = nil, true end
+    return t
+  end
+  if st.recipe or (st.kind ~= "train" and st.kind ~= "guide") then return Finish(nil) end
   local skillName = st.skill or profName
   local cur, maxRank, learned = CR.GetSkill(skillName)
   local text = CR.FactionText(st.text or "")
@@ -429,8 +518,9 @@ function CR.StepTask(st, profName)
       for _, p in ipairs(t.places) do table.insert(list, p) end
       for _, prof in ipairs(st.nearTrainer) do
         for _, p in ipairs(Trainers(prof, 1)) do
-          p.name = p.name .. " (" .. prof .. " trainer)"   -- the vendor is next to them, not them
-          table.insert(list, p)
+          -- Copy. Trainers() is cached, and rewriting p.name would stick on the next call.
+          table.insert(list, { name = p.name .. " (" .. prof .. " trainer)", uiMapID = p.uiMapID,
+                               x = p.x, y = p.y, faction = p.faction })
         end
       end
       t.places = Nearest(list)
@@ -452,7 +542,7 @@ function CR.StepTask(st, profName)
       if #t.places == 0 and not st.quest and not st.book then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
     end
     -- a tip with nothing to check and nobody to visit stays a note in the list - no stop
-    if #conds == 0 and #t.places == 0 then return nil end
+    if #conds == 0 and #t.places == 0 then return Finish(nil) end
     -- nothing the game can check: you're past it once your skill has moved beyond the step
     if #conds == 0 and st.to and st.to > (st.from or 0) and cur >= st.to then table.insert(conds, true) end
   end
@@ -480,7 +570,7 @@ function CR.StepTask(st, profName)
       t.text = t.text .. "\n\nGet these now. " .. wait
     end
   end
-  return t
+  return Finish(t)
 end
 
 -- A "learn this recipe first" task for a craft step, or nil (learned, or can't tell yet).

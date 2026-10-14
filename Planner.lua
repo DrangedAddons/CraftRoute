@@ -12,16 +12,23 @@ local UNKNOWN_RARE_PRICE = 50000
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
+-- Baked names first. GetItemInfo on a cache miss asks the client to load the item,
+-- and that load used to invalidate every plan (see Core.lua's event list).
 local function ItemName(prof, id)
-  return (prof and prof.names[id]) and ((GetItemInfo(id)) or prof.names[id]) or CR.ItemName(id)
+  if prof and prof.names[id] then return prof.names[id] end
+  return CR.ItemName(id)
 end
 CR.ItemName = function(id)
+  if not id then return "" end
+  local named = CR.itemNames and CR.itemNames[id]
+  if named then return named end
+  if CR.extraNames[id] then return CR.extraNames[id] end
+  if C_Item and C_Item.IsItemDataCachedByID and not C_Item.IsItemDataCachedByID(id) then
+    return "item:" .. id
+  end
   local name = GetItemInfo(id)
   if name then return name end
-  for _, p in pairs(CR.professions) do
-    if p.names[id] then return p.names[id] end
-  end
-  return CR.extraNames[id] or ("item:" .. id)
+  return "item:" .. id
 end
 
 function CR.OwnedCount(itemID)
@@ -275,17 +282,37 @@ local function MakeCostFn(prof)
   end
 end
 
+-- Vendor patterns count only if a vendor of your faction (or a neutral one) sells them.
+-- Parsed once per recipe; ApplyTrainerSpells clears it when a source line changes.
+local function VendorOK(r)
+  if r._vendorOK ~= nil then return r._vendorOK end
+  local src = r.src or ""
+  local ok = false
+  if type(src) == "string" and src:find("^Sold by") then
+    local ft = CR.FactionText(src)
+    ok = ft:find("^Sold by %S") and true or false
+  end
+  r._vendorOK = ok
+  return ok
+end
+
 local function AutoSteps(prof, from, to)
   local known = CR.ProfTable("known", prof.name)
   local cost = MakeCostFn(prof)
+  -- The old loop walked every recipe at every skill point, and parsed source text each time.
+  -- Candidates are the recipes that can still give a point somewhere in this gap.
+  local candidates = {}
+  for spellID, r in pairs(prof.recipes) do
+    if r.item > 0 and r.learn < to and r.g > from
+        and (r.src == "Trainer" or known[spellID] or VendorOK(r)) then
+      table.insert(candidates, r)
+    end
+  end
   local steps, cur = {}, nil
   for s = from, to - 1 do
     local best, bestCost, bestCrafts
-    for spellID, r in pairs(prof.recipes) do
-      -- Vendor patterns count only if a vendor of your faction (or a neutral one) sells them.
-      local obtainable = r.src == "Trainer" or known[spellID]
-        or (r.src:find("^Sold by") and CR.FactionText(r.src):find("^Sold by %S"))
-      if r.item > 0 and obtainable and r.learn <= s and s < r.g then
+    for _, r in ipairs(candidates) do
+      if r.learn <= s and s < r.g then
         local cpp = CraftsPerPoint(r, s)
         local c = cost(r) * cpp
         if not bestCost or c < bestCost then best, bestCost, bestCrafts = r, c, cpp end
@@ -422,12 +449,19 @@ end
 -- option with a short material summary. Only the picked option's steps go into the plan.
 local function ForkEvents(route, rprof, profName, cur, goal)
   local out = {}
+  -- Clip each choice-step once. The loops below only read the result.
+  local clipped = {}
+  for i, st in ipairs(route.steps) do
+    if st.when and FactionOK(st) then
+      clipped[i] = ClipStep(route, rprof, st, i, profName, cur, goal) or false
+    end
+  end
   for _, c in ipairs(route.choices or {}) do
     -- The fork shows while any of its steps is still ahead.
     local lo, hi, firstIndex, skillName
     for i, st in ipairs(route.steps) do
       if st.when and st.when[c.key] and FactionOK(st) then
-        local e = ClipStep(route, rprof, st, i, profName, cur, goal)
+        local e = clipped[i]
         if e then
           lo, hi = min(lo or e.from, e.from), max(hi or e.to, e.to)
           firstIndex = firstIndex or i
@@ -443,8 +477,7 @@ local function ForkEvents(route, rprof, profName, cur, goal)
         if FactionOK(o) then
           local parts = {}
           for i, st in ipairs(route.steps) do
-            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st)
-                and ClipStep(route, rprof, st, i, profName, cur, goal) then
+            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) and clipped[i] then
               table.insert(parts, st.spell and ("s" .. st.spell) or ("g" .. tostring(st.text)))
             end
           end
@@ -469,7 +502,7 @@ local function ForkEvents(route, rprof, profName, cur, goal)
           local unpricedN = 0
           for i, st in ipairs(route.steps) do
             if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) then
-              local e = ClipStep(route, rprof, st, i, profName, cur, goal)
+              local e = clipped[i]
               if e and e.kind == "craft" then
                 local r = rprof.recipes[e.spell]
                 table.insert(crafts, { recipe = r, n = e.crafts, estimated = e.estimated })
@@ -799,11 +832,21 @@ function CR.GetPlans(profName)
     cur = cur, maxRank = maxRank, goal = goal, why = why, route = route,
     plan = CR.BuildPlan(profName, cur, goal),
   }
-  if goal < route.maxSkill then
-    entry.full = CR.BuildPlan(profName, cur, route.maxSkill)
-  else
-    entry.full = entry.plan
-  end
+  -- The route-to-cap plan is only for the "to complete" tooltip line. Build it
+  -- on first read (CR.FullPlan), not for every window refresh.
   cache[profName] = entry
   return entry
+end
+
+function CR.FullPlan(entry)
+  if not entry then return nil end
+  if entry.full then return entry.full end
+  local route = entry.route
+  local profName = entry.plan and entry.plan.prof
+  if not route or not profName or (entry.goal or 0) >= (route.maxSkill or 0) then
+    entry.full = entry.plan
+    return entry.plan
+  end
+  entry.full = CR.BuildPlan(profName, entry.cur, route.maxSkill)
+  return entry.full
 end
