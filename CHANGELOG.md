@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.55.0
+
+- Profession window tab: the crafting buttons - **Create All**, the amount box with its **arrows**, and **Create** - sit exactly where Blizzard's own do on its recipes page, at the same sizes. Their places are read from Blizzard's page as the tab opens (and remembered, for when it opens over another page). The Shopping List button and the status line ("Not enough reagents...") sit just above them.
+
 ## 0.54.2
 
 - Profession window tab: with a skin that shades Blizzard's panels (EllesmereUI's dark fills behind the recipe list and the recipe panel), that shading is now copied onto the tab too - so the "crease" between the columns (the gap between the two shaded panels) shows as it does on Blizzard's page. The skill bar's own fill is no longer copied (the tab borrows Blizzard's bar).

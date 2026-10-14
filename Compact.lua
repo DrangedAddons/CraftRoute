@@ -3417,6 +3417,61 @@ local function MirrorBlizzardBackground()
   if overlay.divider then overlay.divider:SetAlpha(n == 0 and 1 or 0) end
   return n
 end
+-- Blizzard's crafting buttons (Create All, the amount box and its arrows, Create): where they sit
+-- on its page and how big, read while its page is laid out and kept (CraftRouteDB.blizButtons, as
+-- offsets from the window's bottom-left) - this tab's own buttons are put in the very same spots.
+local BLIZ_BUTTONS = { createAll = "CreateAllButton", create = "CreateButton", countBox = "CreateMultipleInputBox" }
+local function AlignToBlizzardButtons()
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  local ol, ob = overlay and overlay:GetLeft(), overlay and overlay:GetBottom()
+  CraftRouteDB.blizButtons = CraftRouteDB.blizButtons or {}
+  local saved = CraftRouteDB.blizButtons
+  if page and ol and ob then
+    local os = overlay:GetEffectiveScale()
+    local function Rect(b)
+      local l, bt, w, h = b and b:GetLeft(), b and b:GetBottom(), b and b:GetWidth(), b and b:GetHeight()
+      if not (l and bt and w and h and w > 0 and h > 0) then return nil end
+      local s = b:GetEffectiveScale()
+      return { (l * s - ol * os) / os, (bt * s - ob * os) / os, w * s / os, h * s / os }
+    end
+    for ours, theirs in pairs(BLIZ_BUTTONS) do saved[ours] = Rect(page[theirs]) or saved[ours] end
+    local box = page.CreateMultipleInputBox
+    if box then
+      saved.prevBtn = Rect(box.DecrementButton) or saved.prevBtn
+      saved.nextBtn = Rect(box.IncrementButton) or saved.nextBtn
+    end
+  end
+  local f = overlay
+  if not (f and f.create) then return end
+  for _, k in ipairs({ "createAll", "create", "countBox", "prevBtn", "nextBtn" }) do
+    local r, w = saved[k], f[k]
+    if r and w then
+      w:ClearAllPoints()
+      w:SetPoint("BOTTOMLEFT", overlay, "BOTTOMLEFT", r[1], r[2])
+      w:SetSize(r[3], r[4])
+    end
+  end
+  -- (arrows Blizzard didn't give: either side of the box)
+  if saved.countBox and not saved.prevBtn then
+    f.prevBtn:ClearAllPoints() f.prevBtn:SetPoint("RIGHT", f.countBox, "LEFT", -2, 0)
+  end
+  if saved.countBox and not saved.nextBtn then
+    f.nextBtn:ClearAllPoints() f.nextBtn:SetPoint("LEFT", f.countBox, "RIGHT", 2, 0)
+  end
+  -- the Shopping List button and the status line sit just above the buttons, wherever they are
+  if saved.create then
+    f.shopBtn:ClearAllPoints()
+    f.shopBtn:SetPoint("BOTTOMRIGHT", f.create, "TOPRIGHT", 0, 8)
+  end
+  if saved.createAll then
+    for _, w in ipairs({ f.status, f.batchBar }) do
+      w:ClearAllPoints()
+      w:SetPoint("BOTTOMLEFT", f.createAll, "TOPLEFT", 0, 8)
+      w:SetPoint("RIGHT", f.shopBtn, "LEFT", -8, 0)
+    end
+  end
+end
+
 function CR.DebugBackground()
   CR.Print(string.format("Background: %d of Blizzard's textures copied onto this tab.", #mirrorLog))
   for _, line in ipairs(mirrorLog) do CR.Print("  " .. line) end
@@ -3434,6 +3489,7 @@ local function OpenCompact()
   if ts and ts:IsShown() then ts:Hide() end
   ClearOtherChecks()
   pcall(MirrorBlizzardBackground)   -- (before its page is hidden: its art's still laid out)
+  pcall(AlignToBlizzardButtons)
   pcall(HidePages)
   ui.openProf = nil
   ui.keepScroll = false
@@ -4919,6 +4975,7 @@ local function BuildOverlay()
     SyncOpenProfession()
     if ui.openProf ~= before then
       pcall(MirrorBlizzardBackground)   -- (another profession: its own art)
+      pcall(AlignToBlizzardButtons)
       pcall(CaptureBarArt)
       C_Timer.After(3, function() pcall(CaptureBarArt, true) UpdateRankBar() end)
       ui.keepScroll = false
