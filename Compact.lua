@@ -2420,15 +2420,15 @@ local function UpdateRankBar()
   fill:SetHeight(height)
 
   -- Blizzard's own art for this profession (once its bar has been seen), at its own colours.
-  -- Otherwise the profession's colour: a Resource & Cast Bars texture replaces the default
-  -- status-bar art; None keeps that art. The colour stays either way.
+  -- Otherwise the plain status-bar art in the profession's colour. The Ellesmere bar
+  -- texture is only for the skill-up colour bar, not this one.
   local art = BarArt(DestProf(name) or name)
   local intro = rawget(bar, "intro")
   if not (intro and intro:IsPlaying()) then
     if art and art.static and SetCropped(fill, art, ratio) then
       fill:SetVertexColor(1, 1, 1, 1)
     else
-      fill:SetTexture(CR.ResourceBarPath() or "Interface\\TargetingFrame\\UI-StatusBar")
+      fill:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
       fill:SetTexCoord(0, math.max(ratio, 0.001), 0, 1)
       local r, g, b = CR.ProfessionColor(name)
       fill:SetVertexColor(r, g, b, 0.95)
