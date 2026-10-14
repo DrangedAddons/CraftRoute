@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.53.3
+
+- Route view: the right panel's messages ("Goal reached (225). Raise it in the route dropdown.", "Click a step...") no longer sit on top of the version and Open CraftRoute button - they start below that row, where a recipe's own details start.
+
 ## 0.53.2
 
 - Materials tracker from the Route view's pop-out: opens **docked** to the right edge of the profession window (over its side tabs), and closes with the window - like the Craft view's materials panel. Drag it by its title (or move it in EllesmereUI's unlock mode) to undock it: from then on it's a free window for that profession - it keeps its place, stays open when the window closes, and comes back after a reload, and the pop-out opens it there. The main window's Tracker button and `/cr tracker` still open the free window.

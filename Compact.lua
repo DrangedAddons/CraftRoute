@@ -4418,8 +4418,9 @@ local function BuildOverlay()
   if frame.cost.SetSpacing then frame.cost:SetSpacing(3) end
 
   frame.detailEmpty = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  frame.detailEmpty:SetPoint("TOPLEFT", schematic, "TOPLEFT", 0, -8)
-  frame.detailEmpty:SetPoint("TOPRIGHT", schematic, "TOPRIGHT", -8, -8)
+  -- under the version / Open CraftRoute row (it sat on top of them), where a recipe's own panel starts
+  frame.detailEmpty:SetPoint("TOPLEFT", schematic, "TOPLEFT", 28, -40)
+  frame.detailEmpty:SetPoint("TOPRIGHT", schematic, "TOPRIGHT", -8, -40)
   frame.detailEmpty:SetJustifyH("LEFT")
   frame.detailEmpty:SetWordWrap(true)
   frame.detailEmpty:Hide()
