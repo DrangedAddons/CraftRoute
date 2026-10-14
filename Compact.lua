@@ -19,11 +19,13 @@ local REAGENT_SLOTS = 12
 -- Positions follow Blizzard's own recipe page (measured from it), so flicking between the two
 -- barely moves anything: the header band with a centred skill bar, the pickers where its search
 -- box is, the list where its recipe list starts, the right panel where its schematic is.
-local HEADER_H = 57       -- the dark band behind the skill bar
-local RANK_BAR_Y = -38    -- skill bar centre
-local RANK_DROP_Y = -73   -- the pickers: Blizzard's search / filter line
-local LIST_TOP = -101     -- Blizzard's first recipe header
-local DIVIDER_TOP = -66   -- right panel top
+-- Measured against Blizzard's own page (its header ends 60 px under the title bar, its skill bar's
+-- centre 36 px under it), so nothing jumps when you flick between that page and this view.
+local HEADER_H = 48       -- the dark band behind the skill bar
+local RANK_BAR_Y = -34    -- skill bar centre
+local RANK_DROP_Y = -64   -- the pickers: Blizzard's search / filter line
+local LIST_TOP = -92      -- Blizzard's first recipe header
+local DIVIDER_TOP = -57   -- right panel top
 local LEFT_W = 357        -- Blizzard's recipe-list column
 local COST_BAR_H = 22     -- the route cost bar under the list
 

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.17
+
+- Profession window tab: the header now lines up with Blizzard's own page - the line under it is 9 px higher and the skill bar about 4 px higher, measured against Blizzard's - so nothing jumps when you flick between the two. Everything below the header moved up with it.
+
 ## 0.50.16
 
 - Route view: the selected step's blue box now takes in its opened rows (its reagents) as well as its title row - the step and its details read as one, as in the Craft view.
