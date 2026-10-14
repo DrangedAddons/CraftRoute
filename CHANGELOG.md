@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.55.1
+
+- Shopping lists always list a recipe's **own** materials: a step's Shopping List for Hillman's Leather Gloves asks for the Medium Leather it's missing - not the Light Leather and scraps that leather could be made from. What earlier route steps make for it (a component crafted in a previous step) is still counted as covered and not bought.
+
 ## 0.55.0
 
 - Profession window tab: the crafting buttons - **Create All**, the amount box with its **arrows**, and **Create** - sit exactly where Blizzard's own do on its recipes page, at the same sizes. Their places are read from Blizzard's page as the tab opens (and remembered, for when it opens over another page). The Shopping List button and the status line ("Not enough reagents...") sit just above them.

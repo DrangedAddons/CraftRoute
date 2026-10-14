@@ -4569,7 +4569,21 @@ local function BuildOverlay()
   CR.AddCartIcon(frame.shopBtn)
   frame.shopBtn:SetScript("OnClick", function()
     local st = frame.current
-    if st and st.recipe then CR.CreateStepShoppingList(st.recipe, st.crafts) end
+    if not (st and st.recipe) then return end
+    -- what the route's earlier steps make of this step's reagents (crafted, so not bought)
+    local covered = {}
+    local e = CR.GetPlans(PlanProfession())
+    local steps = e and e.plan and e.plan.steps or {}
+    local uses = {}
+    for _, rg in ipairs(st.recipe.reagents or {}) do uses[rg[1]] = true end
+    for _, o in ipairs(steps) do
+      if o == st then break end
+      local r = o.recipe
+      if r and r.item and uses[r.item] and o.crafts and (o.kind == "craft" or o.kind == "extra" or o.kind == "target") then
+        covered[r.item] = (covered[r.item] or 0) + o.crafts * (r.makes or 1)
+      end
+    end
+    CR.CreateStepShoppingList(st.recipe, st.crafts, covered)
   end)
   frame.shopBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
