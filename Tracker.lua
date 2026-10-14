@@ -176,9 +176,11 @@ local function NewTracker(PROF)
     local p = Settings().pos or DEFAULT_POS
     frame:SetPoint(p[1], UIParent, p[2], p[3], p[4])
   end
+  -- always as its top-left corner (WoW leaves a dragged frame on whichever screen point is
+  -- nearest - CENTER in the middle - and a CENTER spot is one EllesmereUI re-applies on resizes)
   local function SavePos()
-    local point, _, rel, x, y = frame:GetPoint()
-    Settings().pos = { point, rel, x, y }
+    local l, t = frame:GetLeft(), frame:GetTop()
+    if l and t then Settings().pos = { "TOPLEFT", "BOTTOMLEFT", l, t } end
   end
 
   local function Row(i)
@@ -894,7 +896,15 @@ local function NewTracker(PROF)
         -- CraftRoute places it (snapped, docked or free) - EllesmereUI's saved-position pass
         -- (login, zone changes, bar layouts) must not put it back on a stored spot
         ownsPosition = true,
+        -- (and on resizes it asks applyPos - Place - instead of re-applying a stored spot)
+        noInitHook = true,
         loadPos = function()
+          -- snapped or docked: where it really is now (anything reading it gets that)
+          local to = Settings().snapTo
+          if frame and frame:IsShown() and (docked or (to and trackers[to] and trackers[to].Shown())) then
+            local l, t = frame:GetLeft(), frame:GetTop()
+            if l and t then return { point = "TOPLEFT", relPoint = "BOTTOMLEFT", x = l, y = t } end
+          end
           local p = Settings().pos or DEFAULT_POS
           return { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
         end,

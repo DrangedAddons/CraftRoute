@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.58.1
+
+- Materials trackers: snapping one above or below another (or anywhere near the middle of the screen) attaches it properly - it no longer jumps back to where you let go, off to the side and at its old width. A tracker's place is now always kept as its top-left corner (WoW had left it on the screen's CENTER point, a spot EllesmereUI re-applies whenever the window changes size - as it does when it takes on the width of the one it's snapped to), and EllesmereUI hands those resizes back to CraftRoute to place.
+
 ## 0.58.0
 
 - Materials trackers keep their places through reloads, logins and zone changes - free ones where you left them, snapped groups still snapped and in place. The cause: EllesmereUI re-applies every registered frame's stored position at login, on zone changes and when action bars lay out, which pulled snapped trackers off their group onto old spots. CraftRoute now places its trackers itself (EllesmereUI leaves them be), keeps every tracker's saved spot up to date (after each drag and at logout), and WoW's own layout cache no longer stores them.
