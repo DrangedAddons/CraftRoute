@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.58.2
+
+- Profession window coming up **empty** (titled "Professions", no profession loaded - it could happen right after a reload): clicking the CraftRoute tab, or pressing CraftRoute's key, now loads your first primary profession that has a crafting window (else your second, else Cooking, else First Aid) and stays on CraftRoute's tab. The "Open <profession>" button and "Open the profession to craft." no longer show in that state.
+
 ## 0.58.1
 
 - Materials trackers: snapping one above or below another (or anywhere near the middle of the screen) attaches it properly - it no longer jumps back to where you let go, off to the side and at its old width. A tracker's place is now always kept as its top-left corner (WoW had left it on the screen's CENTER point, a spot EllesmereUI re-applies whenever the window changes size - as it does when it takes on the width of the one it's snapped to), and EllesmereUI hands those resizes back to CraftRoute to place.

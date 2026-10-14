@@ -2094,7 +2094,10 @@ local function FillSchematic(info)
   frame.countBox:SetShown(canCraft)
   frame.prevBtn:SetShown(canCraft)
   frame.nextBtn:SetShown(canCraft)
-  frame.openBtn:SetShown(not open)
+  -- (not in an empty window - nothing loaded at all: the CraftRoute tab or key loads your
+  -- profession, so there's no "Open" to offer)
+  local empty = CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded() and CR.FallbackProfession()
+  frame.openBtn:SetShown(not open and not empty)
   frame.createAll:SetText(string.format("Create All [%d]", ready))
   frame.createAll:SetEnabled(ready > 0 and not InCombatLockdown())
   if enchantFits then
@@ -2129,6 +2132,8 @@ local function FillSchematic(info)
   if not detected then
     frame.status:SetText(CR.ColorText("Not learned on this character.", "ff9966"))
     frame.openBtn:Disable()
+  elseif not open and empty then
+    frame.status:SetText("")
   elseif not open then
     frame.status:SetText("Open the profession to craft.")
   elseif learned == false then
@@ -3504,6 +3509,15 @@ end
 local function ToggleCompact()
   if overlay and overlay:IsShown() then CloseCompact(true) else OpenCompact() end
 end
+-- The tab clicked: in an empty window (no profession loaded) your profession is loaded - by this
+-- click, as only a real click may - and this view stays up; otherwise it toggles this view.
+local function TabClicked()
+  if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then
+    if not (overlay and overlay:IsShown()) then OpenCompact() end
+    return
+  end
+  ToggleCompact()
+end
 
 -- The keybind (Keybind.lua). It opens the profession window when it has to - then this view
 -- should come up once it has. With the window already open: shows this view, or closes the
@@ -3627,11 +3641,11 @@ local function CreateEntryButton()
       if tab.SetChecked then tab:SetChecked(false) end
       if tab.SetCustomOnMouseUpHandler then
         tab:SetCustomOnMouseUpHandler(function(_, button, upInside)
-          if button == "LeftButton" and upInside and not InCombatLockdown() then ToggleCompact() end
+          if button == "LeftButton" and upInside and not InCombatLockdown() then TabClicked() end
         end)
       else
         tab:SetScript("OnMouseUp", function(_, button)
-          if button == "LeftButton" then ToggleCompact() end
+          if button == "LeftButton" then TabClicked() end
         end)
       end
       tab:Show()
@@ -3648,7 +3662,7 @@ local function CreateEntryButton()
       if tab.SetTooltipText then pcall(tab.SetTooltipText, tab, "CraftRoute") end
       tab:SetFrameLevel(parent.TabSystem:GetFrameLevel() + 20)
       tab:SetScript("OnClick", function()
-        if not InCombatLockdown() then ToggleCompact() end
+        if not InCombatLockdown() then TabClicked() end
       end)
       tab:Show()
       TipEntry(tab)
@@ -3668,7 +3682,7 @@ local function CreateEntryButton()
   tab.glow:SetAllPoints()
   tab.glow:SetColorTexture(1, 0.82, 0.2, 0.35)
   tab.glow:Hide()
-  tab:SetScript("OnClick", ToggleCompact)
+  tab:SetScript("OnClick", TabClicked)
   TipEntry(tab)
   return tab
 end

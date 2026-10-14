@@ -35,6 +35,8 @@ function CraftRoute_KeybindPressed()
   if CR.ScanSkills then pcall(CR.ScanSkills) end
   -- the window's already up (any profession): show CraftRoute's tab, or close the window
   if ProfessionsFrame and ProfessionsFrame:IsShown() and CR.KeybindToggleView then
+    -- up but empty (no profession loaded, e.g. after a reload): load one, on CraftRoute's tab
+    if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then return end
     local prof = Target()
     if not prof or CR.TradeSkillOpenFor(prof) then CR.KeybindToggleView() return end
   end

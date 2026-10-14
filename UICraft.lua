@@ -25,6 +25,38 @@ function CR.TradeSkillOpenFor(profName)
   return false
 end
 
+-- The profession window showing no profession at all (titled "Professions" - it can come up
+-- empty, e.g. right after a reload): nothing loaded in it, not even loading.
+function CR.NoTradeSkillLoaded()
+  if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return false end
+  local info = TS.GetBaseProfessionInfo and TS.GetBaseProfessionInfo()
+  local name = info and (info.professionName or info.parentProfessionName)
+  return not (name and name ~= "")
+end
+
+-- What to load into an empty window: your first primary profession that has a crafting window
+-- (Mining's is smelting), else the second, else a secondary one (Cooking, then First Aid).
+function CR.FallbackProfession()
+  if not (GetProfessions and GetProfessionInfo) then return nil end
+  local p1, p2, _, _, cook, firstAid = GetProfessions()
+  for _, index in ipairs({ p1 or false, p2 or false, cook or false, firstAid or false }) do
+    if index then
+      local name, _, _, _, _, _, skillLine = GetProfessionInfo(index)
+      if name and skillLine and not CR.NO_WINDOW[name] then return skillLine, name end
+    end
+  end
+end
+
+-- From a real click / key press only (the game allows the open then): an empty window gets the
+-- fallback profession loaded, CraftRoute's tab staying up. True if it did.
+function CR.OpenFallbackProfession()
+  if InCombatLockdown() or not CR.NoTradeSkillLoaded() then return false end
+  local line = CR.FallbackProfession()
+  if not (line and TS.OpenTradeSkill) then return false end
+  if CR.KeybindWillOpen then CR.KeybindWillOpen() end
+  return pcall(TS.OpenTradeSkill, line) and true or false
+end
+
 -- Opening a profession window. The game only lets a real click do it (OpenTradeSkill is
 -- protected - calling it from addon code is blocked), so CraftRoute's Open buttons and its
 -- profession pickers are covered by secure buttons that cast the profession as part of your
