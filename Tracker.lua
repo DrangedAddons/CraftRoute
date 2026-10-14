@@ -103,7 +103,8 @@ local function TopStrata()
 end
 CR.PopoutStrata = TopStrata   -- (the Craft view's materials panel uses it too)
 
--- Snapped trackers: one is snapped to another's right edge (Settings().snapTo = that profession).
+-- Snapped trackers: one is snapped to a side of another (Settings().snapTo = that profession,
+-- snapSide = which side of it: right / left / top / bottom).
 -- A group's root is the one that isn't snapped to a shown tracker; dragging or scaling any of
 -- them moves / scales the whole group.
 local function RootOf(prof)
@@ -117,6 +118,12 @@ local function RootOf(prof)
     prof = to
   end
 end
+-- snapSide = which side of the other one it's on: { its point, the other's point }
+local SNAP_ANCHOR = {
+  right = { "TOPLEFT", "TOPRIGHT" }, left = { "TOPRIGHT", "TOPLEFT" },
+  bottom = { "TOPLEFT", "BOTTOMLEFT" }, top = { "BOTTOMLEFT", "TOPLEFT" },
+}
+local OPPOSITE = { right = "left", left = "right", top = "bottom", bottom = "top" }
 local function Members(root)
   local out = {}
   for prof, t in pairs(trackers) do
@@ -150,11 +157,13 @@ local function NewTracker(PROF)
   local function Place()
     frame:ClearAllPoints()
     frame:SetFrameStrata(TopStrata())   -- (always over the profession window's side tabs)
-    -- snapped to another tracker that's up: against its right edge, tops level
+    -- snapped to another tracker that's up: against its side (snapSide; old saves: right) -
+    -- beside it tops level, above / below it left edges level
     local to = Settings().snapTo
     local target = to and trackers[to]
     if target and target.Shown() and RootOf(to) ~= PROF then
-      frame:SetPoint("TOPLEFT", target.Frame(), "TOPRIGHT", 0, 0)
+      local a = SNAP_ANCHOR[Settings().snapSide or "right"] or SNAP_ANCHOR.right
+      frame:SetPoint(a[1], target.Frame(), a[2], 0, 0)
       return
     end
     if docked and ProfessionsFrame then
@@ -726,7 +735,7 @@ local function NewTracker(PROF)
     for prof, t in pairs(trackers) do
       if prof ~= PROF and t.Settings().snapTo == PROF and t.Shown() then t.Detach() end
     end
-    Settings().free, Settings().snapTo = nil, nil
+    Settings().free, Settings().snapTo, Settings().snapSide = nil, nil, nil
     docked = false
     Toggle(false)
     CR.RefreshTracker()
@@ -753,7 +762,7 @@ local function NewTracker(PROF)
   -- no longer snapped: a free window right where it is on screen
   function Detach()
     local l, t = frame:GetLeft(), frame:GetTop()
-    Settings().snapTo = nil
+    Settings().snapTo, Settings().snapSide = nil, nil
     Settings().free = true
     docked = false
     if l and t then Settings().pos = { "TOPLEFT", "BOTTOMLEFT", l, t } end
@@ -771,38 +780,76 @@ local function NewTracker(PROF)
     frame:StartMoving()
   end
   local SNAP = 24   -- how close (in screen pixels) counts as at an edge
+  -- a frame's edges in screen pixels
+  local function Edges(f)
+    local sc = f:GetEffectiveScale()
+    local l, r, t, b = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+    if not (l and r and t and b) then return nil end
+    return { l = l * sc, r = r * sc, t = t * sc, b = b * sc }
+  end
+  -- dropped (this is the group's root): whichever tracker of the group ends up at an edge snaps
+  -- there - the profession window's right edge (docked), or any side of another tracker
   function EndDrag()
     frame:StopMovingOrSizing()
     SavePos()
-    local sc = frame:GetEffectiveScale()
-    local l, t, b = (frame:GetLeft() or 0) * sc, (frame:GetTop() or 0) * sc, (frame:GetBottom() or 0) * sc
-    local snapped
-    -- the profession window's right edge: docked
-    local pf = ProfessionsFrame
-    if pf and pf:IsShown() and pf:GetRight() then
-      local ps = pf:GetEffectiveScale()
-      local pr, pt, pb = pf:GetRight() * ps, pf:GetTop() * ps, pf:GetBottom() * ps
-      if math.abs(l - pr) <= SNAP and t > pb and b < pt then
-        docked, snapped = true, true
-        Settings().free = nil
-      end
+    local members = Members(PROF)
+    local mine = {}
+    for _, m in ipairs(members) do mine[m] = true end
+    local best   -- { d, member, to (profession, or "dock"), side }
+    local function Offer(d, m, to, side)
+      if d <= SNAP and (not best or d < best.d) then best = { d = d, m = m, to = to, side = side } end
     end
-    -- another tracker's right edge (not one of this group): snapped to it
-    if not snapped then
-      local mine = {}
-      for _, m in ipairs(Members(PROF)) do mine[m] = true end
-      for prof, o in pairs(trackers) do
-        local of = o.Shown() and not mine[o] and o.Frame()
-        if of and of:GetRight() then
-          local os = of:GetEffectiveScale()
-          if math.abs(l - of:GetRight() * os) <= SNAP and math.abs(t - of:GetTop() * os) <= 60 then
-            Settings().snapTo, Settings().free, snapped = prof, true, true
-            break
+    local pf = ProfessionsFrame
+    local P = pf and pf:IsShown() and Edges(pf)
+    for _, m in ipairs(members) do
+      local M = Edges(m.Frame())
+      if M then
+        if P and M.t > P.b and M.b < P.t then Offer(math.abs(M.l - P.r), m, "dock") end
+        for prof, o in pairs(trackers) do
+          local O = o.Shown() and not mine[o] and Edges(o.Frame())
+          if O then
+            local vert = M.t > O.b and M.b < O.t      -- side by side
+            local horiz = M.r > O.l and M.l < O.r     -- one over the other
+            if vert then
+              Offer(math.abs(M.l - O.r), m, prof, "right")
+              Offer(math.abs(M.r - O.l), m, prof, "left")
+            end
+            if horiz then
+              Offer(math.abs(M.t - O.b), m, prof, "bottom")
+              Offer(math.abs(M.b - O.t), m, prof, "top")
+            end
           end
         end
       end
     end
-    if snapped then Place() end
+    if best then
+      local new = best.m
+      if new.Frame() ~= frame then
+        -- another of the group snaps: it becomes the group's root - every one pinned where it
+        -- is first (no anchor loops while the links turn round), then the links from it up to
+        -- this one reversed
+        for _, m in ipairs(members) do m.Pin() end
+        local chain, cur = {}, nil
+        for prof, t in pairs(trackers) do if t == new then cur = prof end end
+        while cur and cur ~= PROF do
+          local st = trackers[cur].Settings()
+          table.insert(chain, { child = cur, parent = st.snapTo, side = st.snapSide or "right" })
+          cur = st.snapTo
+        end
+        for _, e in ipairs(chain) do
+          local ps = trackers[e.parent].Settings()
+          ps.snapTo, ps.snapSide, ps.free = e.child, OPPOSITE[e.side], true
+        end
+        new.Settings().snapTo, new.Settings().snapSide = nil, nil
+      end
+      if best.to == "dock" then
+        new.SetDocked(true)
+      else
+        local ns = new.Settings()
+        ns.snapTo, ns.snapSide, ns.free = best.to, best.side, true
+      end
+      for _, m in ipairs(members) do m.Reflow() end
+    end
     CR.RefreshTracker()   -- (the locks of the group it left or joined)
     -- the group's open-or-not memory follows its root: docked closes with the window
     local root = trackers[RootOf(PROF)]
@@ -847,6 +894,14 @@ local function NewTracker(PROF)
            IsDocked = function() return docked end,
            Frame = function() return frame end,
            Reflow = function() if frame and frame:IsShown() then Place() end end,
+           -- where it is on screen, as a free position (and placed there)
+           Pin = function()
+             local l, t = frame:GetLeft(), frame:GetTop()
+             if l and t then Settings().pos = { "TOPLEFT", "BOTTOMLEFT", l, t } end
+             frame:ClearAllPoints()
+             frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l or 0, t or 0)
+           end,
+           SetDocked = function(v) docked = v and true or false if v then Settings().free = nil end end,
            Detach = function() Detach() end,
            BeginDrag = function() BeginDrag() end, EndDrag = function() EndDrag() end,
            ScaleAlone = function(sc) SetSize(nil, sc, nil, true) end,

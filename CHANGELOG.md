@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.57.0
+
+- Materials trackers snap to **any side** of another tracker: left or right (tops level), above or below (left edges level). Dragging a snapped group, whichever of its trackers ends up at an edge snaps there - the rest stay snapped around it. The profession window's right edge still docks.
+
 ## 0.56.2
 
 - Materials trackers: snapped trackers stay snapped after a reload. They come back one by one, and one coming back before the tracker it's snapped to was left at an old position - now they're all put back on each other once they're all up.
