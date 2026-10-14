@@ -1696,7 +1696,7 @@ function CR.CreateCraftPanel(parent)
   routeGoal:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -12)
   -- The goal, the same setting as the Plan tab's Goal dropdown: change it in either place.
   local goalDD = CR.CreateDropdown(panel, 180, CR.GoalOptions,
-    function() return db().goalMode end,
+    function() return CR.GoalValue() end,
     function(v) db().goalMode = v; panel.viewOffset = 0; CR.NotifyChanged() end)
   goalDD:SetPoint("LEFT", routeTitle, "RIGHT", 10, 0)
   local goalBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")

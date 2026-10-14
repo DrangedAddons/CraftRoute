@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.53.1
+
+- The route goal picker (Route view, Plan tab) only offers the ranks - Apprentice (75), Journeyman (150), Expert (225), Artisan (300) - and Custom. "Next target recipe", "My rank", "My level's highest rank" and "End of guide" are gone; if one of those was chosen, the route now plans to your current rank and the picker shows that rank.
+
 ## 0.53.0
 
 - Profession window tab: the skill bar **is Blizzard's own** now. Blizzard's bar lives on its crafting page, which the CraftRoute tab hides - so while the tab is open the bar is moved onto it (same spot on screen) and given back when the tab closes. Its art (full width, revealed up to your skill), intro animation, unfilled colour, tip highlight and any EllesmereUI skin are simply Blizzard's - no squeezed animation, no flash of another texture when it ends. CraftRoute's own bar only shows when Blizzard's is showing a different profession than the tab.

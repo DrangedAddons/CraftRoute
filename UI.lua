@@ -561,25 +561,26 @@ CR.OnChange(function() CR.RefreshWindow() end)
 -- Plan panel
 ---------------------------------------------------------------------------
 -- Goals are named after the profession ranks (Apprentice 75 ... Artisan 300).
+-- The goal picker: the ranks (Apprentice 75, Journeyman 150, Expert 225, Artisan 300) and Custom.
 function CR.GoalOptions()
-  local profName = CraftRouteCharDB.profession
-  local route = CR.Route(profName)
-  local info = CR.RankInfo(profName)
-  local function RankText(prefix, r)
-    return r and string.format("%s: %s (%d)", prefix, r.name, r.cap) or prefix
-  end
-  local function Short(r, fallback) return r and string.format("%s (%d)", r.name, r.cap) or fallback end
-  local opts = {
-    { value = "next",  text = "Next target recipe", short = "Next target" },
-    { value = "tier",  text = RankText("My rank", info.current), short = Short(info.current, "My rank") },
-    { value = "level", text = RankText("My level's highest rank", info.levelRank), short = Short(info.levelRank, "My level's rank") },
-  }
+  local info = CR.RankInfo(CraftRouteCharDB.profession)
+  local opts = {}
   for _, r in ipairs(info.ranks) do
     table.insert(opts, { value = "rank:" .. r.name, text = string.format("%s (%d)", r.name, r.cap) })
   end
-  table.insert(opts, { value = "route", text = string.format("End of guide (%d)", route and route.routeEnd or 300) })
   table.insert(opts, { value = "custom", text = "Custom skill", short = "Custom" })
   return opts
+end
+
+-- What the goal picker shows: the chosen rank or Custom - a goal set before the picker was
+-- trimmed (next target, my rank, my level's rank, end of guide) shows as your current rank,
+-- which is what it now plans to.
+function CR.GoalValue()
+  local db = CraftRouteCharDB
+  local mode = db and db.goalMode or ""
+  if mode == "custom" or mode:match("^rank:") then return mode end
+  local cur = CR.RankInfo(db and db.profession).current
+  return cur and ("rank:" .. cur.name) or "custom"
 end
 
 local SKILL_TAG = { Fishing = { "Fish", "4fc3f7" }, Cooking = { "Cook", "ffb74d" } }
@@ -699,7 +700,7 @@ function CR.CreatePlanPanel(parent)
   seqText:SetJustifyH("LEFT")
 
   local goalDD = CR.CreateDropdown(panel, 150, CR.GoalOptions,
-    function() return db().goalMode end,
+    function() return CR.GoalValue() end,
     function(v) db().goalMode = v; CR.NotifyChanged() end)
   goalDD:SetPoint("LEFT", goalLabel, "RIGHT", 6, 0)
 

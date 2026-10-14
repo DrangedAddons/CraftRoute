@@ -3620,7 +3620,7 @@ local function BuildOverlay()
   frame.profDD = CR.CreateDropdown(frame, 200, ProfessionOptions,
     function() return DB() and DB().profession or "" end, SelectProfession, CR.OpenProfessionMacro)
   frame.goalDD = CR.CreateDropdown(frame, 168, CR.GoalOptions,
-    function() return DB() and DB().goalMode or "next" end,
+    function() return CR.GoalValue() end,
     function(v)
       local db = DB()
       if not db then return end

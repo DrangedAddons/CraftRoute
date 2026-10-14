@@ -126,7 +126,7 @@ end
 ---------------------------------------------------------------------------
 local CHAR_DEFAULTS = {
   profession = "Leatherworking",
-  goalMode = "next",        -- "next" | "tier" | "route" | "max" | "custom"
+  goalMode = "tier",        -- "rank:<name>" | "custom" (anything else: your current rank)
   customGoal = 225,
   choices = {},             -- [prof] = { [choiceKey] = optionKey }
   targets = {},             -- [prof] = { [spellID] = quantity }

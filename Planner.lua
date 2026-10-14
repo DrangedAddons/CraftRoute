@@ -214,7 +214,9 @@ function CR.ResolveGoal(profName, cur, maxRank)
   local prof = CR.professions[profName]
   local route = CR.Route(prof)
   local db = CraftRouteCharDB
-  local mode = db.goalMode
+  local mode = db.goalMode or "tier"
+  -- the picker offers the ranks and Custom; anything else (an older choice) plans to your current rank
+  if mode ~= "custom" and not mode:match("^rank:") then mode = "tier" end
   local goal, why
   local rinfo = CR.RankInfo(profName)
   if mode == "next" then
