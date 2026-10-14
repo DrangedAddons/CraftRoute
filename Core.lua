@@ -183,6 +183,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     else
       CR.Print("Recipe data: TrainerSpells not loaded - using CraftRoute's built-in recipe data.")
     end
+  elseif msg == "bg" then
+    if CR.DebugBackground then CR.DebugBackground() end
   elseif msg == "tracker" then
     if CR.ToggleTracker then CR.ToggleTracker() end
   elseif msg == "trace" then

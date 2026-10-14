@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.51.0
+
+- Profession window tab: it now has **Blizzard's own page background** - the large background and border art of Blizzard's crafting page (header, recipe list and recipe panels) is copied onto the tab in the same place, with the same art, crop, colour and transparency (so an EllesmereUI skin of that page carries over). It's picked up each time the tab opens and when you switch profession. CraftRoute's own plain header band only shows if nothing could be copied. `/cr bg` lists what was copied.
+
 ## 0.50.17
 
 - Profession window tab: the header now lines up with Blizzard's own page - the line under it is 9 px higher and the skill bar about 4 px higher, measured against Blizzard's - so nothing jumps when you flick between the two. Everything below the header moved up with it.

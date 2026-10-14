@@ -3072,6 +3072,76 @@ local function ClearOtherChecks()
   end
 end
 
+-- Blizzard's own page background on this tab: the large background / border textures of its
+-- crafting page (a few levels down: the page, its recipe list and recipe panels - not rows,
+-- buttons or icons), copied - same art, crop, colour and alpha, so an EllesmereUI skin carries
+-- over - to the same place on this tab. Done as the tab opens, before Blizzard's page is hidden,
+-- and again for each profession (its art changes). /cr bg lists what was copied.
+local mirrored, mirrorLog = {}, {}
+local function MirrorBlizzardBackground()
+  for _, t in ipairs(mirrored) do t:Hide() end
+  wipe(mirrorLog)
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  local ol, ot = overlay and overlay:GetLeft(), overlay and overlay:GetTop()
+  if not (page and ol and ot) then return 0 end
+  local os = overlay:GetEffectiveScale()
+  local n = 0
+  local function Visit(f, depth)
+    if depth > 3 then return end
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r.GetObjectType and r:GetObjectType() == "Texture" and r:IsShown() then
+        local layer = r:GetDrawLayer()
+        local l, t, w, h = r:GetLeft(), r:GetTop(), r:GetWidth(), r:GetHeight()
+        local atlas = r.GetAtlas and r:GetAtlas()
+        local file = not atlas and r:GetTexture()
+        if (layer == "BACKGROUND" or layer == "BORDER") and l and t and w and h and w * h >= 4000 and (atlas or file) then
+          n = n + 1
+          local c = mirrored[n]
+          if not c then
+            c = overlay:CreateTexture(nil, "BACKGROUND")
+            mirrored[n] = c
+          end
+          -- stacked as Blizzard stacks them: deeper frames and BORDER over BACKGROUND (all under
+          -- this tab's own art)
+          c:SetDrawLayer("BACKGROUND", math.min(-1, -8 + depth * 2 + (layer == "BORDER" and 1 or 0)))
+          if atlas then c:SetAtlas(atlas) else c:SetTexture(file) end
+          pcall(function()
+            c:SetTexCoord(r:GetTexCoord())
+            c:SetVertexColor(r:GetVertexColor())
+            c:SetBlendMode(r:GetBlendMode())
+            c:SetDesaturated(r:IsDesaturated())
+            if r.GetHorizTile then c:SetHorizTile(r:GetHorizTile()) c:SetVertTile(r:GetVertTile()) end
+          end)
+          c:SetAlpha(r:GetAlpha())
+          local rs = r:GetEffectiveScale()
+          c:ClearAllPoints()
+          c:SetPoint("TOPLEFT", overlay, "TOPLEFT", (l * rs - ol * os) / os, (t * rs - ot * os) / os)
+          c:SetSize(w * rs / os, h * rs / os)
+          c:Show()
+          table.insert(mirrorLog, string.format("%s %s  %dx%d  alpha %.2f  (%s)", layer, tostring(atlas or file),
+            w, h, r:GetAlpha(), tostring(r.GetDebugName and r:GetDebugName() or depth)))
+        end
+      end
+    end
+    for _, ch in ipairs({ f:GetChildren() }) do
+      if ch:IsShown() and not (ch.IsObjectType and (ch:IsObjectType("Button") or ch:IsObjectType("EditBox"))) then
+        Visit(ch, depth + 1)
+      end
+    end
+  end
+  pcall(Visit, page, 0)
+  -- with Blizzard's own header art copied, this tab's stand-in band steps aside
+  if overlay.headerBand then
+    overlay.headerBand:SetShown(n == 0)
+    overlay.headerLine:SetShown(n == 0)
+  end
+  return n
+end
+function CR.DebugBackground()
+  CR.Print(string.format("Background: %d of Blizzard's textures copied onto this tab.", #mirrorLog))
+  for _, line in ipairs(mirrorLog) do CR.Print("  " .. line) end
+end
+
 local function OpenCompact()
   if InCombatLockdown() then
     CR.Print("Can't switch the profession window in combat.")
@@ -3083,6 +3153,7 @@ local function OpenCompact()
   local ts = _G.TrainerSpellsProfessionFrame
   if ts and ts:IsShown() then ts:Hide() end
   ClearOtherChecks()
+  pcall(MirrorBlizzardBackground)   -- (before its page is hidden: its art's still laid out)
   pcall(HidePages)
   ui.openProf = nil
   ui.keepScroll = false
@@ -4565,6 +4636,7 @@ local function BuildOverlay()
     local before = ui.openProf
     SyncOpenProfession()
     if ui.openProf ~= before then
+      pcall(MirrorBlizzardBackground)   -- (another profession: its own art)
       ui.keepScroll = false
       frame:Refresh()
     end
