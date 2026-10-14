@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.53.2
+
+- Materials tracker from the Route view's pop-out: opens **docked** to the right edge of the profession window (over its side tabs), and closes with the window - like the Craft view's materials panel. Drag it by its title (or move it in EllesmereUI's unlock mode) to undock it: from then on it's a free window for that profession - it keeps its place, stays open when the window closes, and comes back after a reload, and the pop-out opens it there. The main window's Tracker button and `/cr tracker` still open the free window.
+
 ## 0.53.1
 
 - The route goal picker (Route view, Plan tab) only offers the ranks - Apprentice (75), Journeyman (150), Expert (225), Artisan (300) - and Custom. "Next target recipe", "My rank", "My level's highest rank" and "End of guide" are gone; if one of those was chosen, the route now plans to your current rank and the picker shows that rank.

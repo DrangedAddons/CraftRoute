@@ -107,9 +107,20 @@ local function NewTracker(PROF)
   local function Prof() return PROF end
   local function Width() return Settings().width or (frame and tonumber(frame:GetWidth())) or DEF_W end
   local function Scale() return Settings().scale or 1 end
+  -- docked: opened from the profession window's tab - against that window's right edge, closing
+  -- with it, not remembered. Dragging it away undocks it for good (Settings().free): then it's a
+  -- free window - its own place, stays up, comes back after a reload.
+  local docked = false
   local function Place()
-    local p = Settings().pos or DEFAULT_POS
     frame:ClearAllPoints()
+    if docked and ProfessionsFrame then
+      frame:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", 0, 0)
+      frame:SetFrameStrata(ProfessionsFrame:GetFrameStrata())
+      frame:SetFrameLevel(ProfessionsFrame:GetFrameLevel() + 600)   -- (over its side tabs)
+      return
+    end
+    frame:SetFrameStrata("MEDIUM")
+    local p = Settings().pos or DEFAULT_POS
     frame:SetPoint(p[1], UIParent, p[2], p[3], p[4])
   end
   local function SavePos()
@@ -337,7 +348,16 @@ local function NewTracker(PROF)
     bar:SetHeight(24)
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function() frame:StartMoving() end)
+    bar:SetScript("OnDragStart", function()
+      -- dragged off the window: undocked, from now on a free window
+      if docked then
+        docked = false
+        Settings().free = true
+        Settings().shown = true
+        frame:SetFrameStrata("MEDIUM")
+      end
+      frame:StartMoving()
+    end)
     bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() SavePos() end)
     frame.title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     frame.title:SetPoint("LEFT", 8, 0)
@@ -593,10 +613,16 @@ local function NewTracker(PROF)
   end
 
   -- show (true) / hide (false) / toggle (nil); remembered, so it comes back after a reload
-  function Toggle(show)
+  -- dock: opened from the profession window's tab (docked there, unless it's been undocked before)
+  function Toggle(show, dock)
     Build()
     if show == nil then show = not frame:IsShown() end
-    Settings().shown = show or nil
+    if show then
+      docked = (dock and not Settings().free) and true or false
+      Place()
+    end
+    -- a docked one isn't remembered as open: it closes with the window and isn't brought back
+    Settings().shown = (show and not docked) or nil
     frame:SetShown(show)
     Refresh()
   end
@@ -617,6 +643,8 @@ local function NewTracker(PROF)
         savePos = function(_, point, relPoint, x, y)
           if not point then return end
           Settings().pos = { point, relPoint or point, x or 0, y or 0 }
+          Settings().free = true   -- (moved in unlock mode: a free window from now on)
+          docked = false
           if not EllesmereUI._unlockActive then Place() end
         end,
         loadPos = function()
@@ -629,7 +657,8 @@ local function NewTracker(PROF)
     }, "CraftRoute")
   end
 
-  return { Refresh = function() Refresh() end, Toggle = function(show) Toggle(show) end,
+  return { Refresh = function() Refresh() end, Toggle = function(show, dock) Toggle(show, dock) end,
+           Docked = function() return docked and frame and frame:IsShown() end,
            Build = function() Build() end, Shown = function() return frame and frame:IsShown() end,
            Settings = Settings, RegisterUnlock = function() RegisterUnlock() end }
 end
@@ -651,10 +680,19 @@ end
 
 -- prof's tracker (default: the profession picked in CraftRoute): show (true) / hide (false) /
 -- toggle (nil)
-function CR.ToggleTracker(show, prof)
+-- dock: opened from the profession window's tab - docked to it (see Toggle)
+local closeHooked = false
+function CR.ToggleTracker(show, prof, dock)
   prof = prof or (CraftRouteCharDB and CraftRouteCharDB.profession)
   if not prof then return end
-  Tracker(prof).Toggle(show)
+  -- docked trackers close when the profession window does
+  if dock and not closeHooked and ProfessionsFrame then
+    closeHooked = true
+    ProfessionsFrame:HookScript("OnHide", function()
+      for _, t in pairs(trackers) do if t.Docked() then t.Toggle(false) end end
+    end)
+  end
+  Tracker(prof).Toggle(show, dock)
 end
 
 -- The main window's "Tracker" button

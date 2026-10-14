@@ -3781,7 +3781,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(costBar.popout)
   CR.AddPopoutIcon(costBar.popout)
   costBar.popout:SetScript("OnClick", function()
-    if CR.ToggleTracker then CR.ToggleTracker(nil, PlanProfession()) end
+    if CR.ToggleTracker then CR.ToggleTracker(nil, PlanProfession(), true) end   -- (docked to this window)
   end)
   costBar.popout:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
