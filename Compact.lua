@@ -701,8 +701,9 @@ local function ApplyRow(row, item)
       text = CR.ColorText("Done: ", "40c040") .. (t.title or "")
       if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.6, 0.6, 0.6) end
     else
-      text = CR.ColorText("To do: ", "ff9933") .. (t.title or "")
-      if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.82, 0) end
+      -- a step to do (not a craft): no "To do:" label - its title is orange instead
+      text = t.title or ""
+      if item.selected then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(1, 0.6, 0.2) end
     end
     -- the title gets the whole line; the skill it's at goes just under it (as the route's steps)
     local from = item.action.from
