@@ -2337,9 +2337,56 @@ local function AlignToBlizzardBar(bar)
   return fx, -fy, fh, math.max(1, nw * k - 8 - fx)
 end
 
+-- Blizzard's own skill bar, shown on this tab: it lives on Blizzard's crafting page (which this tab
+-- hides), so while the tab is open it's lifted onto the tab - same spot on screen - and given back
+-- when the tab closes. Its art, intro, unfilled colour, tip highlight and any skin are then simply
+-- Blizzard's. Only while it shows the profession this tab does; otherwise CraftRoute's own bar.
+local borrowed
+local function ReturnBlizzardBar()
+  if not borrowed then return end
+  local nb, b = BlizzardBar(), borrowed
+  borrowed = nil
+  if type(nb) == "table" and nb.SetParent then
+    pcall(function()
+      nb:SetParent(b.parent)
+      nb:SetFrameStrata(b.strata)
+      nb:SetFrameLevel(b.level)
+    end)
+  end
+end
+CR.ReturnBlizzardBar = ReturnBlizzardBar
+local function BorrowBlizzardBar()
+  local nb = BlizzardBar()
+  if type(nb) ~= "table" or not nb.SetParent or not overlay:IsShown() then return false end
+  local rt = nb.Rank and nb.Rank.Text
+  local txt = rt and rt.GetText and rt:GetText()
+  local prof = DestProf(PlanProfession()) or PlanProfession()
+  if not (type(txt) == "string" and prof and txt:find(prof, 1, true)) then
+    ReturnBlizzardBar()
+    return false
+  end
+  if not borrowed then
+    borrowed = { parent = nb:GetParent(), strata = nb:GetFrameStrata(), level = nb:GetFrameLevel() }
+  end
+  local ok = pcall(function()
+    nb:SetParent(overlay)
+    nb:SetFrameStrata(overlay:GetFrameStrata())
+    nb:SetFrameLevel(overlay:GetFrameLevel() + 30)
+    nb:Show()
+  end)
+  if not ok then ReturnBlizzardBar() end
+  return ok
+end
+
 local function UpdateRankBar()
   local bar = overlay and overlay.rankBar
   if not bar then return end
+  -- Blizzard's own bar when it can be shown; CraftRoute's below otherwise
+  if BorrowBlizzardBar() then
+    bar:Hide()
+    return
+  end
+  bar:Show()
   local name = PlanProfession()
   local cur, maxRank, detected = 0, 0, false
   if name then cur, maxRank, detected = CR.GetSkill(name) end
@@ -3245,6 +3292,7 @@ local function HideOverlay(why)
   deliberate = true
   overlay:Hide()
   deliberate = false
+  ReturnBlizzardBar()   -- (Blizzard's skill bar back on its page)
 end
 
 local function WatchTrainerSpells()
@@ -4863,6 +4911,7 @@ local function BuildOverlay()
   end)
   frame:SetScript("OnShow", function() PositionEntry() end)
   frame:HookScript("OnHide", function()
+    ReturnBlizzardBar()   -- (Blizzard's skill bar goes back to its page)
     if frame.enchant and frame.enchant.flyout then frame.enchant.flyout:Hide() end
     if CR.HideBuyPop then CR.HideBuyPop(frame) end
     SyncEnchantSecure()
