@@ -3341,6 +3341,8 @@ end
 -- over - to the same place on this tab. Done as the tab opens, before Blizzard's page is hidden,
 -- and again for each profession (its art changes). /cr bg lists what was copied.
 local mirrored, mirrorLog = {}, {}
+local NINE_SLICE_KEYS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner",
+                          "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "Center" }
 local function MirrorBlizzardBackground()
   for _, t in ipairs(mirrored) do t:Hide() end
   wipe(mirrorLog)
@@ -3357,7 +3359,13 @@ local function MirrorBlizzardBackground()
         local l, t, w, h = r:GetLeft(), r:GetTop(), r:GetWidth(), r:GetHeight()
         local atlas = r.GetAtlas and r:GetAtlas()
         local file = not atlas and r:GetTexture()
-        if (layer == "BACKGROUND" or layer == "BORDER") and l and t and w and h and w * h >= 4000 and (atlas or file) then
+        -- large art, plus the panels' borders: a nine-slice's pieces, and long thin edge strips
+        -- (the "crease" between the columns is the recipe list's / recipe panel's border)
+        local piece = false
+        for _, k in ipairs(NINE_SLICE_KEYS) do if f[k] == r then piece = true break end end
+        local edge = w and h and math.min(w, h) <= 16 and math.max(w, h) >= 100
+        if (layer == "BACKGROUND" or layer == "BORDER" or (piece and layer == "ARTWORK")) and l and t and w and h
+          and (w * h >= 4000 or piece or edge) and (atlas or file) then
           n = n + 1
           local c = mirrored[n]
           if not c then

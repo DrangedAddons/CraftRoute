@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.54.1
+
+- Profession window tab: Blizzard's panel borders are now copied onto the tab with its background - including the subtle "crease" between the two columns (the recipe list's and recipe panel's border edges, thin strips the copy used to skip as too small).
+
 ## 0.54.0
 
 - Materials trackers (and the Craft view's materials panel) always draw **above** the profession window, side tabs included - docked or free.
