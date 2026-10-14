@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.58.3
+
+- The profession bar at the top of the profession window stays on Blizzard's own bar. It no longer picks up the bar texture from EllesmereUI's Resource & Cast Bars. The colour bar under a recipe still does.
+
 ## 0.58.2
 
 - Profession window coming up **empty** (titled "Professions", no profession loaded - it could happen right after a reload): clicking the CraftRoute tab, or pressing CraftRoute's key, now loads your first primary profession that has a crafting window (else your second, else Cooking, else First Aid) and stays on CraftRoute's tab. The "Open <profession>" button and "Open the profession to craft." no longer show in that state.
