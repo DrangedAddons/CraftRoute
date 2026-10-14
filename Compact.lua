@@ -2878,8 +2878,7 @@ ToggleMatPanel = function(show)
   -- right against the window, over its side tabs (CraftRoute's too) - close it to get at them
   p:SetPoint("TOPLEFT", host, "TOPRIGHT", 0, 0)
   p:SetPoint("BOTTOMLEFT", host, "BOTTOMRIGHT", 0, 0)
-  p:SetFrameStrata(host:GetFrameStrata())
-  p:SetFrameLevel(host:GetFrameLevel() + 600)
+  p:SetFrameStrata(CR.PopoutStrata and CR.PopoutStrata() or host:GetFrameStrata())
   p:SetShown(show)
 end
 
@@ -3399,6 +3398,9 @@ local function MirrorBlizzardBackground()
     overlay.headerBand:SetShown(n == 0)
     overlay.headerLine:SetShown(n == 0)
   end
+  -- Blizzard's page has no column line - its recipe list's inset border and the recipe panel's
+  -- own art part the columns - so with that art copied, ours steps aside too (still the anchor)
+  if overlay.divider then overlay.divider:SetAlpha(n == 0 and 1 or 0) end
   return n
 end
 function CR.DebugBackground()

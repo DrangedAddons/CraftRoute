@@ -90,6 +90,41 @@ local function Slider(parent, label, lo, hi, step, get, set, fmt)
 end
 
 
+local trackers = {}   -- [profession] = tracker
+
+-- Always over the profession window and its side tabs: one strata above it.
+local STRATA = { "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }
+local function TopStrata()
+  local pf = ProfessionsFrame and ProfessionsFrame:GetFrameStrata() or "MEDIUM"
+  for i, n in ipairs(STRATA) do
+    if n == pf then return STRATA[math.min(#STRATA, math.max(4, i + 1))] end
+  end
+  return "HIGH"
+end
+CR.PopoutStrata = TopStrata   -- (the Craft view's materials panel uses it too)
+
+-- Snapped trackers: one is snapped to another's right edge (Settings().snapTo = that profession).
+-- A group's root is the one that isn't snapped to a shown tracker; dragging or scaling any of
+-- them moves / scales the whole group.
+local function RootOf(prof)
+  local seen = {}
+  while true do
+    local t = trackers[prof]
+    local to = t and t.Settings().snapTo
+    local target = to and trackers[to]
+    if not (target and target.Shown()) or seen[to] then return prof end
+    seen[prof] = true
+    prof = to
+  end
+end
+local function Members(root)
+  local out = {}
+  for prof, t in pairs(trackers) do
+    if t.Shown() and RootOf(prof) == root then table.insert(out, t) end
+  end
+  return out
+end
+
 -- One profession's tracker: its window, its controls and its settings.
 local count = 0
 local function NewTracker(PROF)
@@ -99,6 +134,7 @@ local function NewTracker(PROF)
   local frame, sizePanel, sizePanelSync
   local editing, offset = false, 0
   local Refresh, SetSize, SizePanel, Toggle, Build, RegisterUnlock
+  local Close, Detach, BeginDrag, EndDrag
   local function Settings()
     local t = Root()
     t.byProf[PROF] = t.byProf[PROF] or {}
@@ -113,13 +149,18 @@ local function NewTracker(PROF)
   local docked = false
   local function Place()
     frame:ClearAllPoints()
-    if docked and ProfessionsFrame then
-      frame:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", 0, 0)
-      frame:SetFrameStrata(ProfessionsFrame:GetFrameStrata())
-      frame:SetFrameLevel(ProfessionsFrame:GetFrameLevel() + 600)   -- (over its side tabs)
+    frame:SetFrameStrata(TopStrata())   -- (always over the profession window's side tabs)
+    -- snapped to another tracker that's up: against its right edge, tops level
+    local to = Settings().snapTo
+    local target = to and trackers[to]
+    if target and target.Shown() and RootOf(to) ~= PROF then
+      frame:SetPoint("TOPLEFT", target.Frame(), "TOPRIGHT", 0, 0)
       return
     end
-    frame:SetFrameStrata("MEDIUM")
+    if docked and ProfessionsFrame then
+      frame:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", 0, 0)
+      return
+    end
     local p = Settings().pos or DEFAULT_POS
     frame:SetPoint(p[1], UIParent, p[2], p[3], p[4])
   end
@@ -348,21 +389,14 @@ local function NewTracker(PROF)
     bar:SetHeight(24)
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function()
-      -- dragged off the window: undocked, from now on a free window
-      if docked then
-        docked = false
-        Settings().free = true
-        Settings().shown = true
-        frame:SetFrameStrata("MEDIUM")
-      end
-      frame:StartMoving()
-    end)
-    bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() SavePos() end)
+    -- dragging moves the whole snapped group (its root carries the rest); dropped near the
+    -- profession window's right edge it docks, near another tracker's right edge it snaps there
+    bar:SetScript("OnDragStart", function() trackers[RootOf(PROF)].BeginDrag() end)
+    bar:SetScript("OnDragStop", function() trackers[RootOf(PROF)].EndDrag() end)
     frame.title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     frame.title:SetPoint("LEFT", 8, 0)
     if CR.ThemeRegisterAccentText then CR.ThemeRegisterAccentText(frame.title) end
-    frame.close = HeaderButton(bar, "x", 18, "Close this tracker", function() Toggle(false) end)
+    frame.close = HeaderButton(bar, "x", 18, "Close this tracker (it opens docked again next time)", function() Close() end)
     frame.close:SetPoint("RIGHT", -4, 0)
     frame.collapse = HeaderButton(bar, "-", 18, "Collapse / expand", function()
       Settings().collapsed = not Settings().collapsed or nil
@@ -545,8 +579,14 @@ local function NewTracker(PROF)
   end
 
   -- New width / scale / height (nil: unchanged), kept per character.
-  function SetSize(w, scale, h)
+  -- alone: just this one (the group's others are being scaled with it)
+  function SetSize(w, scale, h, alone)
     local s = Settings()
+    if scale and not alone then
+      for _, t in ipairs(Members(RootOf(PROF))) do
+        if t.Frame() ~= frame then t.ScaleAlone(scale) end
+      end
+    end
     if w then s.width = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) end
     if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
     if scale then s.scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20)) end
@@ -558,7 +598,9 @@ local function NewTracker(PROF)
     if math.abs(old - new) > 0.001 then
       local l, t = frame:GetLeft(), frame:GetTop()
       frame:SetScale(new)
-      if l and t then
+      -- (docked or snapped: it stays on its anchor)
+      local anchored = docked or (Settings().snapTo and trackers[Settings().snapTo] and trackers[Settings().snapTo].Shown())
+      if l and t and not anchored then
         frame:ClearAllPoints()
         frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * old / new, t * old / new)
         SavePos()
@@ -621,10 +663,82 @@ local function NewTracker(PROF)
       docked = (dock and not Settings().free) and true or false
       Place()
     end
-    -- a docked one isn't remembered as open: it closes with the window and isn't brought back
-    Settings().shown = (show and not docked) or nil
+    -- a docked one (or one snapped into a docked group) isn't remembered as open: it closes with
+    -- the window and isn't brought back
+    local root = trackers[RootOf(PROF)]
+    local inDocked = docked or (root and root.IsDocked())
+    Settings().shown = (show and not inDocked) or nil
     frame:SetShown(show)
     Refresh()
+  end
+
+  -- the x: closed, and back to docked next time. Any snapped to it stay where they are, free.
+  function Close()
+    for prof, t in pairs(trackers) do
+      if prof ~= PROF and t.Settings().snapTo == PROF and t.Shown() then t.Detach() end
+    end
+    Settings().free, Settings().snapTo = nil, nil
+    docked = false
+    Toggle(false)
+  end
+  -- no longer snapped: a free window right where it is on screen
+  function Detach()
+    local l, t = frame:GetLeft(), frame:GetTop()
+    Settings().snapTo = nil
+    Settings().free = true
+    docked = false
+    if l and t then Settings().pos = { "TOPLEFT", "BOTTOMLEFT", l, t } end
+    Place()
+    Settings().shown = true
+  end
+
+  function BeginDrag()
+    if docked then
+      docked = false
+      Settings().free = true
+    end
+    Settings().snapTo = nil   -- (the root of its group: not snapped to anything)
+    frame:SetFrameStrata(TopStrata())
+    frame:StartMoving()
+  end
+  local SNAP = 24   -- how close (in screen pixels) counts as at an edge
+  function EndDrag()
+    frame:StopMovingOrSizing()
+    SavePos()
+    local sc = frame:GetEffectiveScale()
+    local l, t, b = (frame:GetLeft() or 0) * sc, (frame:GetTop() or 0) * sc, (frame:GetBottom() or 0) * sc
+    local snapped
+    -- the profession window's right edge: docked
+    local pf = ProfessionsFrame
+    if pf and pf:IsShown() and pf:GetRight() then
+      local ps = pf:GetEffectiveScale()
+      local pr, pt, pb = pf:GetRight() * ps, pf:GetTop() * ps, pf:GetBottom() * ps
+      if math.abs(l - pr) <= SNAP and t > pb and b < pt then
+        docked, snapped = true, true
+        Settings().free = nil
+      end
+    end
+    -- another tracker's right edge (not one of this group): snapped to it
+    if not snapped then
+      local mine = {}
+      for _, m in ipairs(Members(PROF)) do mine[m] = true end
+      for prof, o in pairs(trackers) do
+        local of = o.Shown() and not mine[o] and o.Frame()
+        if of and of:GetRight() then
+          local os = of:GetEffectiveScale()
+          if math.abs(l - of:GetRight() * os) <= SNAP and math.abs(t - of:GetTop() * os) <= 60 then
+            Settings().snapTo, Settings().free, snapped = prof, true, true
+            break
+          end
+        end
+      end
+    end
+    if snapped then Place() end
+    -- the group's open-or-not memory follows its root: docked closes with the window
+    local root = trackers[RootOf(PROF)]
+    for _, m in ipairs(Members(RootOf(PROF))) do
+      m.Settings().shown = (not (root and root.IsDocked())) or nil
+    end
   end
 
   -- EllesmereUI's unlock mode: a mover like its own frames
@@ -645,6 +759,7 @@ local function NewTracker(PROF)
           Settings().pos = { point, relPoint or point, x or 0, y or 0 }
           Settings().free = true   -- (moved in unlock mode: a free window from now on)
           docked = false
+          Settings().snapTo = nil
           if not EllesmereUI._unlockActive then Place() end
         end,
         loadPos = function()
@@ -659,11 +774,15 @@ local function NewTracker(PROF)
 
   return { Refresh = function() Refresh() end, Toggle = function(show, dock) Toggle(show, dock) end,
            Docked = function() return docked and frame and frame:IsShown() end,
+           IsDocked = function() return docked end,
+           Frame = function() return frame end,
+           Detach = function() Detach() end,
+           BeginDrag = function() BeginDrag() end, EndDrag = function() EndDrag() end,
+           ScaleAlone = function(sc) SetSize(nil, sc, nil, true) end,
            Build = function() Build() end, Shown = function() return frame and frame:IsShown() end,
            Settings = Settings, RegisterUnlock = function() RegisterUnlock() end }
 end
 
-local trackers = {}   -- [profession] = tracker
 local loggedIn = false
 local function Tracker(prof)
   if not trackers[prof] then
@@ -689,7 +808,13 @@ function CR.ToggleTracker(show, prof, dock)
   if dock and not closeHooked and ProfessionsFrame then
     closeHooked = true
     ProfessionsFrame:HookScript("OnHide", function()
-      for _, t in pairs(trackers) do if t.Docked() then t.Toggle(false) end end
+      -- docked ones and the ones snapped into a docked group (their snapping is kept)
+      local close = {}
+      for prof, t in pairs(trackers) do
+        local root = trackers[RootOf(prof)]
+        if t.Shown() and root and root.IsDocked() then table.insert(close, t) end
+      end
+      for _, t in ipairs(close) do t.Toggle(false) end
     end)
   end
   Tracker(prof).Toggle(show, dock)

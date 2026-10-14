@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.54.0
+
+- Materials trackers (and the Craft view's materials panel) always draw **above** the profession window, side tabs included - docked or free.
+- Closing a tracker with its **x** resets it: next time the pop-out opens it, it's docked to the profession window again.
+- **Snapping**: drop a tracker by the profession window's right edge and it docks there again; drop it by another tracker's right edge and it snaps to that one, tops level. Snapped trackers are a group - dragging any of them moves them all, and Ctrl+scrolling one scales them all. A group docked to the window closes with it (and keeps its snapping for next time). Closing one with its x leaves any snapped to it where they are, as free windows.
+- Profession window tab: the line between the two columns is gone when Blizzard's page background is copied onto the tab - Blizzard's page has no such line (its recipe list border and recipe panel art part the columns), so the art does it here too.
+
 ## 0.53.3
 
 - Route view: the right panel's messages ("Goal reached (225). Raise it in the route dropdown.", "Click a step...") no longer sit on top of the version and Open CraftRoute button - they start below that row, where a recipe's own details start.
