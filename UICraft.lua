@@ -1118,7 +1118,8 @@ function CR.CreateCraftPanel(parent)
     end
     band.marker:ClearAllPoints()
     band.marker:SetPoint("CENTER", band, "LEFT", X(skill), 0)
-    bandText:SetText(string.format("|cffff8040%d|r learn  ·  |cffffff00%d|r yellow  ·  |cff40bf40%d|r green  ·  |cff808080%d|r grey  ·  you: |cffffffff%d|r",
+    -- condensed (GitHub #9): the thresholds in their colours, then your skill
+    bandText:SetText(string.format("|cffff8040%d|r|cff808080 - |r|cffffff00%d|r|cff808080 - |r|cff40bf40%d|r|cff808080 - |r|cff9d9d9d%d|r     |cffffd100you:|r |cffffffff%d|r",
       r.learn or 1, r.y, r.g, r.x, skill))
   end
 

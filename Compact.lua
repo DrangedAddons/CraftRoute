@@ -3926,8 +3926,11 @@ local function BuildOverlay()
     if not self.r then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Skill-up colours")
-    GameTooltip:AddLine(string.format("|cffff8040%d|r learn  ·  |cffffff00%d|r yellow  ·  |cff40bf40%d|r green  ·  "
-      .. "|cff808080%d|r grey  ·  you: |cffffffff%d|r", self.r.learn or 1, self.r.y, self.r.g, self.r.x, self.skill), 1, 1, 1)
+    -- condensed (GitHub #9): the four thresholds in their colours, and your skill on the right
+    local dash = "|cff808080 - |r"
+    GameTooltip:AddDoubleLine(string.format("|cffff8040%d|r%s|cffffff00%d|r%s|cff40bf40%d|r%s|cff9d9d9d%d|r",
+      self.r.learn or 1, dash, self.r.y, dash, self.r.g, dash, self.r.x),
+      string.format("|cffffd100you:|r |cffffffff%d|r", self.skill), 1, 1, 1, 1, 1, 1)
     GameTooltip:Show()
   end)
   band:SetScript("OnLeave", GameTooltip_Hide)

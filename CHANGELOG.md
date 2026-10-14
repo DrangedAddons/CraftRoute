@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.8
+
+- Skill-up colours tooltip (the colour band under a recipe) condensed, as suggested in GitHub issue #9: the four thresholds in their colours - "30 - 50 - 60 - 70" - with "you: 85" on the right, instead of "30 learn · 50 yellow · 60 green · 70 grey · you: 85".
+
 ## 0.50.7
 
 - Materials panel: a **Show vendor items** tickbox under its title - untick it to hide what vendors sell (thread, dyes, flux) from both views. Remembered.
