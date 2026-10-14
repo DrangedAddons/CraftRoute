@@ -121,7 +121,8 @@ end
 -- snapSide = which side of the other one it's on: { its point, the other's point }
 local SNAP_ANCHOR = {
   right = { "TOPLEFT", "TOPRIGHT" }, left = { "TOPRIGHT", "TOPLEFT" },
-  bottom = { "TOPLEFT", "BOTTOMLEFT" }, top = { "BOTTOMLEFT", "TOPLEFT" },
+  bottom = { "TOPLEFT", "BOTTOMLEFT", "TOPRIGHT", "BOTTOMRIGHT" },
+  top = { "BOTTOMLEFT", "TOPLEFT", "BOTTOMRIGHT", "TOPRIGHT" },
 }
 local OPPOSITE = { right = "left", left = "right", top = "bottom", bottom = "top" }
 local function Members(root)
@@ -164,6 +165,8 @@ local function NewTracker(PROF)
     if target and target.Shown() and RootOf(to) ~= PROF then
       local a = SNAP_ANCHOR[Settings().snapSide or "right"] or SNAP_ANCHOR.right
       frame:SetPoint(a[1], target.Frame(), a[2], 0, 0)
+      -- above / below: held by both edges, so it's always exactly the other one's width
+      if a[3] then frame:SetPoint(a[3], target.Frame(), a[4], 0, 0) end
       return
     end
     if docked and ProfessionsFrame then
@@ -393,6 +396,8 @@ local function NewTracker(PROF)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
+    -- (its place is kept here, not in WoW's layout cache - that would put it back on its own)
+    if frame.SetDontSavePosition then pcall(frame.SetDontSavePosition, frame, true) end
     CR.Backdrop(frame, 0.04, 0.04, 0.05, 0.85)
     Place()
     frame:Hide()
@@ -407,6 +412,10 @@ local function NewTracker(PROF)
     -- profession window's right edge it docks, near another tracker's right edge it snaps there
     bar:SetScript("OnDragStart", function() trackers[RootOf(PROF)].BeginDrag() end)
     bar:SetScript("OnDragStop", function() trackers[RootOf(PROF)].EndDrag() end)
+    -- (and by any free space on the window)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", bar:GetScript("OnDragStart"))
+    frame:SetScript("OnDragStop", bar:GetScript("OnDragStop"))
     frame.title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     frame.title:SetPoint("LEFT", 8, 0)
     if CR.ThemeRegisterAccentText then CR.ThemeRegisterAccentText(frame.title) end
@@ -791,6 +800,7 @@ local function NewTracker(PROF)
   -- there - the profession window's right edge (docked), or any side of another tracker
   function EndDrag()
     frame:StopMovingOrSizing()
+    if frame.SetUserPlaced then pcall(frame.SetUserPlaced, frame, false) end
     SavePos()
     local members = Members(PROF)
     local mine = {}
@@ -851,6 +861,8 @@ local function NewTracker(PROF)
       for _, m in ipairs(members) do m.Reflow() end
     end
     CR.RefreshTracker()   -- (the locks of the group it left or joined)
+    -- every one of the group's spots on screen saved as it now is (once laid out)
+    if C_Timer then C_Timer.After(0, function() for _, m in ipairs(Members(RootOf(PROF))) do m.SaveLive() end end) end
     -- the group's open-or-not memory follows its root: docked closes with the window
     local root = trackers[RootOf(PROF)]
     for _, m in ipairs(Members(RootOf(PROF))) do
@@ -879,6 +891,9 @@ local function NewTracker(PROF)
           Settings().snapTo = nil
           if not EllesmereUI._unlockActive then Place() end
         end,
+        -- CraftRoute places it (snapped, docked or free) - EllesmereUI's saved-position pass
+        -- (login, zone changes, bar layouts) must not put it back on a stored spot
+        ownsPosition = true,
         loadPos = function()
           local p = Settings().pos or DEFAULT_POS
           return { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
@@ -894,6 +909,12 @@ local function NewTracker(PROF)
            IsDocked = function() return docked end,
            Frame = function() return frame end,
            Reflow = function() if frame and frame:IsShown() then Place() end end,
+           -- its spot on screen as its saved position (snapped or docked ones too: then that's
+           -- only where it goes if what it's on isn't up - never a stale spot)
+           SaveLive = function()
+             local l, t = frame and frame:IsShown() and frame:GetLeft(), frame and frame:GetTop()
+             if l and t then Settings().pos = { "TOPLEFT", "BOTTOMLEFT", l, t } end
+           end,
            -- where it is on screen, as a free position (and placed there)
            Pin = function()
              local l, t = frame:GetLeft(), frame:GetTop()
@@ -967,7 +988,13 @@ end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
-ev:SetScript("OnEvent", function()
+ev:RegisterEvent("PLAYER_LOGOUT")
+ev:SetScript("OnEvent", function(_, event)
+  -- leaving (logout / reload): every tracker's spot saved exactly as it is on screen
+  if event == "PLAYER_LOGOUT" then
+    for _, t in pairs(trackers) do pcall(t.SaveLive) end
+    return
+  end
   -- the trackers that were up come back
   for prof, st in pairs(Root().byProf) do
     if st.shown then Tracker(prof).Toggle(true) end
@@ -980,7 +1007,7 @@ ev:SetScript("OnEvent", function()
     CR.RefreshTracker()
   end
   Reflow()
-  if C_Timer then C_Timer.After(1, Reflow) end
+  if C_Timer then C_Timer.After(1, Reflow) C_Timer.After(3, Reflow) end
   loggedIn = true   -- (trackers made from here on register their own mover)
   -- bags, the plan, the picked profession changing: refresh
   CR.OnChange(CR.RefreshTracker)
