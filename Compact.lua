@@ -3375,10 +3375,15 @@ local function MirrorBlizzardBackground()
           -- stacked as Blizzard stacks them: deeper frames and BORDER over BACKGROUND (all under
           -- this tab's own art)
           c:SetDrawLayer("BACKGROUND", math.min(-1, -8 + depth * 2 + (layer == "BORDER" and 1 or 0)))
-          if atlas then c:SetAtlas(atlas) else c:SetTexture(file) end
+          -- a plain colour fill (a skin's panel shading - EllesmereUI's is black at 25%; its colour
+          -- can't be read back): copied as that shading
+          local fill = not atlas and (file == 0 or file == "FileData ID 0")
+          if atlas then c:SetAtlas(atlas) elseif fill then c:SetColorTexture(0, 0, 0, 0.25) else c:SetTexture(file) end
           pcall(function()
-            c:SetTexCoord(r:GetTexCoord())
-            c:SetVertexColor(r:GetVertexColor())
+            if not fill then
+              c:SetTexCoord(r:GetTexCoord())
+              c:SetVertexColor(r:GetVertexColor())
+            end
             c:SetBlendMode(r:GetBlendMode())
             c:SetDesaturated(r:IsDesaturated())
             if r.GetHorizTile then c:SetHorizTile(r:GetHorizTile()) c:SetVertTile(r:GetVertTile()) end
@@ -3395,7 +3400,8 @@ local function MirrorBlizzardBackground()
       end
     end
     for _, ch in ipairs({ f:GetChildren() }) do
-      if ch:IsShown() and not (ch.IsObjectType and (ch:IsObjectType("Button") or ch:IsObjectType("EditBox"))) then
+      -- (not the skill bar: the tab borrows Blizzard's own)
+      if ch:IsShown() and ch ~= page.RankBar and not (ch.IsObjectType and (ch:IsObjectType("Button") or ch:IsObjectType("EditBox"))) then
         Visit(ch, depth + 1)
       end
     end

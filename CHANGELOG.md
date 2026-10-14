@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.54.2
+
+- Profession window tab: with a skin that shades Blizzard's panels (EllesmereUI's dark fills behind the recipe list and the recipe panel), that shading is now copied onto the tab too - so the "crease" between the columns (the gap between the two shaded panels) shows as it does on Blizzard's page. The skill bar's own fill is no longer copied (the tab borrows Blizzard's bar).
+
 ## 0.54.1
 
 - Profession window tab: Blizzard's panel borders are now copied onto the tab with its background - including the subtle "crease" between the two columns (the recipe list's and recipe panel's border edges, thin strips the copy used to skip as too small).
