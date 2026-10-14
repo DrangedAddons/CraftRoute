@@ -1311,10 +1311,22 @@ local function ApplyRow(row, item)
     row.chevron.glow:Hide()
     row.chevron.label:SetText(item.open and "-" or "+")
   end
-  row.right:SetText(RangeLabel(st))
+  -- the name gets the whole line; the craft count and skill range ("12x  30-55") go just under it
+  row.right:SetText("")
   row.name:ClearAllPoints()
-  row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 0)
-  row.name:SetPoint("RIGHT", row.right, "LEFT", -4, 0)
+  row.name:SetPoint("LEFT", row.icon, "RIGHT", 4, 6)
+  row.name:SetPoint("RIGHT", row.chevron, "LEFT", -4, 6)
+  FitName(row.name, name)   -- (a name that still doesn't fit gets a point smaller, not cut off)
+  if not row.crSub then
+    row.crSub = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    row.crSub:SetJustifyH("LEFT")
+  end
+  row.crSub:ClearAllPoints()
+  row.crSub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -1)
+  row.crSub:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+  row.crSub:SetWordWrap(false)
+  row.crSub:SetText(RangeLabel(st))
+  row.crSub:Show()
   row.chevron:SetScript("OnClick", function()
     ui.openSteps[item.key] = not item.open
     ui.keepScroll = true

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.50.12
+
+- Route view: each step's craft count and skill range ("12x  30-55") moved from beside the recipe name to just under it, so the name has the whole line and isn't cut off. A name that still doesn't fit gets a point smaller rather than truncated.
+
 ## 0.50.11
 
 - Yes Chris, this was necessary.
