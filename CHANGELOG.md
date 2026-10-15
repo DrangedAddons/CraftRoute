@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.4
+
+- Profession window tab: the recipe's **Shopping List** sits just below the cost lines (To Craft / This step / Profit), and **Count alts** just below that - scrolling with the reagents when the list is long.
+
 ## 0.70.3
 
 - Profession window tab: the top-right button reads **Materials**, with the pop-out icon after it.

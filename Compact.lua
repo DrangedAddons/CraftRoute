@@ -2010,16 +2010,6 @@ local function FillSchematic(info)
     frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon
   end
   local rowH = compact and 22 or 42
-  -- this recipe's Shopping List to the right of "Reagents:"; Count alts just above "Reagents:" (the
-  -- Craft view's compact layout has no room there: after the Shopping List instead)
-  frame.shopBtn:ClearAllPoints()
-  frame.shopBtn:SetPoint("LEFT", frame.reagentsLabel, "RIGHT", 10, 0)
-  frame.altsCB:ClearAllPoints()
-  if compact then
-    frame.altsCB:SetPoint("LEFT", frame.shopBtn, "RIGHT", 8, 0)
-  else
-    frame.altsCB:SetPoint("BOTTOMLEFT", frame.reagentsLabel, "TOPLEFT", -3, 6)
-  end
   -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
   -- this recipe has one, else above the status line over the crafting buttons.
   local rscroll, rcontent = frame.rscroll, frame.rcontent
@@ -2068,7 +2058,15 @@ local function FillSchematic(info)
   frame.cost:ClearAllPoints()
   frame.cost:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8)
   frame.cost:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
-  rcontent:SetHeight(-(y - 8) + (frame.cost:GetStringHeight() or 48) + 6)
+  -- under the Profit line: this recipe's Shopping List, then Count alts (scrolling with the rest)
+  local costH = tonumber(frame.cost:GetStringHeight()) or 48
+  frame.shopBtn:SetParent(rcontent)
+  frame.shopBtn:ClearAllPoints()
+  frame.shopBtn:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8 - costH - 10)
+  frame.altsCB:SetParent(rcontent)
+  frame.altsCB:ClearAllPoints()
+  frame.altsCB:SetPoint("TOPLEFT", frame.shopBtn, "BOTTOMLEFT", -2, -4)
+  rcontent:SetHeight(-(y - 8) + costH + 10 + 22 + 4 + 20 + 6)
   if frame.lastSpell ~= recipe.spell then rscroll:SetVerticalScroll(0) end
   rscroll:Show()
   rscroll:UpdateBar()
