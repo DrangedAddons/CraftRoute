@@ -34,6 +34,7 @@ local function Top() return 28 end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
 local charLabels, colTints, headTints = {}, {}, {}   -- names over a character's columns, the columns' tints (list / header)
+local charGrabs = {}   -- the names as handles: drag one to move all that character's columns
 CR.AllMaterialsNames = function() return charLabels, colTints, headTints end   -- (tests)
 local sizePanel, sizePanelSync
 
@@ -154,6 +155,7 @@ local function Removed()
   return st.removed
 end
 local preview   -- while a column is dragged: the order it would leave (shown live)
+local GroupGrab   -- (a character's name as a handle - below)
 local dragCol   -- the column heading being dragged
 local function AltKeys()
   local st = Settings()
@@ -829,6 +831,74 @@ local function AddButton()
   return a
 end
 
+-- A character's name over its columns, as a handle: dragged left or right, its columns move as
+-- one block - shifting a column at a time, live (the others make room), and staying where it's let go.
+local function CursorSlot()
+  local x = GetCursorPosition() / frame:GetEffectiveScale()
+  local first = frame.colsLeft and frame:GetLeft() and (frame:GetLeft() + frame.colsLeft)
+  if not first then return nil end
+  return math.floor((x - first) / COL_W) + 1
+end
+function GroupGrab(g)
+  local b = charGrabs[g]
+  if b then return b end
+  b = CreateFrame("Button", nil, frame)
+  b:SetFrameLevel(frame:GetFrameLevel() + 6)
+  b:RegisterForDrag("LeftButton")
+  b:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(self.charName or "")
+    GameTooltip:AddLine("Drag to move all this character's columns together.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", GameTooltip_Hide)
+  -- where the block starts in the order, and which of its columns the cursor took it by
+  local function Start(list, keys)
+    for idx, n in ipairs(list) do if n == keys[1] then return idx end end
+  end
+  -- the block into the place under the cursor
+  local function MoveBlock(me)
+    local keys = me.dragKeys
+    local slot2 = CursorSlot()
+    if not (keys and slot2 and preview) then return end
+    local rest, inBlock = {}, {}
+    for _, k in ipairs(keys) do inBlock[k] = true end
+    for _, n in ipairs(preview) do if not inBlock[n] then table.insert(rest, n) end end
+    local want = math.max(1, math.min(#rest + 1, slot2 - me.grabAt))
+    if want ~= Start(preview, keys) then
+      for idx, k in ipairs(keys) do table.insert(rest, want + idx - 1, k) end
+      preview = rest
+      Refresh()
+    end
+  end
+  b:SetScript("OnDragStart", function(self)
+    GameTooltip_Hide()
+    preview = {}
+    for _, q in ipairs(frame.profs or {}) do table.insert(preview, q.name) end
+    self.dragKeys = self.keys
+    local start, slot = Start(preview, self.keys), CursorSlot()
+    self.grabAt = (slot and start) and math.max(0, math.min(#self.keys - 1, slot - start)) or 0
+    self:SetScript("OnUpdate", MoveBlock)
+  end)
+  b:SetScript("OnDragStop", function(self)
+    MoveBlock(self)
+    self:SetScript("OnUpdate", nil)
+    -- (where it's let go) - then this order kept: these columns, then the rest as they were
+    if preview then
+      local seen, order = {}, {}
+      for _, n in ipairs(preview) do seen[n] = true table.insert(order, n) end
+      preview = nil
+      for _, n in ipairs(Ordered()) do if not seen[n] then table.insert(order, n) end end
+      Settings().order = order
+    end
+    self.dragKeys = nil
+    Refresh()
+  end)
+  PassWheel(b)
+  charGrabs[g] = b
+  return b
+end
+
 -- moveOnly: just put the dragged heading under the cursor (every frame while dragging)
 local function PlaceDragged()
   local c = dragCol
@@ -1025,6 +1095,15 @@ function Refresh(moveOnly)
       fs:SetText(name or "")
       fs:SetTextColor(r, gg, b)
       fs:Show()
+      -- the name is a handle: dragging it moves the whole group (see GroupGrab)
+      local grab = GroupGrab(g)
+      grab.keys = {}
+      for k = i, j do table.insert(grab.keys, profs[k].name) end
+      grab.charName = name
+      grab:ClearAllPoints()
+      grab:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, labelY - 2)
+      grab:SetSize((j - i + 1) * COL_W, 16)
+      grab:Show()
       for k = i, j do
         local t = colTints[k]
         if not t then t = frame:CreateTexture(nil, "BACKGROUND", nil, 1) colTints[k] = t end
@@ -1052,6 +1131,7 @@ function Refresh(moveOnly)
     i = j + 1
   end
   for k = g + 1, #charLabels do charLabels[k]:Hide() end
+  for k = g + 1, #charGrabs do charGrabs[k]:Hide() end
   for k = #profs + 1, #colTints do colTints[k]:Hide() end
   for k = 1, #headTints do
     local ct = colTints[k]

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.73.0
+
+- All Materials window: **drag a character's name** (over its columns) to move all its columns as one block - they shift a column at a time as you drag, and stay where you let go. Quick for reordering whole characters.
+
 ## 0.72.7
 
 - All Materials window: the columns' faint class tint starts below the header row, so the header shows only its solid band (joined across a character's columns) - no column gaps showing through it.
