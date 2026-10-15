@@ -155,15 +155,6 @@ local function Ordered()
   end)
   return list
 end
--- the learned professions with a route that are taken off (for the + menu)
-local function RemovedLearned()
-  local out = {}
-  for _, name in ipairs(Ordered()) do
-    local _, _, detected = CR.GetSkill(name)
-    if detected and Removed()[name] then table.insert(out, name) end
-  end
-  return out
-end
 
 -- profs = { { name, cur, goal } }; items = { { id, name, per = { [prof] = n }, need, have, price,
 -- crafted, first, band = { [i] = { per = { [prof] = n }, need, first } } } }
@@ -579,7 +570,7 @@ end
 
 -- the + after the headings: put back a profession taken off, or add another character's - pick
 -- the character, then (a second menu) which of its professions
-local addBtn, altBtn, altChar
+local addBtn
 local ForceAlts
 -- another character's guide here: their materials (bags, bank, mail) have to count - "Count alts'
 -- materials" is switched on, and stays on while any alt column is here (CR.AllMaterialsUsesAlts)
@@ -594,108 +585,221 @@ function ForceAlts()
     CR.NotifyChanged()
   end
 end
-local function AltButton()
-  if altBtn then return altBtn end
-  local d = CR.CreateDropdown(frame, 20, function()
-    local c = altChar and Characters()[altChar]
-    local opts = { { header = (c and c.name or "?") .. "'s professions" } }
-    local have = {}
-    for _, k in ipairs(AltKeys()) do have[k] = true end
-    local names = {}
-    for prof, sk in pairs(c and c.profs or {}) do
-      if CR.Route and CR.Route(prof) and not have["alt:" .. altChar .. ":" .. prof] then table.insert(names, prof) end
-    end
-    table.sort(names)
-    for _, prof in ipairs(names) do
-      local sk = c.profs[prof]
-      local icon = CR.ProfessionIcon and CR.ProfessionIcon(prof)
-      table.insert(opts, { value = prof, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. prof
-        .. "  " .. CR.ColorText(string.format("%d/%d", sk.rank or 0, sk.maxRank or 0), "aaaaaa") })
-    end
-    if #names == 0 then
-      table.insert(opts, { value = "", text = CR.ColorText("Nothing to add", "888888") })
-    end
-    return opts
-  end, function() return nil end, function(v)
-    if v and v ~= "" and altChar then
-      table.insert(AltKeys(), "alt:" .. altChar .. ":" .. v)
-      ForceAlts()
-      Refresh()
-    end
-  end)
-  -- (not seen itself: it only opens its menu where the + is)
-  d:SetSize(20, 20)
-  d:SetAlpha(0)
-  d:EnableMouse(false)
-  altBtn = d
-  return d
+-- The + menu: tick boxes - your professions (ticked: on this window), then your other characters;
+-- clicking (or, with one open, hovering) a character opens its professions beside that row, ticked
+-- when they're on the window. A tick goes on / off straight away and the menus stay open, so you can
+-- pick several; a click anywhere else closes them.
+local addMenu, subMenu
+local MENU_ROW = 20
+local CHECK = "Interface\\Buttons\\UI-CheckBox-Up"
+local TICK = "Interface\\Buttons\\UI-CheckBox-Check"
+
+local function MenuFrame()
+  local m = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  m:SetFrameStrata("FULLSCREEN_DIALOG")
+  m:SetClampedToScreen(true)
+  CR.Backdrop(m, 0.05, 0.05, 0.05, 0.97)
+  m:EnableMouse(true)
+  m.rows = {}
+  m:Hide()
+  return m
 end
+-- a menu's line i: a heading, a tick-box entry, or (more = true) one that opens a sub-menu
+local function MenuRow(m, i)
+  local r = m.rows[i]
+  if r then return r end
+  r = CreateFrame("Button", nil, m)
+  r:SetHeight(MENU_ROW)
+  r.box = r:CreateTexture(nil, "ARTWORK")
+  r.box:SetSize(18, 18)
+  r.box:SetPoint("LEFT", 4, 0)
+  r.box:SetTexture(CHECK)
+  r.tick = r:CreateTexture(nil, "OVERLAY")
+  r.tick:SetAllPoints(r.box)
+  r.tick:SetTexture(TICK)
+  r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  r.head = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  r.head:SetPoint("LEFT", 6, 0)
+  r.more = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  r.more:SetPoint("RIGHT", -6, 0)
+  r.more:SetText(">")
+  r.hl = r:CreateTexture(nil, "HIGHLIGHT")
+  r.hl:SetAllPoints()
+  r.hl:SetColorTexture(0.2, 0.6, 1, 0.3)
+  if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
+  m.rows[i] = r
+  return r
+end
+-- lines: { { head = text } | { text, checked, onClick } | { text, more = true, onClick, onEnter } }
+local function FillMenu(m, lines)
+  local widest = 120
+  for i, l in ipairs(lines) do
+    local r = MenuRow(m, i)
+    r:ClearAllPoints()
+    r:SetPoint("TOPLEFT", 2, -2 - (i - 1) * MENU_ROW)
+    r:SetPoint("RIGHT", -2, 0)
+    r.line = l
+    r.text:ClearAllPoints()
+    if l.head then
+      r.head:SetText(l.head) r.head:Show()
+      r.text:Hide() r.box:Hide() r.tick:Hide() r.more:Hide()
+      r.hl:SetAlpha(0)
+      r:EnableMouse(false)
+      widest = math.max(widest, (tonumber(r.head:GetStringWidth()) or 0) + 16)
+    else
+      r.head:Hide()
+      r.text:Show()
+      r.hl:SetAlpha(1)
+      r:EnableMouse(true)
+      r.more:SetShown(l.more and true or false)
+      r.box:SetShown(not l.more)
+      r.tick:SetShown(not l.more and l.checked and true or false)
+      r.text:SetPoint("LEFT", l.more and 10 or 26, 0)
+      r.text:SetText(l.text)
+      widest = math.max(widest, (tonumber(r.text:GetStringWidth()) or 0) + (l.more and 34 or 40))
+    end
+    r:SetScript("OnClick", l.onClick and function(self) self.line.onClick(self) end or nil)
+    r:SetScript("OnEnter", l.onEnter and function(self) self.line.onEnter(self) end or nil)
+    r:Show()
+  end
+  for i = #lines + 1, #m.rows do m.rows[i]:Hide() end
+  m:SetSize(math.ceil(widest), #lines * MENU_ROW + 4)
+end
+
+local function ProfLabel(prof, extra)
+  local icon = CR.ProfessionIcon and CR.ProfessionIcon(prof)
+  return (icon and ("|T" .. icon .. ":16:16|t ") or "") .. prof .. (extra or "")
+end
+
+local OpenSub
+-- the character's professions, beside its row
+function OpenSub(char, row)
+  local c = Characters()[char]
+  if not c then return end
+  subMenu = subMenu or MenuFrame()
+  subMenu.char, subMenu.row = char, row
+  local have = {}
+  for _, k in ipairs(AltKeys()) do have[k] = true end
+  local names = {}
+  for prof in pairs(c.profs or {}) do if CR.Route and CR.Route(prof) then table.insert(names, prof) end end
+  table.sort(names)
+  local lines = { { head = CR.ColorText(c.name or char, ClassHex(c.class)) .. "'s professions" } }
+  for _, prof in ipairs(names) do
+    local key = "alt:" .. char .. ":" .. prof
+    local sk = c.profs[prof]
+    table.insert(lines, { text = ProfLabel(prof, "  " .. CR.ColorText(string.format("%d/%d", sk.rank or 0, sk.maxRank or 0), "aaaaaa")),
+      checked = have[key], onClick = function()
+        local alts = AltKeys()
+        if have[key] then
+          for j = #alts, 1, -1 do if alts[j] == key then table.remove(alts, j) end end
+          if Settings().goals then Settings().goals[key] = nil end
+        else
+          table.insert(alts, key)
+          ForceAlts()
+        end
+        Refresh()
+        OpenSub(char, row)   -- (its ticks again)
+      end })
+  end
+  if #names == 0 then table.insert(lines, { text = CR.ColorText("No professions recorded", "888888"), more = true }) end
+  FillMenu(subMenu, lines)
+  subMenu:ClearAllPoints()
+  subMenu:SetPoint("TOPLEFT", row, "TOPRIGHT", 4, 2)
+  subMenu:Show()
+end
+
+local OpenAdd, CloseMenus
+function OpenAdd()
+  addMenu = addMenu or MenuFrame()
+  local lines = {}
+  -- your professions: ticked when on the window
+  local mine = {}
+  for _, name in ipairs(CR.SupportedProfessions()) do
+    local _, _, detected = CR.GetSkill(name)
+    if detected then table.insert(mine, name) end
+  end
+  if #mine > 0 then
+    table.insert(lines, { head = "Your professions" })
+    for _, name in ipairs(mine) do
+      table.insert(lines, { text = ProfLabel(name), checked = not Removed()[name], onClick = function()
+        Removed()[name] = (not Removed()[name]) or nil
+        Refresh()
+        OpenAdd()   -- (its ticks again)
+      end })
+    end
+  end
+  -- your other characters: their professions in a menu beside the row
+  local me, others = MyKey(), {}
+  for key, c in pairs(Characters()) do
+    if key ~= me and c.profs and next(c.profs) then table.insert(others, key) end
+  end
+  table.sort(others)
+  if #others > 0 then
+    table.insert(lines, { head = "Other characters" })
+    for _, key in ipairs(others) do
+      local c = Characters()[key]
+      table.insert(lines, { text = CR.ColorText(c.name or key, ClassHex(c.class)), more = true,
+        onClick = function(row) OpenSub(key, row) end,
+        onEnter = function(row) if subMenu and subMenu:IsShown() and subMenu.char ~= key then OpenSub(key, row) end end })
+    end
+  end
+  if #lines == 0 then table.insert(lines, { text = CR.ColorText("Nothing to add - log in on your other characters once", "888888"), more = true }) end
+  local wasShown = addMenu:IsShown()
+  FillMenu(addMenu, lines)
+  if not wasShown then
+    addMenu:ClearAllPoints()
+    addMenu:SetPoint("TOPLEFT", addBtn, "BOTTOMLEFT", 0, -2)
+  end
+  addMenu:Show()
+  if addBtn and addBtn.watch then pcall(addBtn.watch.RegisterEvent, addBtn.watch, "GLOBAL_MOUSE_DOWN") end
+  -- an open character menu follows its row (the rows may have moved)
+  if subMenu and subMenu:IsShown() then
+    for _, r in ipairs(addMenu.rows) do
+      if r:IsShown() and r.line and r.line.more and subMenu.row == r then OpenSub(subMenu.char, r) end
+    end
+  end
+end
+
+function CloseMenus()
+  if subMenu then subMenu:Hide() end
+  if addMenu then addMenu:Hide() end
+  if addBtn and addBtn.watch then pcall(addBtn.watch.UnregisterEvent, addBtn.watch, "GLOBAL_MOUSE_DOWN") end
+end
+
 local function AddButton()
   if addBtn then return addBtn end
-  local a = CR.CreateDropdown(frame, 20, function()
-    local opts = {}
-    local removed = RemovedLearned()
-    if #removed > 0 then
-      table.insert(opts, { header = "Your professions" })
-      for _, name in ipairs(removed) do
-        local icon = CR.ProfessionIcon and CR.ProfessionIcon(name)
-        table.insert(opts, { value = name, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. name })
-      end
-    end
-    local me, others = MyKey(), {}
-    for key, c in pairs(Characters()) do
-      if key ~= me and c.profs and next(c.profs) then table.insert(others, key) end
-    end
-    table.sort(others)
-    if #others > 0 then
-      table.insert(opts, { header = "Other characters" })
-      for _, key in ipairs(others) do
-        local c = Characters()[key]
-        table.insert(opts, { value = "char:" .. key, text = CR.ColorText(c.name or key, ClassHex(c.class))
-          .. CR.ColorText("  >", "888888") })
-      end
-    end
-    if #opts == 0 then
-      table.insert(opts, { value = "", text = CR.ColorText("Nothing to add - log in on your other characters once", "888888") })
-    end
-    return opts
-  end, function() return nil end, function(v)
-    if not v or v == "" then return end
-    local char = v:match("^char:(.+)$")
-    if char then
-      -- that character's professions: a second menu, where the + is
-      altChar = char
-      local d = AltButton()
-      d:ClearAllPoints()
-      d:SetPoint("TOPLEFT", addBtn, "TOPLEFT", 0, 0)
-      C_Timer.After(0, function()
-        local open = d:GetScript("OnClick")
-        if open then open(d) end
-      end)
-      return
-    end
-    Removed()[v] = nil
-    Refresh()
-  end)
+  local a = CreateFrame("Button", nil, frame, "BackdropTemplate")
   a:SetSize(20, 20)
-  a.text:SetAlpha(0)
-  for _, r in ipairs({ a:GetRegions() }) do
-    if r ~= a.text and r.GetText and r:GetText() == "v" then r:Hide() end
-  end
+  CR.Backdrop(a, 0.08, 0.08, 0.08, 0.9)
+  local hl = a:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.08)
   a.plus = a:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   a.plus:SetPoint("CENTER", 0, 1)
   a.plus:SetText("+")
+  addBtn = a
+  a:SetScript("OnClick", function()
+    if addMenu and addMenu:IsShown() then CloseMenus() else OpenAdd() end
+  end)
   a:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Add a profession")
-    GameTooltip:AddLine("Puts back a profession you took off this window (right-click an icon to take one off), "
-      .. "or adds one of another character's - their professions are recorded when they log in.", 1, 1, 1, true)
+    GameTooltip:SetText("Professions on this window")
+    GameTooltip:AddLine("Tick your professions on or off, or add your other characters' - their professions are "
+      .. "recorded when they log in.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   a:SetScript("OnLeave", GameTooltip_Hide)
+  a:SetScript("OnHide", CloseMenus)
+  -- a click anywhere but the menus (or the +) closes them
+  local watch = CreateFrame("Frame")
+  watch:SetScript("OnEvent", function()
+    local over = a:IsMouseOver() or (addMenu and addMenu:IsMouseOver()) or (subMenu and subMenu:IsShown() and subMenu:IsMouseOver())
+    if not over then CloseMenus() end
+  end)
+  a.watch = watch
   PassWheel(a)
-  addBtn = a
   CR.AllMaterialsAdd = a   -- (tests)
+  CR.AllMaterialsMenus = function() return addMenu, subMenu end   -- (tests)
   return a
 end
 

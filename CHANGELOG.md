@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.0
+
+- All Materials window, the **+** menu: **tick boxes**, and it stays open while you tick - your professions (ticked: on the window) and your other characters. Clicking a character (or hovering another, with one open) opens **its professions beside that row**, ticked when they're on the window; tick several in one go. A click anywhere else closes the menus.
+
 ## 0.71.0
 
 - All Materials window, with another character's professions on it: every column says whose it is - **one name across a character's neighbouring columns** (not a cut-off name over each), in its **class colour** - your own columns too - and each column is faintly tinted in that class colour down the list.
