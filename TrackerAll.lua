@@ -4,11 +4,11 @@
 -- learned whose route uses materials; an item hidden in a profession's own tracker is left out of
 -- that profession's column. Open with the main window's "All" button or /cr all.
 -- Like the trackers: size panel (width of the names, scale, height - shorter scrolls) and a corner
--- grip for the height, Ctrl+wheel scales; the Alts tick and the cart (a shopping list of all
--- still to buy); above the materials, vendor items shown or not, and the order - Route order (by where the routes first use each), Milestones (split by rank
--- band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you have
--- counting towards the earliest bands first; each band's heading has what reaching it still costs
--- and its own cart) or A-Z.
+-- grip for the height, Ctrl+wheel scales; the Alts tick; above the materials, vendor items shown
+-- or not, and the order - Route order (by where the routes first use each), Milestones (split by
+-- rank band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you
+-- have counting towards the earliest bands first; each band's line has what reaching it still
+-- costs) or A-Z. (No shopping carts here.)
 -- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
 -- 225 / 300 (Settings().goals[profession]) - its goal shows under the icon in its rank's colour
 -- (Apprentice white, Journeyman green, Expert blue, Artisan purple); picked here: a gold border. Right-click an icon to take that profession off
@@ -212,7 +212,7 @@ local function Gather()
   return profs, items
 end
 
--- what's still to buy of these lines: the shopping list's materials, the cost, how many unpriced
+-- what's still to buy of these lines: the materials, the cost, how many unpriced
 -- (what a route makes itself isn't bought)
 local function ToBuy(lines, label)
   local mats, cost, unpriced = {}, 0, 0
@@ -267,10 +267,10 @@ local function Lines(items)
       end)
       -- the milestone's line: what reaching it still costs, and its own shopping list
       local label = string.format("%d-%d", band[1], band[2])
-      local list2, cost, unpriced = ToBuy(list, "All Materials " .. label)
+      local _, cost, unpriced = ToBuy(list, "All Materials " .. label)
       -- (the milestone's line closes its materials: below them)
       for _, l in ipairs(list) do table.insert(out, l) end
-      table.insert(out, { head = label, cost = cost, unpriced = unpriced, buy = list2 })
+      table.insert(out, { head = label, cost = cost, unpriced = unpriced })
     end
   end
   return out
@@ -328,25 +328,8 @@ local function Row(i)
   r.line:SetColorTexture(1, 0.82, 0.35, 0.25)
   r.line:SetPoint("LEFT", r.head, "RIGHT", 6, 0)
   r.line:SetPoint("RIGHT", 0, -1)
-  -- a milestone's cost and its cart, at the line's end
-  r.bandCart = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
-  r.bandCart:SetSize(22, 16)
-  r.bandCart:SetPoint("RIGHT", 0, 0)
-  r.bandCart:SetText("")
-  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(r.bandCart) end
-  if CR.AddCartIcon then CR.AddCartIcon(r.bandCart, false) end
-  r.bandCart:SetScript("OnClick", function() if r.l and r.l.buy then CR.CreateShoppingList(r.l.buy) end end)
-  r.bandCart:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Auctionator shopping list: " .. (r.l and r.l.head or ""))
-    GameTooltip:AddLine("What this milestone still needs that you don't have yet.", 1, 1, 1, true)
-    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
-    GameTooltip:Show()
-  end)
-  r.bandCart:SetScript("OnLeave", GameTooltip_Hide)
-  r.bandCart:Hide()
   r.bandCost = Cell(r, "RIGHT")
-  r.bandCost:SetPoint("RIGHT", r.bandCart, "LEFT", -6, 0)
+  r.bandCost:SetPoint("RIGHT", 0, 0)   -- (a milestone's cost, at the line's end)
   r.bandCost:Hide()
   r.cells = {}
   r.total = Cell(r, "RIGHT")
@@ -773,12 +756,11 @@ function Refresh(moveOnly)
       r.head:SetText(l.head)
       r.head:Show()
       r.line:Show()
-      -- its cost (and cart, with Auctionator), the line running up to them
+      -- its cost, the line running up to it
       local hasCost = l.cost ~= nil
       r.bandCost:SetText(hasCost and (CR.FormatMoney(l.cost)
         .. ((l.unpriced or 0) > 0 and CR.ColorText(string.format(" +%d", l.unpriced), "ff9966") or "")) or "")
       r.bandCost:SetShown(hasCost)
-      r.bandCart:SetShown(hasCost and CR.HasAuctionator() and #(l.buy and l.buy.materials or {}) > 0)
       r.line:ClearAllPoints()
       r.line:SetPoint("LEFT", r.head, "RIGHT", 6, 0)
       r.line:SetPoint("RIGHT", r.bandCost, "LEFT", -6, 0)
@@ -793,7 +775,6 @@ function Refresh(moveOnly)
       r.head:Hide()
       r.line:Hide()
       r.bandCost:Hide()
-      r.bandCart:Hide()
       r.hl:SetAlpha(1)
       r.icon:Show()
       r.name:Show()
@@ -844,10 +825,6 @@ function Refresh(moveOnly)
   end
 
   -- what's still to buy (not what a route makes itself), as the trackers count it
-  local totals = {}
-  for _, it in ipairs(items) do table.insert(totals, { it = it, need = it.need, have = it.have }) end
-  frame.allMats = ToBuy(totals, "All Materials")
-  frame.shop:SetShown(CR.HasAuctionator() and #frame.allMats.materials > 0)
   local cost, unpriced = 0, 0
   for _, it in ipairs(items) do
     local missing = it.need - it.have
@@ -1083,24 +1060,7 @@ local function Build()
   frame.cost:SetPoint("BOTTOMLEFT", 8, 9)
   frame.alts = CR.CreateAltsCheck(frame, "Alts")
   frame.alts:SetSize(18, 18)
-  -- the cart: an Auctionator shopping list of everything still to buy (the total)
-  frame.shop = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  frame.shop:SetSize(24, 18)
-  frame.shop:SetPoint("BOTTOMRIGHT", -16, 6)
-  frame.shop:SetText("")
-  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.shop) end
-  if CR.AddCartIcon then CR.AddCartIcon(frame.shop, false) end
-  frame.shop:SetScript("OnClick", function() if frame.allMats then CR.CreateShoppingList(frame.allMats) end end)
-  frame.shop:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Auctionator shopping list")
-    GameTooltip:AddLine("Everything still to buy of what this window lists - what you don't have yet; what a "
-      .. "route makes itself is left out.", 1, 1, 1, true)
-    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
-    GameTooltip:Show()
-  end)
-  frame.shop:SetScript("OnLeave", GameTooltip_Hide)
-  frame.alts:SetPoint("RIGHT", frame.shop, "LEFT", -28, 0)
+  frame.alts:SetPoint("BOTTOMRIGHT", -44, 5)
   frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetText("No materials needed - none of your professions' routes uses any right now.")

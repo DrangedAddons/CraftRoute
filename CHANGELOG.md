@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.6
+
+- All Materials window: no shopping carts - the one at the bottom and the ones on the milestone lines are gone (the costs stay).
+
 ## 0.70.5
 
 - Profession window tab: on the Materials button the text is centred and the pop-out icon sits at the button's right end.
