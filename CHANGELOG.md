@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.73.1
+
+- All Materials window: no tooltip on a character's name handle.
+
 ## 0.73.0
 
 - All Materials window: **drag a character's name** (over its columns) to move all its columns as one block - they shift a column at a time as you drag, and stay where you let go. Quick for reordering whole characters.

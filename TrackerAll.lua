@@ -845,13 +845,6 @@ function GroupGrab(g)
   b = CreateFrame("Button", nil, frame)
   b:SetFrameLevel(frame:GetFrameLevel() + 6)
   b:RegisterForDrag("LeftButton")
-  b:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText(self.charName or "")
-    GameTooltip:AddLine("Drag to move all this character's columns together.", 1, 1, 1, true)
-    GameTooltip:Show()
-  end)
-  b:SetScript("OnLeave", GameTooltip_Hide)
   -- where the block starts in the order, and which of its columns the cursor took it by
   local function Start(list, keys)
     for idx, n in ipairs(list) do if n == keys[1] then return idx end end
@@ -872,7 +865,6 @@ function GroupGrab(g)
     end
   end
   b:SetScript("OnDragStart", function(self)
-    GameTooltip_Hide()
     preview = {}
     for _, q in ipairs(frame.profs or {}) do table.insert(preview, q.name) end
     self.dragKeys = self.keys
