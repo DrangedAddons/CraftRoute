@@ -187,6 +187,8 @@ SlashCmdList.CRAFTROUTE = function(msg)
     if CR.DebugBackground then CR.DebugBackground() end
   elseif msg == "tracker" then
     if CR.ToggleTracker then CR.ToggleTracker() end
+  elseif msg == "all" then
+    if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
   elseif msg == "trace" then
     if CR.ToggleCompactTrace then CR.ToggleCompactTrace() end
   elseif msg == "view" then
@@ -199,7 +201,7 @@ SlashCmdList.CRAFTROUTE = function(msg)
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
   elseif msg == "help" then
-    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession, /cr tracker - materials tracker on/off")
+    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession, /cr tracker - materials tracker on/off, /cr all - every profession's materials in one window")
   else
     CR.SafeCall(CR.ToggleWindow)
   end

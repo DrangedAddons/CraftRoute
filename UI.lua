@@ -519,7 +519,10 @@ local function CreateWindow()
   versionText:SetText(version and ("v" .. version) or "")
   -- the materials tracker (Tracker.lua)
   if CR.TrackerButton then
-    CR.TrackerButton(frame):SetPoint("RIGHT", versionText, "LEFT", -10, 0)
+    local tb = CR.TrackerButton(frame)
+    tb:SetPoint("RIGHT", versionText, "LEFT", -10, 0)
+    -- beside it: every profession's materials in one window
+    if CR.AllMaterialsButton then CR.AllMaterialsButton(frame):SetPoint("RIGHT", tb, "LEFT", -4, 0) end
   end
 
   frame.panels = {}

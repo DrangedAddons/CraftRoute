@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.61.0
+
+- New **All Materials** window: every material your professions' routes still need, in one list - the materials down the left, a column per profession you've learned whose route uses materials (what that route needs of it; hover a column's icon for the profession and its route), and the **total** on the right: what you have against what they need together (green once you have enough). Still-short items first. The cost of what's left to buy is at the bottom. Open it with the main window's **All** button (beside Tracker) or `/cr all`; move it by any free space, scroll the list, Ctrl+scroll to scale. It remembers its place and comes back after a reload if it was open. Items hidden in a profession's own tracker are left out of that profession's column. The per-profession trackers are unchanged.
+
 ## 0.60.0
 
 - Profession pickers (the profession window tab and the main window) look like TrainerSpells': **Your Professions** - each with its icon, a radio button and your skill (e.g. 219/225) - then **Other Professions**, greyed out, A to Z (when "Show professions I haven't learned" is on). The box shows the picked profession's icon, name and skill. Picking one still opens its profession window.
