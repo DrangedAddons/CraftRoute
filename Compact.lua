@@ -3760,7 +3760,18 @@ local function BuildOverlay()
   frame.mainBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   frame.mainBtn:SetSize(130, 22)
   frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
-  frame.mainBtn:SetText("Material List")
+  frame.mainBtn:SetText("Materials")
+  -- "Materials" and the pop-out icon after it (the pair centred on the button)
+  do
+    local icon = CR.AddPopoutIcon(frame.mainBtn)
+    local fs = frame.mainBtn:GetFontString()
+    if fs then
+      fs:ClearAllPoints()
+      fs:SetPoint("CENTER", frame.mainBtn, "CENTER", -9, 0)
+      icon:ClearAllPoints()
+      icon:SetPoint("LEFT", fs, "RIGHT", 5, 1)
+    end
+  end
   CR.ThemeRegisterButton(frame.mainBtn)
   -- only this character's materials, or alts' too (the same setting as the main window's)
   frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
@@ -3779,7 +3790,7 @@ local function BuildOverlay()
   end)
   frame.mainBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Material List")
+    GameTooltip:SetText("Materials")
     GameTooltip:AddLine("Opens / closes the All Materials window: every material your professions' routes still "
       .. "need, in one list. Double-click a profession's icon there for its own tracker.", 1, 1, 1, true)
     GameTooltip:AddLine("The full CraftRoute window: /cr.", 0.6, 0.6, 0.6, true)
