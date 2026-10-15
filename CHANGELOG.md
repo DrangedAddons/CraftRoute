@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.66.0
+
+- All Materials window:
+  - The **cart** at the bottom right: an Auctionator shopping list of everything still to buy for the total.
+  - The **Vendor items** tick and the **sort** sit above the Material column (no need to open Edit); the profession icons line up along the bottom of the header. Edit stays, for what comes next.
+  - In **Milestones**, each milestone's line shows what reaching it still costs, and its own **cart** - a shopping list of just that milestone's missing materials.
+
 ## 0.65.2
 
 - All Materials window:

@@ -4,10 +4,11 @@
 -- learned whose route uses materials; an item hidden in a profession's own tracker is left out of
 -- that profession's column. Open with the main window's "All" button or /cr all.
 -- Like the trackers: size panel (width of the names, scale, height - shorter scrolls) and a corner
--- grip for the height, Ctrl+wheel scales; the Alts tick; and behind Edit: vendor items shown or
--- not, and the order - Route order (by where the routes first use each), Milestones (split by rank
+-- grip for the height, Ctrl+wheel scales; the Alts tick and the cart (a shopping list of all
+-- still to buy); above the materials, vendor items shown or not, and the order - Route order (by where the routes first use each), Milestones (split by rank
 -- band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you have
--- counting towards the earliest bands first) or A-Z.
+-- counting towards the earliest bands first; each band's heading has what reaching it still costs
+-- and its own cart) or A-Z.
 -- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
 -- 225 / 300 (Settings().goals[profession]) - its goal shows under the icon in its rank's colour
 -- (Apprentice white, Journeyman green, Expert blue, Artisan purple); picked here: a gold border. Right-click an icon to take that profession off
@@ -17,13 +18,14 @@
 -- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
-local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 34, 18, 25   -- (a heading: icon, its goal under it)
+local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 58, 18, 25
+local ICON_H = 34   -- a profession's heading: its icon, its goal under it (at the header's bottom)
 local COL_W, TOTAL_W, MIN_NAME, MAX_NAME = 44, 74, 100, 320
 local MIN_S, MAX_S, MIN_H, MAX_H = 0.6, 2, 120, 900
 local BANDS = { { 1, 75 }, { 75, 150 }, { 150, 225 }, { 225, 300 } }
--- the title bar, then (while editing) the bar with Vendor / sort
+-- the title bar (Edit: nothing behind it yet - kept for what comes)
 local editing = false
-local function Top() return 28 + (editing and 22 or 0) end
+local function Top() return 28 end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
 local sizePanel, sizePanelSync
@@ -139,6 +141,20 @@ local function Gather()
   return profs, items
 end
 
+-- what's still to buy of these lines: the shopping list's materials, the cost, how many unpriced
+-- (what a route makes itself isn't bought)
+local function ToBuy(lines, label)
+  local mats, cost, unpriced = {}, 0, 0
+  for _, l in ipairs(lines) do
+    local missing = l.need - l.have
+    if l.it and missing > 0 and l.it.crafted == 0 then
+      table.insert(mats, { id = l.it.id, missing = missing, name = l.it.name })
+      if l.it.price then cost = cost + l.it.price * missing else unpriced = unpriced + 1 end
+    end
+  end
+  return { prof = label, materials = mats }, cost, unpriced
+end
+
 -- the lines to show: { head = "1-75" } and { it = item, per, need, have } in display order
 local function Lines(items)
   local out = {}
@@ -178,7 +194,10 @@ local function Lines(items)
         if a.first ~= b.first then return a.first < b.first end
         return (a.it.name or "") < (b.it.name or "")
       end)
-      table.insert(out, { head = string.format("%d-%d", band[1], band[2]) })
+      -- the milestone's heading: what reaching it still costs, and its own shopping list
+      local label = string.format("%d-%d", band[1], band[2])
+      local list2, cost, unpriced = ToBuy(list, "All Materials " .. label)
+      table.insert(out, { head = label, cost = cost, unpriced = unpriced, buy = list2 })
       for _, l in ipairs(list) do table.insert(out, l) end
     end
   end
@@ -237,6 +256,26 @@ local function Row(i)
   r.line:SetColorTexture(1, 0.82, 0.35, 0.25)
   r.line:SetPoint("LEFT", r.head, "RIGHT", 6, 0)
   r.line:SetPoint("RIGHT", 0, -1)
+  -- a milestone's cost and its cart, at the line's end
+  r.bandCart = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+  r.bandCart:SetSize(22, 16)
+  r.bandCart:SetPoint("RIGHT", 0, 0)
+  r.bandCart:SetText("")
+  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(r.bandCart) end
+  if CR.AddCartIcon then CR.AddCartIcon(r.bandCart, false) end
+  r.bandCart:SetScript("OnClick", function() if r.l and r.l.buy then CR.CreateShoppingList(r.l.buy) end end)
+  r.bandCart:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Auctionator shopping list: " .. (r.l and r.l.head or ""))
+    GameTooltip:AddLine("What this milestone still needs that you don't have yet.", 1, 1, 1, true)
+    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
+    GameTooltip:Show()
+  end)
+  r.bandCart:SetScript("OnLeave", GameTooltip_Hide)
+  r.bandCart:Hide()
+  r.bandCost = Cell(r, "RIGHT")
+  r.bandCost:SetPoint("RIGHT", r.bandCart, "LEFT", -6, 0)
+  r.bandCost:Hide()
   r.cells = {}
   r.total = Cell(r, "RIGHT")
   -- under the + : an empty slot's "-" (what's added there will fill it)
@@ -306,7 +345,7 @@ local function Col(name)
     offset = 0
     Refresh()
   end)
-  c:SetSize(COL_W, HEAD_H)
+  c:SetSize(COL_W, ICON_H)
   -- (the box itself: just the icon and the goal - no frame, no text, no arrow)
   if c.SetBackdropColor then c:SetBackdropColor(0, 0, 0, 0) end
   if c.SetBackdropBorderColor then c:SetBackdropBorderColor(0, 0, 0, 0) end
@@ -478,7 +517,7 @@ local function PlaceDragged()
   local n = #(frame.profs or {})
   x = math.max(frame.colsLeft - COL_W / 2, math.min(frame.colsLeft + (n - 0.5) * COL_W, x))
   c:ClearAllPoints()
-  c:SetPoint("TOPLEFT", frame, "TOPLEFT", x - COL_W / 2, -Top())
+  c:SetPoint("TOPLEFT", frame, "TOPLEFT", x - COL_W / 2, -Top() - HEAD_H + ICON_H)
 end
 
 function Refresh(moveOnly)
@@ -512,13 +551,13 @@ function Refresh(moveOnly)
     c.goal:SetText(p.goal and CR.ColorText(tostring(p.goal), RankOf(p.goal)[3]) or "")
     for _, t in ipairs(c.picked) do t:SetShown(p.picked and true or false) end
     c:ClearAllPoints()
-    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
+    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top() - HEAD_H + ICON_H)
     c:SetAlpha(p.empty and 0.6 or 1)
     c:Show()
     -- the dragged one: its place in the order marked down the list
     if dragCol == c then
       frame.slot:ClearAllPoints()
-      frame.slot:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
+      frame.slot:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top() - HEAD_H + ICON_H)
       frame.slot:SetWidth(COL_W)
     end
   end
@@ -527,7 +566,7 @@ function Refresh(moveOnly)
   PlaceDragged()
   local add = AddButton()
   add:ClearAllPoints()
-  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - 11)   -- (level with the icons)
+  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - HEAD_H + ICON_H - 11)   -- (level with the icons)
   add:Show()
   frame.itemHead:ClearAllPoints()
   frame.itemHead:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 8, -Top() - HEAD_H + 2)
@@ -554,6 +593,15 @@ function Refresh(moveOnly)
       r.head:SetText(l.head)
       r.head:Show()
       r.line:Show()
+      -- its cost (and cart, with Auctionator), the line running up to them
+      local hasCost = l.cost ~= nil
+      r.bandCost:SetText(hasCost and (CR.FormatMoney(l.cost)
+        .. ((l.unpriced or 0) > 0 and CR.ColorText(string.format(" +%d", l.unpriced), "ff9966") or "")) or "")
+      r.bandCost:SetShown(hasCost)
+      r.bandCart:SetShown(hasCost and CR.HasAuctionator() and #(l.buy and l.buy.materials or {}) > 0)
+      r.line:ClearAllPoints()
+      r.line:SetPoint("LEFT", r.head, "RIGHT", 6, 0)
+      r.line:SetPoint("RIGHT", r.bandCost, "LEFT", -6, 0)
       r.icon:Hide()
       r.name:Hide()
       r.total:Hide()
@@ -564,6 +612,8 @@ function Refresh(moveOnly)
       r:SetHeight(ROW_H)
       r.head:Hide()
       r.line:Hide()
+      r.bandCost:Hide()
+      r.bandCart:Hide()
       r.hl:SetAlpha(1)
       r.icon:Show()
       r.name:Show()
@@ -614,6 +664,10 @@ function Refresh(moveOnly)
   end
 
   -- what's still to buy (not what a route makes itself), as the trackers count it
+  local totals = {}
+  for _, it in ipairs(items) do table.insert(totals, { it = it, need = it.need, have = it.have }) end
+  frame.allMats = ToBuy(totals, "All Materials")
+  frame.shop:SetShown(CR.HasAuctionator() and #frame.allMats.materials > 0)
   local cost, unpriced = 0, 0
   for _, it in ipairs(items) do
     local missing = it.need - it.have
@@ -623,15 +677,13 @@ function Refresh(moveOnly)
   end
   frame.cost:SetText(#items > 0 and (CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or "")) or "")
-  frame.slot:SetHeight(HEAD_H + 2 + math.max(1, vis) * ROW_H)
+  frame.slot:SetHeight(ICON_H + 2 + math.max(1, vis) * ROW_H)
   frame.empty:ClearAllPoints()
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetShown(#items == 0)
   frame.alts:Sync()
   frame.vendor:SetChecked(not Settings().hideVendor)
-  frame.vendor:SetShown(editing)
-  frame.sortDD:SetShown(editing)
-  if editing then frame.sortDD:Sync() elseif frame.sortDD.menu then frame.sortDD.menu:Hide() end
+  frame.sortDD:Sync()
   frame.edit:SetText(editing and "Done" or "Edit")
   frame:SetSize(math.max(width, 300), top + math.max(1, vis) * ROW_H + bottom)
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
@@ -786,7 +838,7 @@ local function Build()
   frame.edit:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(editing and "Done" or "Edit")
-    GameTooltip:AddLine("Vendor items shown or not, and the order.", 1, 1, 1, true)
+    GameTooltip:AddLine("Nothing here yet.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   frame.edit:SetScript("OnLeave", GameTooltip_Hide)
@@ -794,7 +846,7 @@ local function Build()
   -- the bar under it: vendor items shown or not, and the order
   frame.vendor = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
   frame.vendor:SetSize(20, 20)
-  frame.vendor:SetPoint("TOPLEFT", 6, -26)
+  frame.vendor:SetPoint("TOPLEFT", 6, -Top() - 1)   -- (above the sort, above "Material")
   frame.vendor.label = frame.vendor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.vendor.label:SetPoint("LEFT", frame.vendor, "RIGHT", 2, 0)
   frame.vendor.label:SetText("Vendor items")
@@ -818,7 +870,7 @@ local function Build()
     Refresh()
   end)
   frame.sortDD:SetHeight(18)
-  frame.sortDD:SetPoint("LEFT", frame.vendor.label, "RIGHT", 10, 0)
+  frame.sortDD:SetPoint("TOPLEFT", 8, -Top() - 21)
   frame.sortDD:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Sort")
@@ -851,7 +903,24 @@ local function Build()
   frame.cost:SetPoint("BOTTOMLEFT", 8, 9)
   frame.alts = CR.CreateAltsCheck(frame, "Alts")
   frame.alts:SetSize(18, 18)
-  frame.alts:SetPoint("BOTTOMRIGHT", -44, 5)
+  -- the cart: an Auctionator shopping list of everything still to buy (the total)
+  frame.shop = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.shop:SetSize(24, 18)
+  frame.shop:SetPoint("BOTTOMRIGHT", -16, 6)
+  frame.shop:SetText("")
+  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.shop) end
+  if CR.AddCartIcon then CR.AddCartIcon(frame.shop, false) end
+  frame.shop:SetScript("OnClick", function() if frame.allMats then CR.CreateShoppingList(frame.allMats) end end)
+  frame.shop:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Auctionator shopping list")
+    GameTooltip:AddLine("Everything still to buy of what this window lists - what you don't have yet; what a "
+      .. "route makes itself is left out.", 1, 1, 1, true)
+    if not CR.HasAuctionator() then GameTooltip:AddLine("Needs Auctionator.", 1, 0.5, 0.3, true) end
+    GameTooltip:Show()
+  end)
+  frame.shop:SetScript("OnLeave", GameTooltip_Hide)
+  frame.alts:SetPoint("RIGHT", frame.shop, "LEFT", -28, 0)
   frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetText("No materials needed - none of your professions' routes uses any right now.")
