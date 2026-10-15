@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.59.0
+
+- **Skinning route** reworked from the Classic guide, by zone: 1-75 Durotar / Dun Morogh, 75-115 The Barrens / Loch Modan, 115-155 The Barrens / Wetlands, 155-205 Thousand Needles / Arathi Highlands, 205-300 Feralas (Un'Goro Crater at the end). Training is part of the route now - Journeyman at 50, Expert at 125, Artisan at 205, each naming the guide's trainer for your faction (Thuwd, Dranh, Kulleg Stonehorn / Balthus Stoneflayer) - along with buying the Skinning Knife.
+- Route steps that aren't crafts (gathering, training, buying): each has a short **title** and its details below it - no longer the same block of text twice.
+- A gathering step's **progress bar** fills over the guide's whole step (e.g. 60 of 1-75) - it used to start at your current skill, so it never filled.
+
 ## 0.58.4
 
 - Profession window tab: no more **dark box** sticking out past the window's right edge, behind the side tabs. Opening the window straight onto CraftRoute's tab (the CraftRoute key) copied Blizzard's page background in the very moment the window appeared, before Blizzard had sized its page - its recipe panel's border was read too big (and before a skin had faded it), and stayed that way. Each copied texture now follows the Blizzard texture it copies as the page settles, it's copied again shortly after opening (picking up a skin's fade), and nothing reaching outside the tab is copied. The crafting buttons' places are re-read at the same moments.

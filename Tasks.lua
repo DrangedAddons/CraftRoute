@@ -475,7 +475,14 @@ function CR.StepTask(st, profName)
     -- guide step
     t.kind = "guide"
     t.icon = (CR.GATHER_ICON and CR.GATHER_ICON[skillName]) or "Interface\\Icons\\INV_Misc_Note_01"
-    t.title = FirstSentence(text)
+    -- its title: the step's own, else its first sentence (then not repeated in the details)
+    if st.title then
+      t.title = st.title
+    else
+      t.title = FirstSentence(text)
+      local rest = text:sub(#t.title + 1):gsub("^%s+", "")
+      if t.title:sub(-3) ~= "..." and rest ~= "" then t.text = rest end
+    end
     if st.learnStep then Cond(learned, skillName .. " learned") end
     if st.learns then Prep(learned, skillName .. " learned") end
     if st.trainCap then
@@ -506,7 +513,8 @@ function CR.StepTask(st, profName)
       and ((st.yields and #st.yields > 0) or st.catches or st.chosen or st.gather or st.ownSkill == "Fishing")
     if activity and st.to and st.to > (st.from or 0) then
       Cond(cur >= st.to, string.format("%s %d (you: %d)", skillName, st.to, cur))
-      t.progress = { from = st.from or 0, to = st.to, cur = cur }
+      -- over the guide's whole step (the plan's own range starts at your skill, so it'd never fill)
+      t.progress = { from = st.stepFrom or st.from or 0, to = st.to, cur = cur }
     elseif ((st.items and #st.items > 0) or (st.has and #st.has > 0)) and not st.trainCap and not st.learnStep then
       t.kind = "buy"
     end

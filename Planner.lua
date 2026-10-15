@@ -365,6 +365,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
   local frac = (st.to > st.from) and (hi - lo) / (st.to - st.from) or 1
   local out = { kind = st.kind or "craft", from = lo, to = hi, skill = skillName, catches = st.catches,
                 note = st.note and CR.FactionText(st.note), text = st.text and CR.FactionText(st.text),
+                title = st.title and CR.FactionText(st.title),
                 fork = st.when ~= nil, index = index,
                 stepFrom = st.from, stepTo = st.to,   -- the guide's full range, for progress bars
                 -- A band's general instruction goes above its "pick one" block (forks sort at lo - 0.6).
