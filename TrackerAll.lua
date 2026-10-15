@@ -1414,6 +1414,21 @@ function CR.ToggleAllMaterials(show)
 end
 CR.RefreshAllMaterials = Refresh
 
+-- This window's columns, open or not, in its order: { key, prof, char, charName, cur, goal, plan,
+-- route } - each planned to its picked guide (the item tooltip shows these)
+function CR.AllMaterialsColumns()
+  local out = {}
+  for _, key in ipairs(Ordered()) do
+    local col = Column(key)
+    local e = col and PlanFor(col)
+    if e and e.plan then
+      table.insert(out, { key = key, prof = col.prof, char = col.char, charName = col.charName,
+                          cur = e.cur, goal = e.goal, plan = e.plan, route = CR.Route(col.prof) })
+    end
+  end
+  return out
+end
+
 -- This window's list as a lookup, open or not: [itemID] = { need, have, crafted } over every
 -- profession it covers (each to its picked guide, the ones taken off left out, vendor items as set)
 -- - the loot feed counts against it.

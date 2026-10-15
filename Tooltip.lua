@@ -1,4 +1,4 @@
--- Adds "needed for ..." lines to item tooltips for anything in the current plan.
+-- Adds "needed for ..." lines to item tooltips for what the All Materials window tracks.
 local _, CR = ...
 
 local MAX_USAGE_LINES = 6
@@ -8,30 +8,31 @@ local function Count(have, need)
   return string.format("|cff%s%d/%d|r", color, math.min(have, need), need)
 end
 
--- Professions whose plans feed the tooltip: every profession this character has learned, plus
--- the one selected on the Plan tab (so browsing another profession still shows its needs).
--- Cooking and Fishing share the combined guide; it's only shown once.
-local function TooltipProfessions()
-  local list, seenRoute = {}, {}
-  local selected = CraftRouteCharDB.profession
-  local function Add(name)
-    local route = CR.Route(name)
-    if route and not seenRoute[route] then
-      seenRoute[route] = true
-      table.insert(list, name)
-    end
+-- The All Materials window's columns that need this item (your professions on it, the other
+-- characters' you've added - each to the guide picked there): a block each - what it's needed
+-- for, and have/need to that column's goal - then, with more than one, the total together.
+function CR.AddTooltipLines(tooltip, itemID)
+  if not itemID or not CraftRouteCharDB then return end
+  local cols = CR.AllMaterialsColumns and CR.AllMaterialsColumns()
+  if not cols then return end
+  local blocks = {}
+  for _, c in ipairs(cols) do
+    local m = c.plan.byId and c.plan.byId[itemID]
+    if m and (m.need or 0) > 0 then table.insert(blocks, { col = c, m = m }) end
   end
-  for _, name in ipairs(CR.SupportedProfessions()) do
-    local _, _, detected = CR.GetSkill(name)
-    if detected or name == selected then Add(name) end
-  end
-  return list
-end
+  if #blocks == 0 then return end
 
--- One profession's block: what the item is needed for, have/need for the goal and full route.
-local function AddProfessionLines(tooltip, entry, m, f, heading)
-  if heading then tooltip:AddLine(heading, 1, 1, 1) end
-  if m then
+  tooltip:AddLine(" ")
+  tooltip:AddLine("|cff33ccffCraftRoute|r")
+  local need, have, crafted, price = 0, 0, 0, nil
+  for _, b in ipairs(blocks) do
+    local c, m = b.col, b.m
+    -- named when there's more than one, or it's another character's
+    local heading
+    if #blocks > 1 or c.char then
+      heading = c.char and (c.charName .. "'s " .. c.prof) or ((c.route and c.route.sequential) and c.route.label or c.prof)
+    end
+    if heading then tooltip:AddLine(heading, 1, 1, 1) end
     local shown = 0
     for _, u in ipairs(m.usage or {}) do
       shown = shown + 1
@@ -41,48 +42,19 @@ local function AddProfessionLines(tooltip, entry, m, f, heading)
       end
       tooltip:AddDoubleLine("  Needed for " .. CR.TipShort(u.label), u.n, 0.8, 0.8, 0.8, 1, 1, 1)
     end
-    local extra = m.crafted > 0 and string.format(" (+%d crafted)", m.crafted) or ""
-    local label = entry.route.sequential and ("To finish the " .. entry.route.label .. " guide:")
-      or string.format("To reach %s %d (from %d):", entry.plan.prof, entry.goal, entry.cur)
-    tooltip:AddDoubleLine(label, Count(m.have + m.crafted, m.need) .. extra, 1, 0.82, 0)
+    local extra = (m.crafted or 0) > 0 and string.format(" (+%d crafted)", m.crafted) or ""
+    tooltip:AddDoubleLine(string.format("To reach %s %d (from %d):", c.prof, c.goal or 0, c.cur or 0),
+      Count((m.have or 0) + (m.crafted or 0), m.need) .. extra, 1, 0.82, 0)
+    need = need + m.need
+    have = math.max(have, m.have or 0)   -- (the same stock for each)
+    crafted = crafted + (m.crafted or 0)
+    if not price and m.price and (m.crafted or 0) == 0 then price = m end
   end
-  if f and entry.full ~= entry.plan then
-    tooltip:AddDoubleLine(string.format("To complete %s %d-%d:", entry.full.prof, entry.cur, entry.full.goal),
-      Count(f.have + f.crafted, f.need), 1, 0.82, 0)
-  end
-end
-
-function CR.AddTooltipLines(tooltip, itemID)
-  if not itemID or not CraftRouteCharDB then return end
-  local blocks, price = {}, nil
-  for _, name in ipairs(TooltipProfessions()) do
-    local entry = CR.GetPlans(name)
-    if entry then
-      local full = CR.FullPlan(entry)
-      local m, f = entry.plan.byId[itemID], full and full.byId[itemID]
-      if m or f then
-        table.insert(blocks, { entry = entry, m = m, f = f, name = name })
-        local p = m or f
-        if not price and p.price and p.crafted == 0 then price = p end
-      end
-    end
-  end
-  if #blocks == 0 then return end
-
-  tooltip:AddLine(" ")
-  tooltip:AddLine("|cff33ccffCraftRoute|r")
-  for _, b in ipairs(blocks) do
-    -- Name each profession when more than one needs the item, or when it's one you haven't learned.
-    local _, _, detected = CR.GetSkill(b.name)
-    local heading
-    if #blocks > 1 or not detected then
-      heading = (b.entry.route.sequential and b.entry.route.label or b.name)
-        .. (detected and "" or " |cff888888(not learned)|r")
-    end
-    AddProfessionLines(tooltip, b.entry, b.m, b.f, heading)
+  if #blocks > 1 then
+    tooltip:AddDoubleLine("Together:", Count(have + crafted, need), 1, 0.82, 0)
   end
   if price then
-    local missing = price.missing
+    local missing = math.max(0, need - have - crafted)
     tooltip:AddDoubleLine(price.priceSrc == "vendor" and "  Vendor price" or "  AH price (Auctionator)",
       CR.FormatMoney(price.price) .. (missing > 0 and ("  |cffaaaaaa(buy " .. missing .. ": "
         .. CR.FormatMoney(price.price * missing) .. ")|r") or ""),
