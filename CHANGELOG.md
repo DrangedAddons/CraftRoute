@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.65.0
+
+- All Materials window:
+  - **Dragging a column** shows where it's going: the icon follows the cursor along the headings, and as it passes each column the columns - numbers and all - shift over to make room, its new slot marked down the list. Let go and it stays there.
+  - **Every profession you've learned** has a column, secondary ones included - even with nothing to track (its guide done, or a guide with no materials, like Fishing or Skinning); those are dimmed, with "-" all the way down.
+  - Under the **+** box, a column of "-": the empty slot a profession you add will fill.
+
 ## 0.64.0
 
 - All Materials window:

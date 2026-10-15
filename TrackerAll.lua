@@ -12,6 +12,7 @@
 -- 225 / 300 (Settings().goals[profession]). Right-click an icon to take that profession off
 -- (Settings().removed), drag it to move its column (Settings().order), double-click it for that
 -- profession's own tracker; the + after the icons adds a removed one back.
+-- Every profession you've learned has a column (secondary ones too), even with nothing to track.
 -- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
@@ -67,10 +68,12 @@ local function Removed()
   st.removed = st.removed or {}
   return st.removed
 end
+local preview   -- while a column is dragged: the order it would leave (shown live)
+local dragCol   -- the column heading being dragged
 local function Ordered()
   local list = CR.SupportedProfessions()
   local pos = {}
-  for i, name in ipairs(Settings().order or {}) do pos[name] = i end
+  for i, name in ipairs(preview or Settings().order or {}) do pos[name] = i end
   local natural = {}
   for i, name in ipairs(list) do natural[name] = i end
   table.sort(list, function(a, b)
@@ -128,8 +131,9 @@ local function Gather()
         end
       end
     end
-    -- (a profession whose picked guide needs nothing still gets its column - to pick another)
-    if any or (e and e.picked) then table.insert(profs, { name = name, cur = e.cur, goal = e.goal, picked = e.picked }) end
+    -- every learned one gets its column, even with nothing to track (finished, or a guide that uses
+    -- no materials) - so you see it's taken into account
+    if e then table.insert(profs, { name = name, cur = e.cur, goal = e.goal, picked = e.picked, empty = not any }) end
   end
   return profs, items
 end
@@ -224,6 +228,10 @@ local function Row(i)
   r.line:SetPoint("RIGHT", 0, -1)
   r.cells = {}
   r.total = Cell(r, "RIGHT")
+  -- under the + : an empty slot's "-" (what's added there will fill it)
+  r.spare = Cell(r, "CENTER")
+  r.spare:SetWidth(20)
+  r.spare:SetText(CR.ColorText("-", "555555"))
   r.hl = r:CreateTexture(nil, "HIGHLIGHT")
   r.hl:SetAllPoints()
   r.hl:SetColorTexture(1, 1, 1, 0.06)
@@ -254,8 +262,8 @@ end
 local Refresh
 local GOAL_OPTS = { 75, 150, 225, 300 }
 local dragged = {}   -- [column] = just dragged (its release isn't a click)
-local function Col(i)
-  local c = cols[i]
+local function Col(name)
+  local c = cols[name]
   if c then return c end
   c = CR.CreateDropdown(frame, COL_W, function()
     local p = c and c.p
@@ -300,6 +308,9 @@ local function Col(i)
     if p.cur and p.goal then
       GameTooltip:AddLine(string.format("%s %d > %d", p.picked and "Guide" or "Route", p.cur, p.goal), 1, 1, 1)
     end
+    if p.empty then
+      GameTooltip:AddLine("Nothing to track - its guide is done, or uses no materials.", 0.4, 0.8, 1, true)
+    end
     GameTooltip:AddLine("Click to pick which guide this column tracks: the route's own goal, or to 75 / 150 / 225 / 300.",
       0.6, 0.6, 0.6, true)
     GameTooltip:Show()
@@ -333,39 +344,58 @@ local function Col(i)
     end)
   end)
   c:RegisterForDrag("LeftButton")
+  -- dragged: it follows the cursor along the headings, and as it passes a column the columns (and
+  -- their numbers) shift over to make room - the order you'll get, live; released, it stays
+  local function Slot()
+    local x = GetCursorPosition() / frame:GetEffectiveScale()
+    local first = frame.colsLeft and frame:GetLeft() and (frame:GetLeft() + frame.colsLeft)
+    local n = #(frame.profs or {})
+    if not first or n == 0 then return nil end
+    return math.max(1, math.min(n, math.floor((x - first) / COL_W) + 1))
+  end
+  -- the dragged column into the slot under the cursor (the others shift over)
+  local function MoveTo(self)
+    if not preview then return end
+    local to = Slot()
+    local from
+    for j, n in ipairs(preview) do if n == self.p.name then from = j end end
+    if to and from and to ~= from then
+      table.remove(preview, from)
+      table.insert(preview, to, self.p.name)
+      Refresh()
+    else
+      Refresh(true)   -- (just the dragged heading under the cursor)
+    end
+  end
   c:SetScript("OnDragStart", function(self)
     pending = nil
     dragged[self] = true
-    self:SetAlpha(0.4)
-    frame.dragCol = self
-  end)
-  c:SetScript("OnDragStop", function(self)
-    self:SetAlpha(1)
-    frame.dragCol = nil
-    C_Timer.After(0, function() dragged[self] = nil end)   -- (a release that isn't a click)
-    -- dropped over which column's place (by the cursor across the headings)
-    local x = GetCursorPosition() / frame:GetEffectiveScale()
-    local profs = frame.profs or {}
-    local from, to
-    for j, q in ipairs(profs) do
-      if q.name == self.p.name then from = j end
-    end
-    local first = frame.colsLeft and (frame:GetLeft() + frame.colsLeft)
-    if not (from and first) then return end
-    to = math.max(1, math.min(#profs, math.floor((x - first) / COL_W) + 1))
-    if to == from then return end
-    local names = {}
-    for _, q in ipairs(profs) do table.insert(names, q.name) end
-    table.remove(names, from)
-    table.insert(names, to, self.p.name)
-    -- the new order: these columns, then the rest as they were
-    local seen, order = {}, {}
-    for _, n in ipairs(names) do seen[n] = true table.insert(order, n) end
-    for _, n in ipairs(Ordered()) do if not seen[n] then table.insert(order, n) end end
-    Settings().order = order
+    if self.menu then self.menu:Hide() end
+    GameTooltip_Hide()
+    dragCol = self
+    preview = {}
+    for _, q in ipairs(frame.profs or {}) do table.insert(preview, q.name) end
+    self:SetFrameLevel(frame:GetFrameLevel() + 20)
+    self:SetScript("OnUpdate", MoveTo)
     Refresh()
   end)
-  cols[i] = c
+  c:SetScript("OnDragStop", function(self)
+    self:SetScript("OnUpdate", nil)
+    MoveTo(self)   -- (where it's let go)
+    self:SetFrameLevel(frame:GetFrameLevel() + 2)
+    dragCol = nil
+    C_Timer.After(0, function() dragged[self] = nil end)   -- (a release that isn't a click)
+    -- the order it was dropped in: these columns, then the rest as they were
+    if preview then
+      local seen, order = {}, {}
+      for _, n in ipairs(preview) do seen[n] = true table.insert(order, n) end
+      preview = nil
+      for _, n in ipairs(Ordered()) do if not seen[n] then table.insert(order, n) end end
+      Settings().order = order
+    end
+    Refresh()
+  end)
+  cols[name] = c
   return c
 end
 
@@ -404,8 +434,20 @@ local function AddButton()
   return a
 end
 
-function Refresh()
+-- moveOnly: just put the dragged heading under the cursor (every frame while dragging)
+local function PlaceDragged()
+  local c = dragCol
+  if not (c and frame.colsLeft and frame:GetLeft()) then return end
+  local x = GetCursorPosition() / frame:GetEffectiveScale() - frame:GetLeft()
+  local n = #(frame.profs or {})
+  x = math.max(frame.colsLeft - COL_W / 2, math.min(frame.colsLeft + (n - 0.5) * COL_W, x))
+  c:ClearAllPoints()
+  c:SetPoint("TOPLEFT", frame, "TOPLEFT", x - COL_W / 2, -Top())
+end
+
+function Refresh(moveOnly)
   if not (frame and frame:IsShown()) then return end
+  if moveOnly then PlaceDragged() return end
   local profs, items = Gather()
   frame.profs = profs
   local lines = Lines(items)
@@ -423,17 +465,28 @@ function Refresh()
   frame.colsLeft = left
 
   -- headings
+  local shownCol = {}
   for i, p in ipairs(profs) do
-    local c = Col(i)
+    local c = Col(p.name)
+    shownCol[p.name] = true
     c.p = p
     c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
     -- the goal it tracks to (picked here: gold)
     c.goal:SetText(p.goal and (p.picked and CR.ColorText(tostring(p.goal), "ffd100") or tostring(p.goal)) or "")
     c:ClearAllPoints()
     c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
+    c:SetAlpha(p.empty and 0.6 or 1)
     c:Show()
+    -- the dragged one: its place in the order marked down the list
+    if dragCol == c then
+      frame.slot:ClearAllPoints()
+      frame.slot:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
+      frame.slot:SetWidth(COL_W)
+    end
   end
-  for i = #profs + 1, #cols do cols[i]:Hide() end
+  for name, c in pairs(cols) do if not shownCol[name] then c:Hide() end end
+  frame.slot:SetShown(dragCol ~= nil)
+  PlaceDragged()
   local add = AddButton()
   add:ClearAllPoints()
   add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - HEAD_H / 2)
@@ -468,6 +521,7 @@ function Refresh()
       r.total:Hide()
       r.hl:SetAlpha(0)
       for _, fs in ipairs(r.cells) do fs:Hide() end
+      r.spare:Hide()
     else
       r:SetHeight(ROW_H)
       r.head:Hide()
@@ -491,6 +545,9 @@ function Refresh()
         fs:Show()
       end
       for j = #profs + 1, #r.cells do r.cells[j]:Hide() end
+      r.spare:ClearAllPoints()
+      r.spare:SetPoint("LEFT", r, "LEFT", left - 8 + #profs * COL_W + 4, 0)
+      r.spare:Show()
       r.total:ClearAllPoints()
       r.total:SetPoint("RIGHT", r, "RIGHT", 0, 0)
       r.total:SetWidth(TOTAL_W)
@@ -528,6 +585,7 @@ function Refresh()
   end
   frame.cost:SetText(#items > 0 and (CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or "")) or "")
+  frame.slot:SetHeight(HEAD_H + 2 + math.max(1, vis) * ROW_H)
   frame.empty:ClearAllPoints()
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetShown(#items == 0)
@@ -740,6 +798,9 @@ local function Build()
   frame.measure = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.measure:SetAlpha(0)
 
+  frame.slot = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
+  frame.slot:SetColorTexture(1, 0.82, 0.35, 0.12)
+  frame.slot:Hide()
   frame.track = frame:CreateTexture(nil, "ARTWORK")
   frame.track:SetWidth(4)
   frame.track:SetColorTexture(1, 1, 1, 0.08)
