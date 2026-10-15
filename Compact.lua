@@ -3925,6 +3925,11 @@ local function BuildOverlay()
   frame.viewDest = ViewButton("Craft", "dest", "Your recipes, after the route: pick the ones you want handy or "
     .. "aim to make - what they cost, whether you know them, where to get them, and crafting. Opens here once a "
     .. "profession is at " .. TRUE_MAX .. ".")
+  -- the version: top left, just above the Craft button
+  if frame.version then
+    frame.version:ClearAllPoints()
+    frame.version:SetPoint("BOTTOMLEFT", frame.viewDest, "TOPLEFT", 2, 3)
+  end
 
   frame.destSearch = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
   frame.destSearch:SetHeight(20)

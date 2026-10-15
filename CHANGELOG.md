@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.1
+
+- Profession window tab: the version number sits in the top left corner, just above the Craft button.
+
 ## 0.70.0
 
 - Profession window tab, the recipe on the right:
