@@ -8,7 +8,9 @@
 -- not. In route order the list is split by rank band (1-75, 75-150, 150-225, 225-300): each band
 -- has what the routes use in it, and what you have counts towards the earliest bands first.
 -- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
--- 225 / 300 (Settings().goals[profession]).
+-- 225 / 300 (Settings().goals[profession]). Right-click an icon to take that profession off
+-- (Settings().removed), drag it to move its column (Settings().order), double-click it for that
+-- profession's own tracker; the + after the icons adds a removed one back.
 -- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
@@ -56,14 +58,42 @@ local function PlanFor(name)
   return e
 end
 
+-- professions taken off this window, and the columns' order
+local function Removed()
+  local st = Settings()
+  st.removed = st.removed or {}
+  return st.removed
+end
+local function Ordered()
+  local list = CR.SupportedProfessions()
+  local pos = {}
+  for i, name in ipairs(Settings().order or {}) do pos[name] = i end
+  local natural = {}
+  for i, name in ipairs(list) do natural[name] = i end
+  table.sort(list, function(a, b)
+    local pa, pb = pos[a] or (1000 + natural[a]), pos[b] or (1000 + natural[b])
+    return pa < pb
+  end)
+  return list
+end
+-- the learned professions with a route that are taken off (for the + menu)
+local function RemovedLearned()
+  local out = {}
+  for _, name in ipairs(Ordered()) do
+    local _, _, detected = CR.GetSkill(name)
+    if detected and Removed()[name] then table.insert(out, name) end
+  end
+  return out
+end
+
 -- profs = { { name, cur, goal } }; items = { { id, name, per = { [prof] = n }, need, have, price,
 -- crafted, first, band = { [i] = { per = { [prof] = n }, need, first } } } }
 local function Gather()
   local profs, byId, items = {}, {}, {}
   local hideVendor = Settings().hideVendor
-  for _, name in ipairs(CR.SupportedProfessions()) do
+  for _, name in ipairs(Ordered()) do
     local _, _, detected = CR.GetSkill(name)
-    local e = detected and PlanFor(name)
+    local e = detected and not Removed()[name] and PlanFor(name)
     local mats = e and e.plan and e.plan.materials
     local any = false
     for _, m in ipairs(mats or {}) do
@@ -217,6 +247,7 @@ end
 -- guide it tracks (the route's own goal, or 75 / 150 / 225 / 300)
 local Refresh
 local GOAL_OPTS = { 75, 150, 225, 300 }
+local dragged = {}   -- [column] = just dragged (its release isn't a click)
 local function Col(i)
   local c = cols[i]
   if c then return c end
@@ -268,8 +299,103 @@ local function Col(i)
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", GameTooltip_Hide)
+  -- left: the guide menu (a moment later - a second click makes it a double-click: that
+  -- profession's own tracker); right: off this window; drag: move the column
+  local openMenu = c:GetScript("OnClick")
+  local pending
+  c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  c:SetScript("OnClick", function(self, button)
+    local p = self.p
+    if not p then return end
+    if dragged[self] then dragged[self] = nil return end
+    if button == "RightButton" then
+      GameTooltip_Hide()
+      Removed()[p.name] = true
+      Refresh()
+      return
+    end
+    if pending then
+      pending = nil
+      if self.menu then self.menu:Hide() end
+      if CR.ToggleTracker then CR.ToggleTracker(true, p.name) end
+      return
+    end
+    local token = {}
+    pending = token
+    C_Timer.After(0.3, function()
+      if pending == token then pending = nil openMenu(self) end
+    end)
+  end)
+  c:RegisterForDrag("LeftButton")
+  c:SetScript("OnDragStart", function(self)
+    pending = nil
+    dragged[self] = true
+    self:SetAlpha(0.4)
+    frame.dragCol = self
+  end)
+  c:SetScript("OnDragStop", function(self)
+    self:SetAlpha(1)
+    frame.dragCol = nil
+    C_Timer.After(0, function() dragged[self] = nil end)   -- (a release that isn't a click)
+    -- dropped over which column's place (by the cursor across the headings)
+    local x = GetCursorPosition() / frame:GetEffectiveScale()
+    local profs = frame.profs or {}
+    local from, to
+    for j, q in ipairs(profs) do
+      if q.name == self.p.name then from = j end
+    end
+    local first = frame.colsLeft and (frame:GetLeft() + frame.colsLeft)
+    if not (from and first) then return end
+    to = math.max(1, math.min(#profs, math.floor((x - first) / COL_W) + 1))
+    if to == from then return end
+    local names = {}
+    for _, q in ipairs(profs) do table.insert(names, q.name) end
+    table.remove(names, from)
+    table.insert(names, to, self.p.name)
+    -- the new order: these columns, then the rest as they were
+    local seen, order = {}, {}
+    for _, n in ipairs(names) do seen[n] = true table.insert(order, n) end
+    for _, n in ipairs(Ordered()) do if not seen[n] then table.insert(order, n) end end
+    Settings().order = order
+    Refresh()
+  end)
   cols[i] = c
   return c
+end
+
+-- the + after the headings: put back a profession taken off (later: alts' guides too)
+local addBtn
+local function AddButton()
+  if addBtn then return addBtn end
+  local a = CR.CreateDropdown(frame, 20, function()
+    local opts = {}
+    for _, name in ipairs(RemovedLearned()) do
+      local icon = CR.ProfessionIcon and CR.ProfessionIcon(name)
+      table.insert(opts, { value = name, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. name })
+    end
+    if #opts == 0 then table.insert(opts, { value = "", text = CR.ColorText("Nothing taken off", "888888") }) end
+    return opts
+  end, function() return nil end, function(v)
+    if v and v ~= "" then Removed()[v] = nil Refresh() end
+  end)
+  a:SetSize(20, 20)
+  a.text:SetAlpha(0)
+  for _, r in ipairs({ a:GetRegions() }) do
+    if r ~= a.text and r.GetText and r:GetText() == "v" then r:Hide() end
+  end
+  a.plus = a:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  a.plus:SetPoint("CENTER", 0, 1)
+  a.plus:SetText("+")
+  a:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Add a profession")
+    GameTooltip:AddLine("Puts back a profession you took off this window (right-click an icon to take one off).", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  a:SetScript("OnLeave", GameTooltip_Hide)
+  addBtn = a
+  CR.AllMaterialsAdd = a   -- (tests)
+  return a
 end
 
 function Refresh()
@@ -287,7 +413,8 @@ function Refresh()
   nameW = math.min(Settings().nameW or 220, math.ceil(nameW))
   nameW = math.max(MIN_NAME, math.min(MAX_NAME, nameW))
   local left = 8 + (ROW_H - 4) + 5 + nameW
-  local width = left + #profs * COL_W + TOTAL_W + 8 + 10
+  local width = left + #profs * COL_W + 26 + TOTAL_W + 8 + 10
+  frame.colsLeft = left
 
   -- headings
   for i, p in ipairs(profs) do
@@ -301,6 +428,10 @@ function Refresh()
     c:Show()
   end
   for i = #profs + 1, #cols do cols[i]:Hide() end
+  local add = AddButton()
+  add:ClearAllPoints()
+  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -TOP - HEAD_H / 2)
+  add:Show()
   frame.itemHead:ClearAllPoints()
   frame.itemHead:SetPoint("TOPLEFT", 8, -TOP - 5)
   frame.totalHead:ClearAllPoints()

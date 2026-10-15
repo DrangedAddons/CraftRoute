@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.63.0
+
+- All Materials window - the profession icons along the top:
+  - **Right-click** one to take that profession off the window.
+  - **Drag** one to move its column; the order is kept.
+  - **Double-click** one to open that profession's own tracker.
+  - (A single click still picks the guide it tracks.)
+  - The **+** box after the icons puts back a profession you took off.
+
 ## 0.62.0
 
 - All Materials window, more like the trackers:
