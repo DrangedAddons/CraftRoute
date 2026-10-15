@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.72.3
+
+- All Materials window:
+  - Other characters' **class colours** now show: Syndicator can know a character by another name and realm than the game gives (e.g. "Confuçius Say" on "PvP"), so their class is found by first name too.
+  - The **header row** (names, icons, targets) is darker, and each character's columns more strongly tinted there, so it reads as the heading.
+
 ## 0.72.2
 
 - All Materials window: **other characters' class colours** show (their names over the columns, the column tints, the + menu). Their class wasn't being recorded; now it is, and for characters recorded before, it's taken from Syndicator - no need to log in on each again.

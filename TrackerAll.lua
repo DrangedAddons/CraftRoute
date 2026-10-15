@@ -33,7 +33,7 @@ local editing = false
 local function Top() return 28 end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
-local charLabels, colTints = {}, {}   -- the characters' names over their columns, the columns' tints
+local charLabels, colTints, headTints = {}, {}, {}   -- names over a character's columns, the columns' tints (list / header)
 CR.AllMaterialsNames = function() return charLabels, colTints end   -- (tests)
 local sizePanel, sizePanelSync
 
@@ -71,15 +71,25 @@ end
 -- every character's) - and kept, once found
 local function CharClass(key, c)
   if c and c.class then return c.class end
-  local api = Syndicator and Syndicator.API and Syndicator.API.GetByCharacterFullName
-  if api and key then
+  local api = Syndicator and Syndicator.API
+  local get = api and api.GetByCharacterFullName
+  if get and key then
     local name, realm = key:match("^(.-)%-(.*)$")
+    local function Found(class) if class and c then c.class = class end return class end
     for _, full in ipairs({ key, name and realm and (name .. "-" .. realm:gsub("[%s%-]", "")) or key }) do
-      local ok, data = pcall(api, full)
+      local ok, data = pcall(get, full)
       local class = ok and type(data) == "table" and data.details and data.details.className
-      if class then
-        if c then c.class = class end
-        return class
+      if class then return Found(class) end
+    end
+    -- Syndicator can know a character by another name and realm than the game gives here (e.g.
+    -- "Confuçius Say" on "PvP" for Confuçius on "Classic Beta PvP 2"): its characters, by first name
+    local okAll, all = pcall(api.GetAllCharacters)
+    if okAll and type(all) == "table" and name then
+      for _, full in ipairs(all) do
+        local ok, data = pcall(get, full)
+        local d = ok and type(data) == "table" and data.details
+        local who = d and d.character
+        if who and d.className and (who == name or who:match("^(%S+)") == name) then return Found(d.className) end
       end
     end
   end
@@ -1033,6 +1043,13 @@ function Refresh(moveOnly)
         t:SetSize(COL_W - 2, tintH)
         t:SetColorTexture(r, gg, b, 0.07)
         t:Show()
+        -- (stronger over the header)
+        local h = headTints[k]
+        if not h then h = frame:CreateTexture(nil, "BACKGROUND", nil, 2) headTints[k] = h end
+        h:ClearAllPoints()
+        h:SetPoint("TOPLEFT", t, "TOPLEFT", 0, 0)
+        h:SetSize(COL_W - 2, Top() + HEAD_H - tintTop + 2)
+        h:SetColorTexture(r, gg, b, 0.16)
       end
     else
       for k = i, j do if colTints[k] then colTints[k]:Hide() end end
@@ -1041,6 +1058,15 @@ function Refresh(moveOnly)
   end
   for k = g + 1, #charLabels do charLabels[k]:Hide() end
   for k = #profs + 1, #colTints do colTints[k]:Hide() end
+  for k = 1, #headTints do
+    local ct = colTints[k]
+    headTints[k]:SetShown(ct and ct:IsShown() and true or false)
+  end
+  -- the header row (names, icons, targets): a darker band across, so it reads as the heading
+  frame.headBand:ClearAllPoints()
+  frame.headBand:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -tintTop)
+  frame.headBand:SetPoint("RIGHT", frame, "RIGHT", -4, 0)
+  frame.headBand:SetHeight(Top() + HEAD_H - tintTop + 2)
   frame.empty:ClearAllPoints()
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetShown(#items == 0)
@@ -1251,6 +1277,8 @@ local function Build()
   frame.measure = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.measure:SetAlpha(0)
 
+  frame.headBand = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
+  frame.headBand:SetColorTexture(0, 0, 0, 0.35)
   frame.slot = frame:CreateTexture(nil, "BACKGROUND", nil, 2)
   frame.slot:SetColorTexture(1, 0.82, 0.35, 0.12)
   frame.slot:Hide()
