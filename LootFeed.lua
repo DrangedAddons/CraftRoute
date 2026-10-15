@@ -1,9 +1,8 @@
--- Have/need for the selected profession's plan, drawn on the Ellesmere Forever
--- Essentials loot row for that item. The row's own second line is used (the one
--- reputation and currency already use), so the font, size and colour stay whatever
+-- Have/need for the materials of all your guides together - the All Materials window's list
+-- (every profession it covers, each to the guide picked there; the ones taken off left out) -
+-- drawn on the Ellesmere Forever Essentials loot row for that item. The row's own second line is
+-- used (the one reputation and currency already use), so the font, size and colour stay whatever
 -- that feed style set. Nothing of Ellesmere's is edited, and no extra row is added.
--- Only CraftRouteCharDB.profession is counted: the profession picked on the Plan tab
--- or in the crafting window.
 local _, CR = ...
 
 local painted = setmetatable({}, { __mode = "k" })
@@ -47,6 +46,8 @@ local function ProgressText(byId, itemID)
 end
 
 local function PlanById()
+  -- all your guides together (the All Materials list)
+  if CR.AllMaterialsById then return CR.AllMaterialsById() end
   local db = CraftRouteCharDB
   if not db or not db.profession or not CR.GetPlans then return nil end
   local entry = CR.GetPlans(db.profession)

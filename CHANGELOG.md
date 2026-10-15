@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.67.0
+
+- **Loot feed** counts against **all your guides together** - the All Materials window's list - instead of only the profession picked in CraftRoute: a looted material shows have/need across every profession that window covers, each to the guide picked there (professions taken off it left out, vendor items as set there). Works with the window closed.
+
 ## 0.66.1
 
 - All Materials window, Milestones: each milestone's line (1-75, 75-150, ... with its cost and cart) comes **after** its materials, closing them off.

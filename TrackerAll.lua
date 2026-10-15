@@ -974,6 +974,16 @@ function CR.ToggleAllMaterials(show)
 end
 CR.RefreshAllMaterials = Refresh
 
+-- This window's list as a lookup, open or not: [itemID] = { need, have, crafted } over every
+-- profession it covers (each to its picked guide, the ones taken off left out, vendor items as set)
+-- - the loot feed counts against it.
+function CR.AllMaterialsById()
+  local _, items = Gather()
+  local out = {}
+  for _, it in ipairs(items) do out[it.id] = { need = it.need, have = it.have, crafted = it.crafted } end
+  return out
+end
+
 -- The main window's "All" button (beside "Tracker")
 function CR.AllMaterialsButton(owner)
   local b = CreateFrame("Button", nil, owner, "UIPanelButtonTemplate")
