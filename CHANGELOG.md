@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.7
+
+- Marked for Classic Beta and Forever (`## X-DrangedAddons-Games: _classic_beta_, _forever_` in the .toc) - the DrangedAddons manager only offers it in those games.
+
 ## 0.78.6
 
 - The CraftRoute key reopens on the right profession after switching with Blizzard's profession tabs too (it sometimes went back to your first profession): what CraftRoute's tab is on is kept every frame, and only a profession picked in the tab's own dropdown counts as the tab's own choice - a tab click just changes the window's profession, which the tab follows.
