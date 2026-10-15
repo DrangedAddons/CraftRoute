@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.66.1
+
+- All Materials window, Milestones: each milestone's line (1-75, 75-150, ... with its cost and cart) comes **after** its materials, closing them off.
+
 ## 0.66.0
 
 - All Materials window:

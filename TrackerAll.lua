@@ -194,11 +194,12 @@ local function Lines(items)
         if a.first ~= b.first then return a.first < b.first end
         return (a.it.name or "") < (b.it.name or "")
       end)
-      -- the milestone's heading: what reaching it still costs, and its own shopping list
+      -- the milestone's line: what reaching it still costs, and its own shopping list
       local label = string.format("%d-%d", band[1], band[2])
       local list2, cost, unpriced = ToBuy(list, "All Materials " .. label)
-      table.insert(out, { head = label, cost = cost, unpriced = unpriced, buy = list2 })
+      -- (the milestone's line closes its materials: below them)
       for _, l in ipairs(list) do table.insert(out, l) end
+      table.insert(out, { head = label, cost = cost, unpriced = unpriced, buy = list2 })
     end
   end
   return out
