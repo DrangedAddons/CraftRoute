@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.7
+
+- Profession window tab: the route cost bar's cart button reads **Buy Route**.
+
 ## 0.70.6
 
 - All Materials window: no shopping carts - the one at the bottom and the ones on the milestone lines are gone (the costs stay).
