@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 0.70.0
+
+- Profession window tab, the recipe on the right:
+  - **Reagents:** sits where Blizzard's does under the recipe's icon (it was well below).
+  - The recipe's **Shopping List** is to the right of "Reagents:", and **Count alts** just above it (in the Craft view, after the Shopping List).
+  - The top-right button is **Material List**: it opens / closes the All Materials window (the full CraftRoute window is still /cr).
+- The **route cost** bar's cart is bigger, with "List" on it. The pop-out button beside it is gone - Material List does that now.
+
 ## 0.69.0
 
 - The materials pop-outs open the **All Materials** window now: the profession window's pop-out button, the main window's button (now **Materials**, in place of Tracker and All) and `/cr tracker` (or `/cr all`). One profession's own tracker is a double-click on its icon in All Materials.

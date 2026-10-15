@@ -2007,18 +2007,28 @@ local function FillSchematic(info)
     frame.icon.texture:SetSize(46, 46)
     if frame.icon.ring and frame.icon.ring.crWanted then frame.icon.ring:Show() end
     frame.icon:SetPoint("TOPLEFT", 28, -28)
-    frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
+    frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon
   end
   local rowH = compact and 22 or 42
+  -- this recipe's Shopping List to the right of "Reagents:"; Count alts just above "Reagents:" (the
+  -- Craft view's compact layout has no room there: after the Shopping List instead)
+  frame.shopBtn:ClearAllPoints()
+  frame.shopBtn:SetPoint("LEFT", frame.reagentsLabel, "RIGHT", 10, 0)
+  frame.altsCB:ClearAllPoints()
+  if compact then
+    frame.altsCB:SetPoint("LEFT", frame.shopBtn, "RIGHT", 8, 0)
+  else
+    frame.altsCB:SetPoint("BOTTOMLEFT", frame.reagentsLabel, "TOPLEFT", -3, 6)
+  end
   -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
-  -- this recipe has one, else above the Shopping List button.
+  -- this recipe has one, else above the status line over the crafting buttons.
   local rscroll, rcontent = frame.rscroll, frame.rcontent
   rscroll:ClearAllPoints()
-  rscroll:SetPoint("TOPLEFT", frame.reagentsLabel, "BOTTOMLEFT", 0, -2)
+  rscroll:SetPoint("TOPLEFT", frame.reagentsLabel, "BOTTOMLEFT", 0, -6)
   if CR.EnchantSlotFor(recipe) and frame.enchant then
     rscroll:SetPoint("BOTTOMRIGHT", frame.enchant, "TOPRIGHT", -4, 4)
   else
-    rscroll:SetPoint("BOTTOMRIGHT", frame.shopBtn, "TOPRIGHT", -4, 28)   -- clear of "Count alts" too
+    rscroll:SetPoint("BOTTOMRIGHT", frame.status, "TOPRIGHT", -4, 18)
   end
   local y = -6
   for i = 1, REAGENT_SLOTS do
@@ -2548,9 +2558,7 @@ local function LayoutHeader()
     list:SetPoint("RIGHT", overlay.divider, "LEFT", -4, 0)
   end
   -- main CraftRoute window button, above the recipe at the right edge
-  if overlay.mainBtn then
-    overlay.mainBtn:SetText(CR.IsWindowShown and CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
-  end
+
 end
 
 local function LayoutColumns()
@@ -3458,10 +3466,7 @@ local function AlignToBlizzardButtons()
     f.nextBtn:ClearAllPoints() f.nextBtn:SetPoint("LEFT", f.countBox, "RIGHT", 2, 0)
   end
   -- the Shopping List button and the status line sit just above the buttons, wherever they are
-  if saved.create then
-    f.shopBtn:ClearAllPoints()
-    f.shopBtn:SetPoint("BOTTOMRIGHT", f.create, "TOPRIGHT", 0, 8)
-  end
+
   if saved.createAll then
     -- just above the buttons, but in line with the details above (Reagents:, the costs) - not with
     -- Create All, which sits at the column's edge (an enchant's Optional Target hangs off this line)
@@ -3470,7 +3475,7 @@ local function AlignToBlizzardButtons()
       w:ClearAllPoints()
       -- (r: Create All's spot from the window's bottom; the details panel starts 8 above that)
       w:SetPoint("BOTTOMLEFT", f.schematic, "BOTTOMLEFT", 26, r[2] + r[4])
-      w:SetPoint("RIGHT", f.shopBtn, "LEFT", -8, 0)
+      w:SetPoint("RIGHT", f.schematic, "RIGHT", -8, 0)
     end
   end
 end
@@ -3755,7 +3760,7 @@ local function BuildOverlay()
   frame.mainBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   frame.mainBtn:SetSize(130, 22)
   frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
-  frame.mainBtn:SetText("Open CraftRoute")
+  frame.mainBtn:SetText("Material List")
   CR.ThemeRegisterButton(frame.mainBtn)
   -- only this character's materials, or alts' too (the same setting as the main window's)
   frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
@@ -3768,15 +3773,16 @@ local function BuildOverlay()
     frame.version:SetPoint("RIGHT", frame.mainBtn, "LEFT", -6, 0)
     frame.version:SetText("v" .. version)
   end
-  frame.mainBtn:SetScript("OnClick", function(self)
-    CR.SafeCall(CR.ToggleWindow)
-    self:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
+  -- the All Materials window, open / closed (the full CraftRoute window: /cr)
+  frame.mainBtn:SetScript("OnClick", function()
+    if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
   end)
   frame.mainBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("CraftRoute window")
-    GameTooltip:AddLine("Opens the full CraftRoute window: the Plan, the Recipes picker and the Craft tab. "
-      .. "Same settings as here. (Also /cr.)", 1, 1, 1, true)
+    GameTooltip:SetText("Material List")
+    GameTooltip:AddLine("Opens / closes the All Materials window: every material your professions' routes still "
+      .. "need, in one list. Double-click a profession's icon there for its own tracker.", 1, 1, 1, true)
+    GameTooltip:AddLine("The full CraftRoute window: /cr.", 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
   end)
   frame.mainBtn:SetScript("OnLeave", GameTooltip_Hide)
@@ -3847,11 +3853,11 @@ local function BuildOverlay()
   CR.ThemeRegisterAccentText(costBar.label)
   -- the route's Auctionator shopping list (what the main window's button makes), Route view only
   costBar.cart = CreateFrame("Button", nil, costBar, "UIPanelButtonTemplate")
-  costBar.cart:SetSize(24, 18)
-  costBar.cart:SetPoint("RIGHT", -4, 0)
-  costBar.cart:SetText("")
+  costBar.cart:SetSize(54, 20)
+  costBar.cart:SetPoint("RIGHT", -2, 0)
+  costBar.cart:SetText("List")
   CR.ThemeRegisterButton(costBar.cart)
-  CR.AddCartIcon(costBar.cart, false)
+  CR.AddCartIcon(costBar.cart)
   costBar.cart:SetScript("OnClick", function()
     if costBar.plan then CR.CreateShoppingList(costBar.plan) end
   end)
@@ -4232,15 +4238,16 @@ local function BuildOverlay()
     costBar.plan = plan
     if not plan then costBar:Hide() return end
     costBar:Show()
-    -- the cart sits at the right end, the gold just before it
-    -- right end: pop-out, then the cart (with Auctionator), then the gold
+    -- right end: the cart (with Auctionator), the gold just before it (the materials pop-out is
+    -- the Material List button now)
     local cart = CR.HasAuctionator() and true or false
-    costBar.popout:Show()
+    costBar.popout:Hide()
     costBar.cart:ClearAllPoints()
-    costBar.cart:SetPoint("RIGHT", costBar.popout, "LEFT", -2, 0)
+    costBar.cart:SetPoint("RIGHT", -2, 0)
     costBar.cart:SetShown(cart)
     costBar.money:ClearAllPoints()
-    costBar.money:SetPoint("RIGHT", cart and costBar.cart or costBar.popout, "LEFT", -6, 0)
+    if cart then costBar.money:SetPoint("RIGHT", costBar.cart, "LEFT", -6, 0)
+    else costBar.money:SetPoint("RIGHT", -8, 0) end
     if not CR.HasAuctionator() then
       costBar.money:SetText("")
       costBar.note:SetText(CR.ColorText("Install Auctionator for prices", "ff9966"))
@@ -4414,7 +4421,7 @@ local function BuildOverlay()
   end
 
   frame.reagentsLabel = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -173)   -- Blizzard's "Reagents:" line
+  frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon
 
   -- Every reagent always shows: the reagents and the cost lines under them sit in a scroll area
   -- from the label down to the Shopping List button (or the enchant target), with a slim bar on
@@ -4522,7 +4529,7 @@ local function BuildOverlay()
   frame.buttons:SetHeight(24)
   frame.status = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.status:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 26, 6)   -- (in line with Reagents:)
-  frame.status:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)   -- clear of the shopping list button
+  frame.status:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -8, 30)
   frame.status:SetJustifyH("LEFT")
   frame.status:SetWordWrap(false)
 
@@ -4531,7 +4538,7 @@ local function BuildOverlay()
   -- for a few seconds after (OnUpdate below).
   local batchBar = CreateFrame("StatusBar", nil, schematic, "BackdropTemplate")
   batchBar:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 26, 6)
-  batchBar:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)
+  batchBar:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -8, 30)
   batchBar:SetHeight(18)
   batchBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   batchBar:SetMinMaxValues(0, 1)
@@ -4581,8 +4588,7 @@ local function BuildOverlay()
   -- Auctionator shopping list for just this step, above Create
   frame.shopBtn = CreateFrame("Button", nil, frame.buttons, "UIPanelButtonTemplate")
   frame.shopBtn:SetSize(130, 22)   -- cart + "Shopping List"
-  frame.shopBtn:SetPoint("BOTTOMRIGHT", frame.buttons, "TOPRIGHT", 0, 6)
-  frame.altsCB:SetPoint("BOTTOMLEFT", frame.shopBtn, "TOPLEFT", 0, 4)   -- "Count alts", just above it
+  -- (placed with the reagents: by "Reagents:", Count alts above it - see the recipe's layout)
   frame.shopBtn:SetText("Shopping List")
   CR.ThemeRegisterButton(frame.shopBtn)
   CR.AddCartIcon(frame.shopBtn)
@@ -4997,8 +5003,6 @@ local function BuildOverlay()
     SyncEnchantSecure()
     if slow < 0.4 then return end
     slow = 0
-    -- the main window can be closed from its own X: keep the button's label right
-    frame.mainBtn:SetText(CR.IsWindowShown() and "Close CraftRoute" or "Open CraftRoute")
     -- "Anvil required" turns green as you walk up to one
     local sel = frame.info and frame.info.selected
     if sel and sel.recipe and not sel.task and frame.rStructure:IsShown() then
