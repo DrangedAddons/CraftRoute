@@ -3759,16 +3759,11 @@ local function BuildOverlay()
   frame.mainBtn:SetSize(130, 22)
   frame.mainBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, RANK_DROP_Y + 1)
   frame.mainBtn:SetText("Materials")
-  -- "Materials" and the pop-out icon after it (the pair centred on the button)
+  -- "Materials" centred, the pop-out icon at the button's right end
   do
     local icon = CR.AddPopoutIcon(frame.mainBtn)
-    local fs = frame.mainBtn:GetFontString()
-    if fs then
-      fs:ClearAllPoints()
-      fs:SetPoint("CENTER", frame.mainBtn, "CENTER", -9, 0)
-      icon:ClearAllPoints()
-      icon:SetPoint("LEFT", fs, "RIGHT", 5, 1)
-    end
+    icon:ClearAllPoints()
+    icon:SetPoint("RIGHT", frame.mainBtn, "RIGHT", -7, 1)
   end
   CR.ThemeRegisterButton(frame.mainBtn)
   -- only this character's materials, or alts' too (the same setting as the main window's)

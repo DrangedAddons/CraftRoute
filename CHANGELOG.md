@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.5
+
+- Profession window tab: on the Materials button the text is centred and the pop-out icon sits at the button's right end.
+
 ## 0.70.4
 
 - Profession window tab: the recipe's **Shopping List** sits just below the cost lines (To Craft / This step / Profit), and **Count alts** just below that - scrolling with the reagents when the list is long.
