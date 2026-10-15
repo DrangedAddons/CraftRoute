@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.60.0
+
+- Profession pickers (the profession window tab and the main window) look like TrainerSpells': **Your Professions** - each with its icon, a radio button and your skill (e.g. 219/225) - then **Other Professions**, greyed out, A to Z (when "Show professions I haven't learned" is on). The box shows the picked profession's icon, name and skill. Picking one still opens its profession window.
+
 ## 0.59.0
 
 - **Skinning route** reworked from the Classic guide, by zone: 1-75 Durotar / Dun Morogh, 75-115 The Barrens / Loch Modan, 115-155 The Barrens / Wetlands, 155-205 Thousand Needles / Arathi Highlands, 205-300 Feralas (Un'Goro Crater at the end). Training is part of the route now - Journeyman at 50, Expert at 125, Artisan at 205, each naming the guide's trainer for your faction (Thuwd, Dranh, Kulleg Stonehorn / Balthus Stoneflayer) - along with buying the Skinning Knife.

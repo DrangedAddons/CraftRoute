@@ -96,25 +96,9 @@ local function PlanProfession()
   return nil, nil
 end
 
-local function ProfessionLabel(name)
-  local cur, maxRank, detected = CR.GetSkill(name)
-  if detected then return string.format("%s  %d/%d", name, cur, maxRank) end
-  return name .. CR.ColorText("  (not learned)", "888888")
-end
-
 local function ProfessionOptions()
   local db = DB()
-  local learned, other = {}, {}
-  for _, name in ipairs(CR.SupportedProfessions()) do
-    local _, _, detected = CR.GetSkill(name)
-    table.insert(detected and learned or other, { value = name, text = ProfessionLabel(name), short = name })
-  end
-  local showAll = not db or db.showUnlearned or #learned == 0
-  local selected = db and db.profession
-  for _, o in ipairs(other) do
-    if showAll or o.value == selected then table.insert(learned, o) end
-  end
-  return learned
+  return CR.ProfessionPickerOptions(not db or db.showUnlearned, db and db.profession)
 end
 
 local function SelectProfession(name)

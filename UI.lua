@@ -242,6 +242,8 @@ end
 
 -- Simple dropdown: a button that opens a list of options below it.
 -- options: { {value=, text=} } (or a function returning that), getter() -> value, setter(value)
+-- An option can also be { header = "Your Professions" } (a gold heading, not clickable), and
+-- { radio = true } draws a radio button by it (the picked one filled) instead of the ">" mark.
 local openMenu
 -- openMacro(value), if given: picking that entry also runs this macro on your click (a secure
 -- cover over the entry) - used by the profession pickers to cast the profession, which opens its
@@ -272,28 +274,66 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
   menu.buttons = {}
   dd.menu = menu   -- (so a panel holding it can tell a click on its list from a click outside)
 
+  local ROW = 18
   local function BuildMenu()
     local opts = Opts()
+    -- (taller rows when entries carry icons)
+    ROW = 18
+    for _, o in ipairs(opts) do if o.radio then ROW = 20 break end end
     local widest = 0
     for i, o in ipairs(opts) do
       local b = menu.buttons[i]
       if not b then
         b = CreateFrame("Button", nil, menu)
-        b:SetHeight(18)
-        b:SetPoint("TOPLEFT", 2, -2 - (i - 1) * 18)
-        b:SetPoint("RIGHT", -2, 0)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        b.text:SetPoint("LEFT", 6, 0)
-        local bhl = b:CreateTexture(nil, "HIGHLIGHT")
-        bhl:SetAllPoints()
-        bhl:SetColorTexture(0.2, 0.6, 1, 0.3)
+        b.head = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        b.head:SetPoint("LEFT", 6, 0)
+        b.radio = b:CreateTexture(nil, "ARTWORK")
+        b.radio:SetSize(14, 14)
+        b.radio:SetPoint("LEFT", 6, 0)
+        b.radio:SetTexture("Interface\\Buttons\\UI-RadioButton")
+        b.hl = b:CreateTexture(nil, "HIGHLIGHT")
+        b.hl:SetAllPoints()
+        b.hl:SetColorTexture(0.2, 0.6, 1, 0.3)
         menu.buttons[i] = b
         -- The menu is parented to UIParent, so the window's font walk never sees it.
         if CR.NoteThemeFonts then CR.NoteThemeFonts(b) end
       end
+      b:SetHeight(ROW)
+      b:ClearAllPoints()
+      b:SetPoint("TOPLEFT", 2, -2 - (i - 1) * ROW)
+      b:SetPoint("RIGHT", -2, 0)
+      if o.header then
+        -- a heading: gold, nothing to click (b.value nil: no secure cover over it either)
+        b.head:SetText(o.header)
+        b.head:Show()
+        b.text:Hide()
+        b.radio:Hide()
+        b.hl:SetAlpha(0)
+        b:EnableMouse(false)
+        b:SetScript("OnClick", nil)
+        b.value = nil
+        widest = math.max(widest, (tonumber(b.head:GetStringWidth()) or 0) - 18)
+        b:Show()
+      else
+      b.head:Hide()
+      b.text:Show()
+      b.hl:SetAlpha(1)
+      b:EnableMouse(true)
       local selected = getter() == o.value
-      b.text:SetText((selected and "|cff33ccff> |r" or "   ") .. o.text)
-      widest = math.max(widest, b.text:GetStringWidth() or 0)
+      b.text:ClearAllPoints()
+      if o.radio then
+        -- unticked: the ring; ticked: the filled one
+        b.radio:SetTexCoord(selected and 0.25 or 0, selected and 0.5 or 0.25, 0, 1)
+        b.radio:Show()
+        b.text:SetPoint("LEFT", 26, 0)
+        b.text:SetText(o.text)
+      else
+        b.radio:Hide()
+        b.text:SetPoint("LEFT", 6, 0)
+        b.text:SetText((selected and "|cff33ccff> |r" or "   ") .. o.text)
+      end
+      widest = math.max(widest, (tonumber(b.text:GetStringWidth()) or 0) + (o.radio and 20 or 0))
       b:SetScript("OnClick", function()
         menu:Hide()
         setter(o.value)
@@ -311,10 +351,11 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
         end, function() return menu:IsVisible() and b:IsVisible() and openMacro(b.value) ~= nil end)
       end
       b:Show()
+      end
     end
     for i = #opts + 1, #menu.buttons do menu.buttons[i]:Hide() end
     -- as wide as the longest entry, so no text runs past the menu's edge
-    menu:SetSize(math.max(dd:GetWidth() or width, 160, math.ceil(widest) + 22), #opts * 18 + 4)
+    menu:SetSize(math.max(dd:GetWidth() or width, 160, math.ceil(widest) + 22), #opts * ROW + 4)
   end
 
   dd:SetScript("OnClick", function()
@@ -335,7 +376,7 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
   function dd:Sync()
     local v = getter()
     for _, o in ipairs(Opts()) do
-      if o.value == v then self.text:SetText(o.short or o.text) return end   -- short: the label in the box
+      if not o.header and o.value == v then self.text:SetText(o.short or o.text) return end   -- short: the label in the box
     end
     self.text:SetText(tostring(v))
   end
@@ -344,6 +385,50 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
 end
 
 function CR.ColorText(text, hex) return "|cff" .. hex .. text .. "|r" end
+
+-- A profession's icon: the game's (learned), else the one CraftRoute shows for it.
+function CR.ProfessionIcon(name)
+  local s = CR.skill and CR.skill[name]
+  if s and s.icon then return s.icon end
+  for _, g in ipairs(CR.PROFESSION_GROUPS or {}) do
+    for _, p in ipairs(g.list) do if p[1] == name then return p[2] end end
+  end
+  return CR.GATHER_ICON and CR.GATHER_ICON[name]
+end
+
+-- The profession pickers' list (like TrainerSpells'): "Your Professions" - icon, name, your skill -
+-- then, when shown at all, "Other Professions" greyed out, A to Z. Each a radio entry; the box
+-- shows the picked one's icon, name and skill. showAll: list the ones you haven't learned (the
+-- selected one is listed anyway).
+function CR.ProfessionPickerOptions(showAll, selected)
+  local learned, other = {}, {}
+  for _, name in ipairs(CR.SupportedProfessions()) do
+    local cur, maxRank, detected = CR.GetSkill(name)
+    local icon = CR.ProfessionIcon(name)
+    local tex = icon and ("|T" .. icon .. ":16:16|t ") or ""
+    if detected then
+      local label = tex .. name .. "  " .. CR.ColorText(string.format("%d/%d", cur, maxRank), "aaaaaa")
+      table.insert(learned, { value = name, text = label, short = label, radio = true })
+    else
+      table.insert(other, { value = name, text = tex .. CR.ColorText(name, "9d9d9d"),
+                            short = tex .. name .. CR.ColorText("  (not learned)", "888888"), radio = true })
+    end
+  end
+  showAll = showAll or #learned == 0
+  table.sort(other, function(a, b) return a.value < b.value end)
+  local out = {}
+  if #learned > 0 then
+    table.insert(out, { header = "Your Professions" })
+    for _, o in ipairs(learned) do table.insert(out, o) end
+  end
+  local others = {}
+  for _, o in ipairs(other) do if showAll or o.value == selected then table.insert(others, o) end end
+  if #others > 0 then
+    table.insert(out, { header = "Other Professions" })
+    for _, o in ipairs(others) do table.insert(out, o) end
+  end
+  return out
+end
 
 -- The number beside "you:" on the skill-up colour line. Same cuts as the bar
 -- (CR.Difficulty): orange, yellow, green, grey, or red when the recipe is not learnable yet.
@@ -660,19 +745,10 @@ function CR.CreatePlanPanel(parent)
     return detected and string.format("%s  %d/%d", name, cur, maxRank)
       or (name .. CR.ColorText("  (not learned)", "888888"))
   end
+  -- Unlearned ones are listed unless the player unticked "Show professions I haven't learned".
+  -- The selected profession always stays listed, and if nothing is learned yet everything shows.
   local profDD = CR.CreateDropdown(panel, 190, function()
-    local learned, other = {}, {}
-    for _, name in ipairs(CR.SupportedProfessions()) do
-      local _, _, detected = CR.GetSkill(name)
-      table.insert(detected and learned or other, { value = name, text = SkillLabel(name) })
-    end
-    -- Unlearned ones are listed unless the player unticked "Show professions I haven't learned".
-    -- The selected profession always stays listed, and if nothing is learned yet everything shows.
-    local showAll = db().showUnlearned or #learned == 0
-    for _, o in ipairs(other) do
-      if showAll or o.value == db().profession then table.insert(learned, o) end
-    end
-    return learned
+    return CR.ProfessionPickerOptions(db().showUnlearned, db().profession)
   end, function() return db().profession end,
   function(v) db().profession = v; db().profPicked = true; CR.NotifyChanged() end)
   profDD:SetPoint("TOPLEFT", 4, -6)
