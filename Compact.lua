@@ -3463,9 +3463,13 @@ local function AlignToBlizzardButtons()
     f.shopBtn:SetPoint("BOTTOMRIGHT", f.create, "TOPRIGHT", 0, 8)
   end
   if saved.createAll then
+    -- just above the buttons, but in line with the details above (Reagents:, the costs) - not with
+    -- Create All, which sits at the column's edge (an enchant's Optional Target hangs off this line)
+    local r = saved.createAll
     for _, w in ipairs({ f.status, f.batchBar }) do
       w:ClearAllPoints()
-      w:SetPoint("BOTTOMLEFT", f.createAll, "TOPLEFT", 0, 8)
+      -- (r: Create All's spot from the window's bottom; the details panel starts 8 above that)
+      w:SetPoint("BOTTOMLEFT", f.schematic, "BOTTOMLEFT", 26, r[2] + r[4])
       w:SetPoint("RIGHT", f.shopBtn, "LEFT", -8, 0)
     end
   end
@@ -4516,7 +4520,7 @@ local function BuildOverlay()
   frame.buttons:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", 0, 0)
   frame.buttons:SetHeight(24)
   frame.status = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.status:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 0, 6)
+  frame.status:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 26, 6)   -- (in line with Reagents:)
   frame.status:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)   -- clear of the shopping list button
   frame.status:SetJustifyH("LEFT")
   frame.status:SetWordWrap(false)
@@ -4525,7 +4529,7 @@ local function BuildOverlay()
   -- the whole batch, "Crafting Minor Mana Oil 3/50". In the status line's place while it runs and
   -- for a few seconds after (OnUpdate below).
   local batchBar = CreateFrame("StatusBar", nil, schematic, "BackdropTemplate")
-  batchBar:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 0, 6)
+  batchBar:SetPoint("BOTTOMLEFT", frame.buttons, "TOPLEFT", 26, 6)
   batchBar:SetPoint("BOTTOMRIGHT", schematic, "BOTTOMRIGHT", -150, 30)
   batchBar:SetHeight(18)
   batchBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
@@ -4623,8 +4627,8 @@ local function BuildOverlay()
 
   local enchant = CreateFrame("Frame", nil, schematic)
   enchant:SetHeight(54)
-  enchant:SetPoint("BOTTOMLEFT", frame.status, "TOPLEFT", 0, 4)
-  enchant:SetPoint("BOTTOMRIGHT", frame.status, "TOPRIGHT", 0, 4)
+  enchant:SetPoint("BOTTOMLEFT", frame.status, "TOPLEFT", 0, 8)
+  enchant:SetPoint("BOTTOMRIGHT", frame.status, "TOPRIGHT", 0, 8)
   enchant:Hide()
   frame.enchant = enchant
   enchant.label = enchant:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
