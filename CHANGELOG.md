@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.74.0
+
+- **Shopping cart window**: every cart button (Buy Route, a recipe's Shopping List, the trackers' carts, the Craft view's) now opens a cart first - "This will be added to your shopping list" - with the list's name (the usual suggestion filled in; type to change it) and **everything that goes on it**: each item with a tick (untick to leave it off), its amount (change it) and what that costs, and the total. **Create List** (or Enter) makes the Auctionator list from what's ticked; Cancel (or Escape) makes nothing.
+
 ## 0.73.1
 
 - All Materials window: no tooltip on a character's name handle.

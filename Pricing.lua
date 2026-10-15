@@ -104,71 +104,195 @@ local function MakeShoppingList(listName, wanted, key)
     return
   end
   local api = Auctionator.API.v1
-  local terms = {}
+  -- what goes on it: what's missing, not what vendors sell
+  local items = {}
   for _, w in ipairs(wanted) do
     local _, src = CR.GetUnitPrice(w.id)
     if w.missing > 0 and src ~= "vendor" then
-      local name = GetItemInfo(w.id) or w.name
-      local ok, str = pcall(api.ConvertToSearchString, CALLER,
-        { searchString = name, isExact = true, categoryKey = "", quantity = w.missing })
-      table.insert(terms, ok and str or ('"' .. name .. '"'))
+      table.insert(items, { id = w.id, name = GetItemInfo(w.id) or w.name, qty = w.missing, on = true })
     end
   end
-  if #terms == 0 then
+  if #items == 0 then
     CR.Print("Nothing to buy from the Auction House - you have everything (vendor items excluded).")
     return
   end
   local base = key or listName
   local suggested = string.format("%s (%s)", listName, date("%H:%M"))
-  -- you name it (the suggestion's filled in); then it's made
-  CR.AskListName(suggested, #terms, function(name)
+  -- the cart: you see what goes on it, can change amounts or drop items, and name it - then it's made
+  CR.ShowCart(suggested, items, function(name, chosen)
+    local terms = {}
+    for _, it in ipairs(chosen) do
+      local ok, str = pcall(api.ConvertToSearchString, CALLER,
+        { searchString = it.name, isExact = true, categoryKey = "", quantity = it.qty })
+      table.insert(terms, ok and str or ('"' .. it.name .. '"'))
+    end
+    if #terms == 0 then CR.Print("Nothing ticked - no shopping list made.") return end
     local custom = name ~= suggested
     RemovePrevious(base)
     local ok, err = pcall(api.CreateShoppingList, CALLER, name, terms)
     if ok then
       -- remembered so the next one of this kind replaces it - unless you named it yourself
       CraftRouteDB.shoppingLists[base] = (not custom) and name or nil
-      CR.Print(string.format("Auctionator shopping list '%s' created with %d items.", name, #terms))
+      CR.Print(string.format("Auctionator shopping list '%s' created with %d item%s.", name, #terms, #terms == 1 and "" or "s"))
     else
       CR.Print("Couldn't create the shopping list: " .. tostring(err))
     end
   end)
 end
 
--- The "name the list" prompt: the suggested name filled in and selected - Enter (or Create) makes
--- it, typing replaces it, Escape (or Cancel) makes nothing.
-local namer
-function CR.AskListName(suggested, count, onCreate)
-  if not namer then
-    local f = CreateFrame("Frame", "CraftRouteListName", UIParent, "BackdropTemplate")
-    f:SetSize(380, 116)
-    f:SetPoint("CENTER", 0, 120)
+-- The cart: "This will be added to your shopping list" - the list's name (the suggestion filled in
+-- and selected: typing replaces it), then each item with a tick (untick to leave it off), its
+-- amount (change it) and what that costs, and the total. Create List (or Enter in the name) makes
+-- it from what's ticked; Cancel (or Escape) makes nothing. items: { { id, name, qty, on } }.
+local cart
+local CART_ROWS, CART_ROW_H = 12, 22
+function CR.ShowCart(suggested, items, onCreate)
+  if not cart then
+    local f = CreateFrame("Frame", "CraftRouteCart", UIParent, "BackdropTemplate")
+    f:SetSize(420, 120 + CART_ROWS * CART_ROW_H)
+    f:SetPoint("CENTER", 0, 80)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:EnableMouse(true)
+    f:SetMovable(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
     if CR.Backdrop then CR.Backdrop(f, 0.05, 0.05, 0.07, 0.97) end
     f:Hide()
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.title:SetPoint("TOPLEFT", 14, -12)
+    f.title:SetText("This will be added to your shopping list")
     if CR.ThemeRegisterAccentText then CR.ThemeRegisterAccentText(f.title) end
+    f.nameLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.nameLabel:SetPoint("TOPLEFT", 14, -40)
+    f.nameLabel:SetText("List name:")
     f.box = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
     f.box:SetHeight(22)
-    f.box:SetPoint("TOPLEFT", 20, -38)
+    f.box:SetPoint("LEFT", f.nameLabel, "RIGHT", 10, 0)
     f.box:SetPoint("RIGHT", f, "RIGHT", -16, 0)
     f.box:SetAutoFocus(false)
     f.box:SetMaxLetters(80)
+
+    -- the items
+    f.offset = 0
+    f.rows = {}
+    local function Cost(it)
+      local price = CR.GetUnitPrice(it.id)
+      return price and price * it.qty or nil
+    end
+    function f:Totals()
+      local n, total, unpriced = 0, 0, 0
+      for _, it in ipairs(self.items) do
+        if it.on and it.qty > 0 then
+          n = n + 1
+          local c = Cost(it)
+          if c then total = total + c else unpriced = unpriced + 1 end
+        end
+      end
+      self.summary:SetText(string.format("%d item%s", n, n == 1 and "" or "s") .. "   "
+        .. CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
+        .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or ""))
+      self.create:SetEnabled(n > 0)
+    end
+    function f:Fill()
+      local items = self.items
+      self.offset = math.max(0, math.min(self.offset, #items - CART_ROWS))
+      for i = 1, CART_ROWS do
+        local r = self.rows[i]
+        local it = items[self.offset + i]
+        r.it = it   -- (before the amount is set: its change handler writes to this item)
+        if it then
+          r.tick:SetChecked(it.on)
+          r.icon:SetTexture(CR.GetItemIcon and CR.GetItemIcon(it.id) or (GetItemIcon and GetItemIcon(it.id)))
+          r.name:SetText(it.name or "?")
+          r.name:SetAlpha(it.on and 1 or 0.45)
+          if not r.qty:HasFocus() then r.qty:SetText(tostring(it.qty)) end
+          local c = Cost(it)
+          r.cost:SetText(c and CR.FormatMoney(c) or CR.ColorText("?", "888888"))
+          r.cost:SetAlpha(it.on and 1 or 0.45)
+          r:Show()
+        else
+          r:Hide()
+        end
+      end
+      self.more:SetShown(#items > CART_ROWS)
+      self.more:SetText(string.format("%d-%d of %d  (scroll)", self.offset + 1,
+        math.min(#items, self.offset + CART_ROWS), #items))
+      self:Totals()
+    end
+    for i = 1, CART_ROWS do
+      local r = CreateFrame("Frame", nil, f)
+      r:SetHeight(CART_ROW_H)
+      r:SetPoint("TOPLEFT", 10, -66 - (i - 1) * CART_ROW_H)
+      r:SetPoint("RIGHT", f, "RIGHT", -12, 0)
+      r.tick = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
+      r.tick:SetSize(20, 20)
+      r.tick:SetPoint("LEFT", 0, 0)
+      r.tick:SetScript("OnClick", function(self)
+        if r.it then r.it.on = self:GetChecked() and true or false end
+        f:Fill()
+      end)
+      r.icon = r:CreateTexture(nil, "ARTWORK")
+      r.icon:SetSize(18, 18)
+      r.icon:SetPoint("LEFT", r.tick, "RIGHT", 2, 0)
+      r.cost = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      r.cost:SetPoint("RIGHT", 0, 0)
+      r.cost:SetWidth(96)
+      r.cost:SetJustifyH("RIGHT")
+      r.qty = CreateFrame("EditBox", nil, r, "InputBoxTemplate")
+      r.qty:SetSize(44, 18)
+      r.qty:SetPoint("RIGHT", r.cost, "LEFT", -8, 0)
+      r.qty:SetAutoFocus(false)
+      r.qty:SetNumeric(true)
+      r.qty:SetMaxLetters(5)
+      r.qty:SetJustifyH("CENTER")
+      -- the amount: kept as it's typed (the cost and total follow)
+      r.qty:SetScript("OnTextChanged", function(self)
+        local n = tonumber(self:GetText())
+        if r.it and n then
+          r.it.qty = n
+          local price = CR.GetUnitPrice(r.it.id)
+          r.cost:SetText(price and CR.FormatMoney(price * n) or CR.ColorText("?", "888888"))
+          f:Totals()
+        end
+      end)
+      r.qty:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+      r.qty:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+      r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
+      r.name:SetPoint("RIGHT", r.qty, "LEFT", -8, 0)
+      r.name:SetJustifyH("LEFT")
+      r.name:SetWordWrap(false)
+      if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
+      f.rows[i] = r
+    end
+    f:EnableMouseWheel(true)
+    f:SetScript("OnMouseWheel", function(self, delta)
+      self.offset = self.offset - delta * 3
+      self:Fill()
+    end)
+    f.more = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.more:SetPoint("TOPRIGHT", -16, -66 - CART_ROWS * CART_ROW_H - 2)
+    f.summary = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.summary:SetPoint("BOTTOMLEFT", 14, 18)
+
     local function Done(create)
       local name = strtrim(f.box:GetText() or "")
       if name == "" then name = f.suggested end
       local fn = f.onCreate
       f.onCreate = nil
+      local chosen = {}
+      for _, it in ipairs(f.items or {}) do
+        if it.on and it.qty > 0 then table.insert(chosen, it) end
+      end
       f:Hide()
-      if create and fn then fn(name) end
+      if create and fn then fn(name, chosen) end
     end
     f.box:SetScript("OnEnterPressed", function() Done(true) end)
     f.box:SetScript("OnEscapePressed", function() Done(false) end)
     local function Btn(text, x, create)
       local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-      b:SetSize(96, 22)
+      b:SetSize(100, 22)
       b:SetPoint("BOTTOMRIGHT", x, 12)
       b:SetText(text)
       if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
@@ -176,15 +300,21 @@ function CR.AskListName(suggested, count, onCreate)
       return b
     end
     Btn("Cancel", -14, false)
-    Btn("Create", -116, true)
-    table.insert(UISpecialFrames, "CraftRouteListName")   -- (Escape closes it)
+    f.create = Btn("Create List", -120, true)
+    table.insert(UISpecialFrames, "CraftRouteCart")   -- (Escape closes it)
     f:SetScript("OnHide", function() f.onCreate = nil end)
-    namer = f
+    cart = f
   end
-  local f = namer
-  f.suggested, f.onCreate = suggested, onCreate
-  f.title:SetText(string.format("Name the shopping list (%d item%s)", count, count == 1 and "" or "s"))
+  local f = cart
+  f.suggested, f.onCreate, f.items, f.offset = suggested, onCreate, items, 0
+  -- shorter for a short list
+  local shown = math.min(#items, CART_ROWS)
+  f:SetHeight(120 + math.max(3, shown) * CART_ROW_H)
+  f.more:ClearAllPoints()
+  f.more:SetPoint("TOPRIGHT", -16, -66 - shown * CART_ROW_H - 2)
   f:Show()
+  f:Fill()
+  if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, f) end
   f.box:SetText(suggested)
   f.box:SetFocus()
   f.box:HighlightText()
