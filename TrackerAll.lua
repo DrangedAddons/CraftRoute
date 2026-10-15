@@ -467,7 +467,7 @@ local function Col(name)
     table.insert(c.picked, t)
   end
   c.goal = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  c.goal:SetPoint("TOP", c.icon, "BOTTOM", 0, -1)   -- (stacked under the icon)
+  c.goal:SetPoint("TOP", c.icon, "BOTTOM", 0, -3)   -- (stacked under the icon)
   -- an alt's column: its name over the icon, in its class colour
   c.char = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   c.char:SetPoint("BOTTOM", c.icon, "TOP", 0, 2)
@@ -1004,8 +1004,8 @@ function Refresh(moveOnly)
     if p.char then return p.char, p.charName, p.class end
     if anyAlt then return MyKey() or "me", UnitName and UnitName("player") or "", myClass end
   end
-  local labelY = -Top() - HEAD_H + ICON_H - 1        -- just over the icons
-  local tintTop = Top() + HEAD_H - ICON_H - 14       -- from the name...
+  local labelY = -Top() - HEAD_H + ICON_H + 3        -- over the icons, near the band's top
+  local tintTop = Top() + HEAD_H - ICON_H - 16       -- from the name...
   local tintH = (top + math.max(1, vis) * ROW_H) - tintTop   -- ...to the list's end
   local g, i = 0, 1
   while i <= #profs do
