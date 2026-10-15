@@ -473,8 +473,8 @@ local function Col(name)
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", GameTooltip_Hide)
-  -- left: the guide menu (a moment later - a second click makes it a double-click: that
-  -- profession's own tracker); right: off this window; drag: move the column
+  -- left: the guide menu (a second click straight after makes it a double-click: that profession's
+  -- own tracker instead); right: off this window; drag: move the column
   local openMenu = c:GetScript("OnClick")
   local pending
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -495,17 +495,19 @@ local function Col(name)
       Refresh()
       return
     end
+    -- the second click of a double-click: the menu the first one opened closes again, and that
+    -- profession's own tracker opens
     if pending then
       pending = nil
       if self.menu then self.menu:Hide() end
       if CR.ToggleTracker and not p.char then CR.ToggleTracker(true, p.name) end   -- (an alt's has none)
       return
     end
+    -- a click: the guide menu straight away (no waiting to see if a second click comes)
+    openMenu(self)
     local token = {}
     pending = token
-    C_Timer.After(0.3, function()
-      if pending == token then pending = nil openMenu(self) end
-    end)
+    C_Timer.After(0.3, function() if pending == token then pending = nil end end)
   end)
   c:RegisterForDrag("LeftButton")
   -- dragged: it follows the cursor along the headings, and as it passes a column the columns (and

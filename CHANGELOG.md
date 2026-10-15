@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.2
+
+- All Materials window: clicking a profession's icon opens its guide menu straight away (it used to wait a moment, to tell a click from a double-click). A double-click still opens that profession's own tracker - the menu just flashes open and shut first.
+
 ## 0.70.1
 
 - Profession window tab: the version number sits in the top left corner, just above the Craft button.
