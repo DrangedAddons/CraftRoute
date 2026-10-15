@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.76.0
+
+- Characters' **first and last names** are recorded (Forever's characters have both) - the All Materials icon tooltips show the full name ("Confuçius Say"); the names over the columns stay first names. With the full name, a character's class is also found in Syndicator by an exact full-name match. Each character records its last name the next time it logs in.
+
 ## 0.75.4
 
 - All Materials window: a profession icon's tooltip - the profession, the character (in its class colour), and "Skill: 151 / 300" (its skill / the guide it's tracking to).

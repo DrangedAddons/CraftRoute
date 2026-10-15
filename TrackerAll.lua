@@ -51,6 +51,16 @@ local function MyKey()
   local name, realm = UnitName and UnitName("player"), GetRealmName and GetRealmName()
   return name and (name .. "-" .. (realm or "")) or nil
 end
+-- this character's first and last name (Forever's characters have both: UnitName gives the two)
+local function FullName()
+  if not UnitName then return nil end
+  local first, surname = UnitName("player")
+  if surname and surname ~= "" then
+    local sepc = Constants and Constants.CharacterNameSeparatorConsts
+    return first .. (sepc and sepc.CHARACTERNAME_SURNAME_SEPARATOR or " ") .. surname
+  end
+  return first
+end
 local function Characters()
   CraftRouteDB.characters = CraftRouteDB.characters or {}
   return CraftRouteDB.characters
@@ -62,6 +72,7 @@ local function RecordCharacter()
   local class = UnitClass and select(2, UnitClass("player"))
   local c = Characters()[key] or {}
   c.name, c.class = UnitName("player"), class or c.class
+  c.fullName = FullName() or c.fullName
   c.profs = {}
   for prof, sk in pairs(CR.skill or {}) do
     c.profs[prof] = { rank = sk.rank or 0, maxRank = sk.maxRank or 0 }
@@ -82,6 +93,15 @@ local function CharClass(key, c)
       local ok, data = pcall(get, full)
       local class = ok and type(data) == "table" and data.details and data.details.className
       if class then return Found(class) end
+    end
+    -- the same character by its full name (first and last - exactly), however Syndicator keys it
+    local okAll, all = pcall(api.GetAllCharacters)
+    if c and c.fullName and okAll and type(all) == "table" then
+      for _, full in ipairs(all) do
+        local ok, data = pcall(get, full)
+        local d = ok and type(data) == "table" and data.details
+        if d and d.character == c.fullName and d.className then return Found(d.className) end
+      end
     end
   end
 end
@@ -106,7 +126,8 @@ local function Column(key)
     local c = Characters()[char]
     local sk = c and c.profs and c.profs[prof]
     if not (sk and CR.Route and CR.Route(prof)) then return nil end
-    return { key = key, prof = prof, char = char, charName = c.name or char, class = CharClass(char, c),
+    return { key = key, prof = prof, char = char, charName = c.name or char, charFull = c.fullName or c.name or char,
+             class = CharClass(char, c),
              cur = sk.rank, maxRank = sk.maxRank }
   end
   local cur, maxRank, detected = CR.GetSkill(key)
@@ -228,7 +249,7 @@ local function Gather()
     -- every learned one gets its column, even with nothing to track (finished, or a guide that uses
     -- no materials) - so you see it's taken into account
     if e then
-      table.insert(profs, { name = name, prof = col.prof, char = col.char, charName = col.charName, class = col.class,
+      table.insert(profs, { name = name, prof = col.prof, char = col.char, charName = col.charName, charFull = col.charFull, class = col.class,
                             label = col.char and (col.charName .. "'s " .. col.prof) or col.prof,
                             cur = e.cur, goal = e.goal, picked = e.picked, empty = not any })
     end
@@ -480,8 +501,8 @@ local function Col(name)
     local p = self.p
     if not p then return end
     GameTooltip:SetOwner(self, "ANCHOR_NONE")
-    local x = self:GetCenter()
-    local fl = frame:GetLeft()
+    local x = tonumber((self:GetCenter()))
+    local fl = tonumber(frame:GetLeft())
     if x and fl then
       GameTooltip:SetPoint("BOTTOM", frame, "TOPLEFT", x - fl, 4)
     else
@@ -489,8 +510,9 @@ local function Col(name)
     end
     -- the profession; whose (in the class colour); its skill / the guide it's tracking to
     GameTooltip:SetText(p.prof or p.name)
-    local who, class = p.charName, p.class
-    if not p.char then who, class = UnitName("player"), select(2, UnitClass("player")) end
+    -- (first and last name)
+    local who, class = p.charFull or p.charName, p.class
+    if not p.char then who, class = FullName(), select(2, UnitClass("player")) end
     local cc = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     GameTooltip:AddLine(who or "", cc and cc.r or 1, cc and cc.g or 1, cc and cc.b or 1)
     GameTooltip:AddLine(string.format("Skill: %d / %d", p.cur or 0, p.goal or 0), 1, 1, 1)
