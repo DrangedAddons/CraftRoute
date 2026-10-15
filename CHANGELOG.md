@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.75.2
+
+- Shopping cart window: hovering an item shows its tooltip (with CraftRoute's lines).
+
 ## 0.75.1
 
 - Shopping cart window: the gold total sits under the cost column (a proper total), with the item count on the left - no "(+N unpriced)" (an unpriced item shows "?" in its own row). The **List name** is just above the buttons; **Create Shopping List** is centred, Cancel at the bottom right.

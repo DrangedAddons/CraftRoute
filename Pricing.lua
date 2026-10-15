@@ -264,6 +264,24 @@ function CR.ShowCart(suggested, items, onCreate)
       r.name:SetPoint("RIGHT", r.qty, "LEFT", -8, 0)
       r.name:SetJustifyH("LEFT")
       r.name:SetWordWrap(false)
+      -- hovering a row: the item's tooltip (CraftRoute's lines with it); the wheel and dragging
+      -- still reach the window
+      r:EnableMouse(true)
+      r:SetScript("OnEnter", function(self)
+        if not self.it then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(self.it.id)
+        GameTooltip:Show()
+      end)
+      r:SetScript("OnLeave", GameTooltip_Hide)
+      r:EnableMouseWheel(true)
+      r:SetScript("OnMouseWheel", function(_, delta)
+        local h = f:GetScript("OnMouseWheel")
+        if h then h(f, delta) end
+      end)
+      r:RegisterForDrag("LeftButton")
+      r:SetScript("OnDragStart", function() f:StartMoving() end)
+      r:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
       if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
       f.rows[i] = r
     end
