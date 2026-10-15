@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.68.0
+
+- All Materials window: **add another character's profession**. The **+** menu lists your other characters (each character's professions are recorded when it logs in - log in on each once); pick one, then which of its professions - it gets its own column, its name over the icon in its class colour, planned from **that character's** skill (to its current rank's cap; click the icon to pick 75 / 150 / 225 / 300 like any other). Right-click takes it off again.
+- With another character's guide on the window, **Count alts' materials** is switched on and stays on (their bags, bank and mail have to count) - every Alts tick says so, and won't untick until the column is taken off.
+
 ## 0.67.0
 
 - **Loot feed** counts against **all your guides together** - the All Materials window's list - instead of only the profession picked in CraftRoute: a looted material shows have/need across every profession that window covers, each to the guide picked there (professions taken off it left out, vendor items as set there). Works with the window closed.

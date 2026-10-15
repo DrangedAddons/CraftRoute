@@ -31,6 +31,12 @@ function CR.CreateAltsCheck(parent, label)
   cb.label:SetText(label or "Count alts' materials")
   cb:SetHitRectInsets(0, -(tonumber(cb.label:GetStringWidth()) or 80) - 4, 0, 0)   -- the label clicks too
   cb:SetScript("OnClick", function(self)
+    -- another character's guide in All Materials: their materials have to count
+    if not self:GetChecked() and CR.AllMaterialsUsesAlts and CR.AllMaterialsUsesAlts() then
+      self:SetChecked(true)
+      CR.Print("Alts' materials have to count while All Materials has another character's guide - take its column off (right-click) first.")
+      return
+    end
     CraftRouteCharDB.includeAlts = self:GetChecked() and true or false
     CR.InvalidateLocations()
     CR.NotifyChanged()
@@ -41,6 +47,9 @@ function CR.CreateAltsCheck(parent, label)
     GameTooltip:AddLine("Ticked: materials on your other characters (bags, bank, mail) count as owned - in the "
       .. "materials list, the route cost, reagent colours and task steps.", 1, 1, 1, true)
     GameTooltip:AddLine("Unticked: only this character's bags, bank and mail count.", 1, 1, 1, true)
+    if CR.AllMaterialsUsesAlts and CR.AllMaterialsUsesAlts() then
+      GameTooltip:AddLine("Kept on: All Materials has another character's guide.", 1, 0.82, 0, true)
+    end
     if not CR.HasSyndicator() then
       GameTooltip:AddLine("Needs Syndicator (installed with Baganator) to see alts.", 1, 0.5, 0.3, true)
     end

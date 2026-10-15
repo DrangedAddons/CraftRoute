@@ -15,6 +15,10 @@
 -- (Settings().removed), drag it to move its column (Settings().order), double-click it for that
 -- profession's own tracker; the + after the icons adds a removed one back.
 -- Every profession you've learned has a column (secondary ones too), even with nothing to track.
+-- The + also adds another character's profession (each character's professions are recorded when
+-- it logs in: CraftRouteDB.characters) - its column is planned from that character's skill, to the
+-- guide picked on its icon like any other; its name sits over the icon. Settings().alts = keys
+-- "alt:<Name-Realm>:<profession>".
 -- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
@@ -38,6 +42,57 @@ local function Settings()
 end
 local function Scale() return Settings().scale or 1 end
 
+-- this character's professions, kept account-wide so its alts can add them here
+local function MyKey()
+  local name, realm = UnitName and UnitName("player"), GetRealmName and GetRealmName()
+  return name and (name .. "-" .. (realm or "")) or nil
+end
+local function Characters()
+  CraftRouteDB.characters = CraftRouteDB.characters or {}
+  return CraftRouteDB.characters
+end
+local function RecordCharacter()
+  local key = MyKey()
+  if not (key and CraftRouteDB) then return end
+  local _, class = UnitClass and UnitClass("player")
+  local c = Characters()[key] or {}
+  c.name, c.class = UnitName("player"), class or c.class
+  c.profs = {}
+  for prof, sk in pairs(CR.skill or {}) do
+    c.profs[prof] = { rank = sk.rank or 0, maxRank = sk.maxRank or 0 }
+  end
+  Characters()[key] = c
+end
+local function ClassHex(class)
+  local cc = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+  return cc and cc.colorStr and cc.colorStr:sub(3) or "ffffff"
+end
+
+-- an alt's route goal: its current rank's cap, or (at the cap already) the next milestone
+local function AltRouteGoal(col)
+  local cur, cap = col.cur or 0, col.maxRank or 0
+  if cap > cur then return cap end
+  for _, g in ipairs({ 75, 150, 225, 300 }) do if g > cur then return g end end
+  return 300
+end
+
+-- a column: your own profession (its key is the profession), or an alt's ("alt:Name-Realm:prof");
+-- nil when it isn't there (not learned, taken off, or the alt has no record of it)
+local function Column(key)
+  local char, prof = key:match("^alt:(.+):([^:]+)$")
+  if char then
+    local c = Characters()[char]
+    local sk = c and c.profs and c.profs[prof]
+    if not (sk and CR.Route and CR.Route(prof)) then return nil end
+    return { key = key, prof = prof, char = char, charName = c.name or char, class = c.class,
+             cur = sk.rank, maxRank = sk.maxRank }
+  end
+  local cur, maxRank, detected = CR.GetSkill(key)
+  local removed = Settings().removed
+  if not detected or (removed and removed[key]) then return nil end
+  return { key = key, prof = key, cur = cur, maxRank = maxRank }
+end
+
 -- an item hidden in that profession's own tracker
 local function HiddenIn(prof, id)
   local t = CraftRouteCharDB and CraftRouteCharDB.tracker
@@ -52,15 +107,21 @@ end
 -- a profession's plan: the route's own (CraftRoute's goal), or one built to the goal picked here -
 -- those are kept until something changes (bags, skills, the routes: plans wiped)
 local plans = {}
-local function PlanFor(name)
+local function PlanFor(col)
   local goals = Settings().goals
-  local goal = goals and goals[name]
-  if not goal then return CR.GetPlans and CR.GetPlans(name) end
-  local key = name .. ":" .. goal
+  local goal = goals and goals[col.key]
+  local picked = goal ~= nil
+  if not goal then
+    -- yours: CraftRoute's own plan; an alt's: to its current rank's cap (its own record - your
+    -- character's rank says nothing about it), or at that cap the next milestone
+    if not col.char then return CR.GetPlans and CR.GetPlans(col.prof) end
+    goal = AltRouteGoal(col)
+  end
+  local key = col.key .. ":" .. goal .. (picked and ":p" or "")
   if plans[key] then return plans[key] end
-  local cur = CR.GetSkill(name)
-  local e = { cur = cur, goal = goal, picked = true,
-              plan = (goal > (cur or 0)) and CR.BuildPlan(name, cur, goal) or { materials = {}, steps = {} } }
+  local cur = col.cur or 0
+  local e = { cur = cur, goal = goal, picked = picked or nil,
+              plan = (goal > cur) and CR.BuildPlan(col.prof, cur, goal) or { materials = {}, steps = {} } }
   plans[key] = e
   return e
 end
@@ -73,8 +134,14 @@ local function Removed()
 end
 local preview   -- while a column is dragged: the order it would leave (shown live)
 local dragCol   -- the column heading being dragged
+local function AltKeys()
+  local st = Settings()
+  st.alts = st.alts or {}
+  return st.alts
+end
 local function Ordered()
   local list = CR.SupportedProfessions()
+  for _, k in ipairs(AltKeys()) do table.insert(list, k) end
   local pos = {}
   for i, name in ipairs(preview or Settings().order or {}) do pos[name] = i end
   local natural = {}
@@ -101,12 +168,12 @@ local function Gather()
   local profs, byId, items = {}, {}, {}
   local hideVendor = Settings().hideVendor
   for _, name in ipairs(Ordered()) do
-    local _, _, detected = CR.GetSkill(name)
-    local e = detected and not Removed()[name] and PlanFor(name)
+    local col = Column(name)
+    local e = col and PlanFor(col)
     local mats = e and e.plan and e.plan.materials
     local any = false
     for _, m in ipairs(mats or {}) do
-      if (m.need or 0) > 0 and not HiddenIn(name, m.id) and not (hideVendor and CR.IsVendorItem and CR.IsVendorItem(m.id)) then
+      if (m.need or 0) > 0 and not (not col.char and HiddenIn(name, m.id)) and not (hideVendor and CR.IsVendorItem and CR.IsVendorItem(m.id)) then
         any = true
         local it = byId[m.id]
         if not it then
@@ -136,7 +203,11 @@ local function Gather()
     end
     -- every learned one gets its column, even with nothing to track (finished, or a guide that uses
     -- no materials) - so you see it's taken into account
-    if e then table.insert(profs, { name = name, cur = e.cur, goal = e.goal, picked = e.picked, empty = not any }) end
+    if e then
+      table.insert(profs, { name = name, prof = col.prof, char = col.char, charName = col.charName, class = col.class,
+                            label = col.char and (col.charName .. "'s " .. col.prof) or col.prof,
+                            cur = e.cur, goal = e.goal, picked = e.picked, empty = not any })
+    end
   end
   return profs, items
 end
@@ -293,7 +364,7 @@ local function Row(i)
     GameTooltip:SetItemByID(l.it.id)
     for _, p in ipairs(frame.profs or {}) do
       local n = l.per[p.name]
-      if n then GameTooltip:AddDoubleLine(p.name, tostring(n), 0.8, 0.8, 0.8, 1, 1, 1) end
+      if n then GameTooltip:AddDoubleLine(p.label or p.name, tostring(n), 0.8, 0.8, 0.8, 1, 1, 1) end
     end
     GameTooltip:AddLine(string.format("Together %d - you have %d%s.", l.it.need, l.it.have,
       l.it.crafted > 0 and string.format(", %d made on the way", l.it.crafted) or ""), 0.4, 0.8, 1, true)
@@ -327,11 +398,17 @@ local function Col(name)
   if c then return c end
   c = CR.CreateDropdown(frame, COL_W, function()
     local p = c and c.p
-    local e = p and CR.GetPlans and CR.GetPlans(p.name)
-    local opts = { { value = "route", text = "Route goal" .. (e and e.goal and string.format(" (%d)", e.goal) or ""),
-                     radio = true } }
+    local route
+    if p and p.char then
+      local col = Column(p.name)
+      route = col and AltRouteGoal(col)
+    else
+      local e = p and CR.GetPlans and CR.GetPlans(p.prof or p.name)
+      route = e and e.goal
+    end
+    local opts = { { value = "route", text = "Route goal" .. (route and string.format(" (%d)", route) or ""), radio = true } }
     for _, g in ipairs(GOAL_OPTS) do
-      table.insert(opts, { value = g, text = string.format("%s to %d", p and p.name or "", g), radio = true })
+      table.insert(opts, { value = g, text = string.format("%s to %d", p and (p.label or p.name) or "", g), radio = true })
     end
     return opts
   end, function()
@@ -371,11 +448,17 @@ local function Col(name)
   end
   c.goal = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   c.goal:SetPoint("TOP", c.icon, "BOTTOM", 0, -1)   -- (stacked under the icon)
+  -- an alt's column: its name over the icon, in its class colour
+  c.char = c:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  c.char:SetPoint("BOTTOM", c.icon, "TOP", 0, 2)
+  c.char:SetWidth(COL_W)
+  c.char:SetWordWrap(false)
   c:SetScript("OnEnter", function(self)
     local p = self.p
     if not p then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText(p.name)
+    GameTooltip:SetText(p.label or p.name)
+    if p.char then GameTooltip:AddLine(string.format("%s's skill: %d", p.charName, p.cur or 0), 0.8, 0.8, 0.8) end
     if p.cur and p.goal then
       local rank = RankOf(p.goal)
       GameTooltip:AddLine(string.format("To %d - %s", p.goal, CR.ColorText(rank[2], rank[3])), 1, 1, 1)
@@ -401,14 +484,21 @@ local function Col(name)
     if dragged[self] then dragged[self] = nil return end
     if button == "RightButton" then
       GameTooltip_Hide()
-      Removed()[p.name] = true
+      if p.char then
+        -- an alt's column: gone (the + adds it again)
+        local alts = AltKeys()
+        for j = #alts, 1, -1 do if alts[j] == p.name then table.remove(alts, j) end end
+        if Settings().goals then Settings().goals[p.name] = nil end
+      else
+        Removed()[p.name] = true
+      end
       Refresh()
       return
     end
     if pending then
       pending = nil
       if self.menu then self.menu:Hide() end
-      if CR.ToggleTracker then CR.ToggleTracker(true, p.name) end
+      if CR.ToggleTracker and not p.char then CR.ToggleTracker(true, p.name) end   -- (an alt's has none)
       return
     end
     local token = {}
@@ -474,20 +564,105 @@ local function Col(name)
   return c
 end
 
--- the + after the headings: put back a profession taken off (later: alts' guides too)
-local addBtn
+-- the + after the headings: put back a profession taken off, or add another character's - pick
+-- the character, then (a second menu) which of its professions
+local addBtn, altBtn, altChar
+local ForceAlts
+-- another character's guide here: their materials (bags, bank, mail) have to count - "Count alts'
+-- materials" is switched on, and stays on while any alt column is here (CR.AllMaterialsUsesAlts)
+function CR.AllMaterialsUsesAlts()
+  local st = CraftRouteCharDB and CraftRouteCharDB.trackerAll
+  return st and st.alts and #st.alts > 0 or false
+end
+function ForceAlts()
+  if CR.AllMaterialsUsesAlts() and CraftRouteCharDB and not CraftRouteCharDB.includeAlts then
+    CraftRouteCharDB.includeAlts = true
+    if CR.InvalidateLocations then CR.InvalidateLocations() end
+    CR.NotifyChanged()
+  end
+end
+local function AltButton()
+  if altBtn then return altBtn end
+  local d = CR.CreateDropdown(frame, 20, function()
+    local c = altChar and Characters()[altChar]
+    local opts = { { header = (c and c.name or "?") .. "'s professions" } }
+    local have = {}
+    for _, k in ipairs(AltKeys()) do have[k] = true end
+    local names = {}
+    for prof, sk in pairs(c and c.profs or {}) do
+      if CR.Route and CR.Route(prof) and not have["alt:" .. altChar .. ":" .. prof] then table.insert(names, prof) end
+    end
+    table.sort(names)
+    for _, prof in ipairs(names) do
+      local sk = c.profs[prof]
+      local icon = CR.ProfessionIcon and CR.ProfessionIcon(prof)
+      table.insert(opts, { value = prof, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. prof
+        .. "  " .. CR.ColorText(string.format("%d/%d", sk.rank or 0, sk.maxRank or 0), "aaaaaa") })
+    end
+    if #names == 0 then
+      table.insert(opts, { value = "", text = CR.ColorText("Nothing to add", "888888") })
+    end
+    return opts
+  end, function() return nil end, function(v)
+    if v and v ~= "" and altChar then
+      table.insert(AltKeys(), "alt:" .. altChar .. ":" .. v)
+      ForceAlts()
+      Refresh()
+    end
+  end)
+  -- (not seen itself: it only opens its menu where the + is)
+  d:SetSize(20, 20)
+  d:SetAlpha(0)
+  d:EnableMouse(false)
+  altBtn = d
+  return d
+end
 local function AddButton()
   if addBtn then return addBtn end
   local a = CR.CreateDropdown(frame, 20, function()
     local opts = {}
-    for _, name in ipairs(RemovedLearned()) do
-      local icon = CR.ProfessionIcon and CR.ProfessionIcon(name)
-      table.insert(opts, { value = name, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. name })
+    local removed = RemovedLearned()
+    if #removed > 0 then
+      table.insert(opts, { header = "Your professions" })
+      for _, name in ipairs(removed) do
+        local icon = CR.ProfessionIcon and CR.ProfessionIcon(name)
+        table.insert(opts, { value = name, text = (icon and ("|T" .. icon .. ":16:16|t ") or "") .. name })
+      end
     end
-    if #opts == 0 then table.insert(opts, { value = "", text = CR.ColorText("Nothing taken off", "888888") }) end
+    local me, others = MyKey(), {}
+    for key, c in pairs(Characters()) do
+      if key ~= me and c.profs and next(c.profs) then table.insert(others, key) end
+    end
+    table.sort(others)
+    if #others > 0 then
+      table.insert(opts, { header = "Other characters" })
+      for _, key in ipairs(others) do
+        local c = Characters()[key]
+        table.insert(opts, { value = "char:" .. key, text = CR.ColorText(c.name or key, ClassHex(c.class))
+          .. CR.ColorText("  >", "888888") })
+      end
+    end
+    if #opts == 0 then
+      table.insert(opts, { value = "", text = CR.ColorText("Nothing to add - log in on your other characters once", "888888") })
+    end
     return opts
   end, function() return nil end, function(v)
-    if v and v ~= "" then Removed()[v] = nil Refresh() end
+    if not v or v == "" then return end
+    local char = v:match("^char:(.+)$")
+    if char then
+      -- that character's professions: a second menu, where the + is
+      altChar = char
+      local d = AltButton()
+      d:ClearAllPoints()
+      d:SetPoint("TOPLEFT", addBtn, "TOPLEFT", 0, 0)
+      C_Timer.After(0, function()
+        local open = d:GetScript("OnClick")
+        if open then open(d) end
+      end)
+      return
+    end
+    Removed()[v] = nil
+    Refresh()
   end)
   a:SetSize(20, 20)
   a.text:SetAlpha(0)
@@ -500,7 +675,8 @@ local function AddButton()
   a:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Add a profession")
-    GameTooltip:AddLine("Puts back a profession you took off this window (right-click an icon to take one off).", 1, 1, 1, true)
+    GameTooltip:AddLine("Puts back a profession you took off this window (right-click an icon to take one off), "
+      .. "or adds one of another character's - their professions are recorded when they log in.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   a:SetScript("OnLeave", GameTooltip_Hide)
@@ -546,7 +722,8 @@ function Refresh(moveOnly)
     local c = Col(p.name)
     shownCol[p.name] = true
     c.p = p
-    c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.prof or p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    c.char:SetText(p.char and CR.ColorText(p.charName or "", ClassHex(p.class)) or "")
     -- the goal it tracks to (picked here: gold)
     -- the goal in its rank's colour; picked here: the gold border round the icon
     c.goal:SetText(p.goal and CR.ColorText(tostring(p.goal), RankOf(p.goal)[3]) or "")
@@ -1010,7 +1187,9 @@ ev:SetScript("OnEvent", function(_, event)
     if frame and frame:IsShown() then SavePos() end
     return
   end
+  RecordCharacter()
+  ForceAlts()
   if Settings().shown then CR.ToggleAllMaterials(true) end
   -- bags, plans, skills changing: the plans built to a picked goal again, and refresh
-  CR.OnChange(function() wipe(plans) Refresh() end)
+  CR.OnChange(function() RecordCharacter() wipe(plans) Refresh() end)
 end)
