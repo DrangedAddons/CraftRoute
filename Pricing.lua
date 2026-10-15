@@ -146,10 +146,11 @@ end
 -- it from what's ticked; Cancel (or Escape) makes nothing. items: { { id, name, qty, on } }.
 local cart
 local CART_ROWS, CART_ROW_H = 12, 22
+local CART_TOP, CART_FOOT = 36, 110   -- rows start under the title; below them: totals, name, buttons
 function CR.ShowCart(suggested, items, onCreate)
   if not cart then
     local f = CreateFrame("Frame", "CraftRouteCart", UIParent, "BackdropTemplate")
-    f:SetSize(420, 120 + CART_ROWS * CART_ROW_H)
+    f:SetSize(420, CART_TOP + CART_ROWS * CART_ROW_H + CART_FOOT)
     f:SetPoint("CENTER", 0, 80)
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:EnableMouse(true)
@@ -164,7 +165,7 @@ function CR.ShowCart(suggested, items, onCreate)
     f.title:SetText("This will be added to your shopping list")
     if CR.ThemeRegisterAccentText then CR.ThemeRegisterAccentText(f.title) end
     f.nameLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f.nameLabel:SetPoint("TOPLEFT", 14, -40)
+    f.nameLabel:SetPoint("BOTTOMLEFT", 14, 50)   -- (just above the buttons)
     f.nameLabel:SetText("List name:")
     f.box = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
     f.box:SetHeight(22)
@@ -181,17 +182,17 @@ function CR.ShowCart(suggested, items, onCreate)
       return price and price * it.qty or nil
     end
     function f:Totals()
-      local n, total, unpriced = 0, 0, 0
+      local n, total = 0, 0
       for _, it in ipairs(self.items) do
         if it.on and it.qty > 0 then
           n = n + 1
           local c = Cost(it)
-          if c then total = total + c else unpriced = unpriced + 1 end
+          if c then total = total + c end
         end
       end
-      self.summary:SetText(string.format("%d item%s", n, n == 1 and "" or "s") .. "   "
-        .. CR.ColorText("Cost ", "aaaaaa") .. CR.FormatMoney(total)
-        .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or ""))
+      -- (an item with no price shows "?" in its own row - not repeated here)
+      self.summary:SetText(string.format("%d item%s", n, n == 1 and "" or "s"))
+      self.total:SetText(CR.FormatMoney(total))
       self.create:SetEnabled(n > 0)
     end
     function f:Fill()
@@ -223,7 +224,7 @@ function CR.ShowCart(suggested, items, onCreate)
     for i = 1, CART_ROWS do
       local r = CreateFrame("Frame", nil, f)
       r:SetHeight(CART_ROW_H)
-      r:SetPoint("TOPLEFT", 10, -66 - (i - 1) * CART_ROW_H)
+      r:SetPoint("TOPLEFT", 10, -CART_TOP - (i - 1) * CART_ROW_H)
       r:SetPoint("RIGHT", f, "RIGHT", -12, 0)
       r.tick = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
       r.tick:SetSize(20, 20)
@@ -272,9 +273,13 @@ function CR.ShowCart(suggested, items, onCreate)
       self:Fill()
     end)
     f.more = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    f.more:SetPoint("TOPRIGHT", -16, -66 - CART_ROWS * CART_ROW_H - 2)
+    -- under the list: how many items (left), the gold total under the cost column (right)
     f.summary = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f.summary:SetPoint("BOTTOMLEFT", 14, 18)
+    f.total = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.total:SetJustifyH("RIGHT")
+    f.totalLine = f:CreateTexture(nil, "ARTWORK")
+    f.totalLine:SetHeight(1)
+    f.totalLine:SetColorTexture(1, 0.82, 0.35, 0.35)
 
     local function Done(create)
       local name = strtrim(f.box:GetText() or "")
@@ -290,17 +295,17 @@ function CR.ShowCart(suggested, items, onCreate)
     end
     f.box:SetScript("OnEnterPressed", function() Done(true) end)
     f.box:SetScript("OnEscapePressed", function() Done(false) end)
-    local function Btn(text, x, create)
+    local function Btn(text, w, create)
       local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-      b:SetSize(100, 22)
-      b:SetPoint("BOTTOMRIGHT", x, 12)
+      b:SetSize(w, 22)
       b:SetText(text)
       if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
       b:SetScript("OnClick", function() Done(create) end)
       return b
     end
-    Btn("Cancel", -14, false)
-    f.create = Btn("Create List", -120, true)
+    Btn("Cancel", 80, false):SetPoint("BOTTOMRIGHT", -14, 12)
+    f.create = Btn("Create Shopping List", 170, true)
+    f.create:SetPoint("BOTTOM", 0, 12)   -- (centred)
     table.insert(UISpecialFrames, "CraftRouteCart")   -- (Escape closes it)
     f:SetScript("OnHide", function() f.onCreate = nil end)
     cart = f
@@ -309,9 +314,19 @@ function CR.ShowCart(suggested, items, onCreate)
   f.suggested, f.onCreate, f.items, f.offset = suggested, onCreate, items, 0
   -- shorter for a short list
   local shown = math.min(#items, CART_ROWS)
-  f:SetHeight(120 + math.max(3, shown) * CART_ROW_H)
+  local rowsH = math.max(3, shown) * CART_ROW_H
+  f:SetHeight(CART_TOP + rowsH + CART_FOOT)
+  -- the totals line, right under the rows: the gold in line with the cost column
+  local y = -CART_TOP - rowsH - 4
+  f.totalLine:ClearAllPoints()
+  f.totalLine:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, y)
+  f.totalLine:SetWidth(96)
+  f.total:ClearAllPoints()
+  f.total:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, y - 4)
+  f.summary:ClearAllPoints()
+  f.summary:SetPoint("TOPLEFT", f, "TOPLEFT", 14, y - 5)
   f.more:ClearAllPoints()
-  f.more:SetPoint("TOPRIGHT", -16, -66 - shown * CART_ROW_H - 2)
+  f.more:SetPoint("TOP", f, "TOP", 0, y - 5)
   f:Show()
   f:Fill()
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, f) end

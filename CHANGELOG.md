@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.75.1
+
+- Shopping cart window: the gold total sits under the cost column (a proper total), with the item count on the left - no "(+N unpriced)" (an unpriced item shows "?" in its own row). The **List name** is just above the buttons; **Create Shopping List** is centred, Cancel at the bottom right.
+
 ## 0.75.0
 
 - **Item tooltips** follow the All Materials window: the professions on it (yours, and the other characters' you've added - named), each to the guide picked there, with what the item's needed for and have/need to that goal; with more than one, the total **together**, and the AH price's "buy" amount for all of them. Professions taken off the window aren't shown.
