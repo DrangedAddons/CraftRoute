@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.2
+
+- The CraftRoute key opens the window again after you've closed it with the key (the third press did nothing): it reopened by the profession window's own ID, which the game doesn't open a profession by - now by the profession, through your profession list.
+
 ## 0.78.1
 
 - **The CraftRoute key** is predictable:

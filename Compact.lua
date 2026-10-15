@@ -60,7 +60,7 @@ local ui = {
 ---------------------------------------------------------------------------
 
 -- this session: what the profession window was on when it last closed (the CraftRoute key opens it
--- there again) - its skill line, its profession, and the one this tab was showing
+-- there again) - its profession, and the one this tab was showing
 local session = {}
 
 local function OpenProfessionName()
@@ -3549,8 +3549,17 @@ function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
 -- The CraftRoute key, the window closed: what to open - what it was on when last closed this
 -- session (and this tab's own profession then, if it was showing another), else your first
 -- profession with a window (CR.FallbackProfession). Returns the skill line to open.
+-- the skill line the game opens a profession by (its profession list's), for one of yours
+local function SkillLineOf(name)
+  if not (name and GetProfessions and GetProfessionInfo) then return nil end
+  if name == "Smelting" then name = "Mining" end
+  for _, index in pairs({ GetProfessions() }) do
+    local pname, _, _, _, _, _, line = GetProfessionInfo(index)
+    if pname == name and line then return line end
+  end
+end
 function CR.KeybindReopen()
-  local line = session.line
+  local line = SkillLineOf(session.window)
   if line then
     if session.view and session.window and session.view ~= session.window then
       ui.restoreView, ui.restoreWindow = session.view, session.window
@@ -5162,10 +5171,10 @@ local function Install()
     if Keeping() then return end   -- switching profession from this view: it stays open
     -- what it was on, for the CraftRoute key to bring back this session: the window's profession,
     -- and (on this tab) the profession the tab was showing - which can be another one, picked here
-    local info = C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
-    if info and info.professionID then
-      session.line = info.professionID
-      session.window = OpenProfessionName()
+    -- (kept by name: the window's own profession ID isn't one the game opens a profession by)
+    local name = OpenProfessionName()
+    if name and name ~= "" then
+      session.window = name
       session.view = (overlay and overlay:IsShown() and DB()) and DB().profession or nil
     end
     local wasOpen = overlay and overlay:IsShown()
