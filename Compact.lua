@@ -5065,6 +5065,13 @@ local function BuildOverlay()
     end
     local before = ui.openProf
     SyncOpenProfession()
+    -- what this tab is on, kept as it goes (by closing time the window may have let go of it): the
+    -- CraftRoute key opens it here again
+    local loaded = OpenProfessionName()
+    if loaded and loaded ~= "" and DB() then
+      session.window = loaded
+      session.view = DB().profession
+    end
     if ui.openProf ~= before then
       pcall(MirrorBlizzardBackground)   -- (another profession: its own art)
       pcall(AlignToBlizzardButtons)
@@ -5171,11 +5178,12 @@ local function Install()
     if Keeping() then return end   -- switching profession from this view: it stays open
     -- what it was on, for the CraftRoute key to bring back this session: the window's profession,
     -- and (on this tab) the profession the tab was showing - which can be another one, picked here
-    -- (kept by name: the window's own profession ID isn't one the game opens a profession by)
+    -- (kept by name: the window's own profession ID isn't one the game opens a profession by) -
+    -- only this tab's: closed from one of Blizzard's tabs, what this tab last had stays
     local name = OpenProfessionName()
-    if name and name ~= "" then
+    if name and name ~= "" and overlay and overlay:IsShown() and DB() then
       session.window = name
-      session.view = (overlay and overlay:IsShown() and DB()) and DB().profession or nil
+      session.view = DB().profession
     end
     local wasOpen = overlay and overlay:IsShown()
     if wasOpen then

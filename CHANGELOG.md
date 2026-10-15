@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.78.5
+
+- The CraftRoute key:
+  - **Opens and closes the whole profession window**, whatever tab it's on (on one of Blizzard's tabs it used to switch to CraftRoute's instead of closing).
+  - **Reopens on the profession CraftRoute's tab was on** this session (e.g. Cooking) - it kept falling back to your first profession, because what the tab was on was only read as the window closed, when it had already let go of it. It's kept as you go now.
+
 ## 0.78.4
 
 - Settings page: Escape closes the window again - the key-binding button only takes the keyboard while it's waiting for a key.
