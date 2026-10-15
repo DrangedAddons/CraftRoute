@@ -1161,18 +1161,19 @@ function CR.AllMaterialsById()
   return out
 end
 
--- The main window's "All" button (beside "Tracker")
+-- The main window's "Materials" button
 function CR.AllMaterialsButton(owner)
   local b = CreateFrame("Button", nil, owner, "UIPanelButtonTemplate")
-  b:SetSize(44, 22)
-  b:SetText("All")
+  b:SetSize(80, 22)
+  b:SetText("Materials")
   if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
   b:SetScript("OnClick", function() CR.ToggleAllMaterials() end)
   b:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-    GameTooltip:SetText("All materials")
+    GameTooltip:SetText("All Materials")
     GameTooltip:AddLine("One window with every material your professions' routes still need: a column per "
       .. "profession, and the total you need of each against what you have.", 1, 1, 1, true)
+    GameTooltip:AddLine("Double-click a profession's icon there for that profession's own tracker.", 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
   end)
   b:SetScript("OnLeave", GameTooltip_Hide)

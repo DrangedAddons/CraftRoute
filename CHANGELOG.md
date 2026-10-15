@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.69.0
+
+- The materials pop-outs open the **All Materials** window now: the profession window's pop-out button, the main window's button (now **Materials**, in place of Tracker and All) and `/cr tracker` (or `/cr all`). One profession's own tracker is a double-click on its icon in All Materials.
+- Every CraftRoute dropdown (the All Materials + and icon menus, the sort, the profession pickers...) closes when you click anywhere else.
+
 ## 0.68.1
 
 - Profession window tab (issue #10): an enchant's **Optional Target** (the label and the item box) and the status line under it ("Select an item to enchant.") are in line with the details above them (Reagents:, the costs) instead of sitting at the column's edge, with a little more room between them.

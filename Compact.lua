@@ -3871,13 +3871,14 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(costBar.popout)
   CR.AddPopoutIcon(costBar.popout)
   costBar.popout:SetScript("OnClick", function()
-    if CR.ToggleTracker then CR.ToggleTracker(nil, PlanProfession(), true) end   -- (docked to this window)
+    -- the All Materials window (one profession's own tracker: double-click its icon there)
+    if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
   end)
   costBar.popout:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Pop out the materials")
-    GameTooltip:AddLine("A small window of the route's materials you can pin anywhere on screen - it stays "
-      .. "up with this window closed.", 1, 1, 1, true)
+    GameTooltip:AddLine("All your professions' materials in one window you can pin anywhere on screen - it stays "
+      .. "up with this window closed. Double-click a profession's icon there for its own tracker.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   costBar.popout:SetScript("OnLeave", GameTooltip_Hide)

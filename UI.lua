@@ -378,8 +378,14 @@ function CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
     if openMacro and CR.SyncSecureCovers then CR.SyncSecureCovers() end
   end)
   dd:SetScript("OnHide", function() menu:Hide() end)
+  -- a click anywhere else closes the list (a click on the box itself toggles it as before)
+  menu:SetScript("OnShow", function(self) pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  menu:HookScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  menu:SetScript("OnEvent", function(self)
+    if not self:IsMouseOver() and not dd:IsMouseOver() then self:Hide() end
+  end)
   if openMacro then
-    menu:SetScript("OnHide", function() if CR.SyncSecureCovers then CR.SyncSecureCovers() end end)
+    menu:HookScript("OnHide", function() if CR.SyncSecureCovers then CR.SyncSecureCovers() end end)
   end
 
   function dd:Sync()
@@ -526,12 +532,10 @@ local function CreateWindow()
   local versionText = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   versionText:SetPoint("RIGHT", close, "LEFT", -6, 0)
   versionText:SetText(version and ("v" .. version) or "")
-  -- the materials tracker (Tracker.lua)
-  if CR.TrackerButton then
-    local tb = CR.TrackerButton(frame)
-    tb:SetPoint("RIGHT", versionText, "LEFT", -10, 0)
-    -- beside it: every profession's materials in one window
-    if CR.AllMaterialsButton then CR.AllMaterialsButton(frame):SetPoint("RIGHT", tb, "LEFT", -4, 0) end
+  -- the materials window: every profession's materials together (TrackerAll.lua) - one
+  -- profession's own tracker is a double-click on its icon there
+  if CR.AllMaterialsButton then
+    CR.AllMaterialsButton(frame):SetPoint("RIGHT", versionText, "LEFT", -10, 0)
   end
 
   frame.panels = {}
