@@ -16,7 +16,7 @@
 -- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
-local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 22, 18, 25
+local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 34, 18, 25   -- (a heading: icon, its goal under it)
 local COL_W, TOTAL_W, MIN_NAME, MAX_NAME = 44, 74, 100, 320
 local MIN_S, MAX_S, MIN_H, MAX_H = 0.6, 2, 120, 900
 local BANDS = { { 1, 75 }, { 75, 150 }, { 150, 225 }, { 225, 300 } }
@@ -296,10 +296,10 @@ local function Col(name)
   end
   c.icon = c:CreateTexture(nil, "ARTWORK")
   c.icon:SetSize(18, 18)
-  c.icon:SetPoint("RIGHT", -2, 0)
+  c.icon:SetPoint("TOP", 0, -2)
   c.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
   c.goal = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  c.goal:SetPoint("RIGHT", c.icon, "LEFT", -2, 0)
+  c.goal:SetPoint("TOP", c.icon, "BOTTOM", 0, -1)   -- (stacked under the icon)
   c:SetScript("OnEnter", function(self)
     local p = self.p
     if not p then return end
@@ -489,12 +489,12 @@ function Refresh(moveOnly)
   PlaceDragged()
   local add = AddButton()
   add:ClearAllPoints()
-  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - HEAD_H / 2)
+  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - 11)   -- (level with the icons)
   add:Show()
   frame.itemHead:ClearAllPoints()
-  frame.itemHead:SetPoint("TOPLEFT", 8, -Top() - 5)
+  frame.itemHead:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 8, -Top() - HEAD_H + 2)
   frame.totalHead:ClearAllPoints()
-  frame.totalHead:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -Top() - 5)
+  frame.totalHead:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -18, -Top() - HEAD_H + 2)
 
   -- how many lines fit: the height you set, else the whole list (up to MAX_ROWS)
   local top = Top() + HEAD_H + 2
@@ -536,7 +536,7 @@ function Refresh(moveOnly)
       r.name:SetText(it.name or "?")
       for j, p in ipairs(profs) do
         local fs = r.cells[j]
-        if not fs then fs = Cell(r, "RIGHT") r.cells[j] = fs end
+        if not fs then fs = Cell(r, "CENTER") r.cells[j] = fs end
         fs:ClearAllPoints()
         fs:SetPoint("RIGHT", r, "LEFT", left - 8 + j * COL_W - 2, 0)
         fs:SetWidth(COL_W - 4)

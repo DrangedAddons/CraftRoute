@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.65.1
+
+- All Materials window: each profession's guide target sits under its icon (stacked), and the numbers are centred under them.
+
 ## 0.65.0
 
 - All Materials window:
