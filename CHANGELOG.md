@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.65.2
+
+- All Materials window:
+  - Each profession's guide target is coloured by its rank: **Apprentice (75) white, Journeyman (150) green, Expert (225) blue, Artisan (300) purple**. A target you picked yourself (from the icon) gets a **gold border round the icon**; the icon's tooltip names the rank and says whether it's picked or following the route.
+  - **Ctrl+scroll** scales it (and the wheel scrolls it) anywhere over the window - over the rows and headings too, not just its empty space.
+
 ## 0.65.1
 
 - All Materials window: each profession's guide target sits under its icon (stacked), and the numbers are centred under them.

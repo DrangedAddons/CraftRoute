@@ -9,7 +9,8 @@
 -- band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you have
 -- counting towards the earliest bands first) or A-Z.
 -- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
--- 225 / 300 (Settings().goals[profession]). Right-click an icon to take that profession off
+-- 225 / 300 (Settings().goals[profession]) - its goal shows under the icon in its rank's colour
+-- (Apprentice white, Journeyman green, Expert blue, Artisan purple); picked here: a gold border. Right-click an icon to take that profession off
 -- (Settings().removed), drag it to move its column (Settings().order), double-click it for that
 -- profession's own tracker; the + after the icons adds a removed one back.
 -- Every profession you've learned has a column (secondary ones too), even with nothing to track.
@@ -203,6 +204,16 @@ local function StopDrag()
   SavePos()
 end
 
+-- the wheel over anything in the window (rows, headings, the +) does what it does over the window:
+-- scroll, or with Ctrl held scale
+local function PassWheel(w)
+  w:EnableMouseWheel(true)
+  w:SetScript("OnMouseWheel", function(_, delta)
+    local h = frame and frame:GetScript("OnMouseWheel")
+    if h then h(frame, delta) end
+  end)
+end
+
 local function Cell(parent, justify, font)
   local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
   fs:SetJustifyH(justify)
@@ -252,6 +263,7 @@ local function Row(i)
   r:RegisterForDrag("LeftButton")
   r:SetScript("OnDragStart", StartDrag)
   r:SetScript("OnDragStop", StopDrag)
+  PassWheel(r)
   rows[i] = r
   if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
   return r
@@ -261,6 +273,14 @@ end
 -- guide it tracks (the route's own goal, or 75 / 150 / 225 / 300)
 local Refresh
 local GOAL_OPTS = { 75, 150, 225, 300 }
+-- a goal's colour, by the rank it's in: Apprentice (to 75) white, Journeyman (150) green, Expert
+-- (225) blue, Artisan (300) purple
+local RANKS = { { 75, "Apprentice", "ffffff" }, { 150, "Journeyman", "1eff00" }, { 225, "Expert", "3d9cff" },
+                { 300, "Artisan", "b46dff" } }
+local function RankOf(goal)
+  for _, r in ipairs(RANKS) do if goal <= r[1] then return r end end
+  return RANKS[#RANKS]
+end
 local dragged = {}   -- [column] = just dragged (its release isn't a click)
 local function Col(name)
   local c = cols[name]
@@ -298,6 +318,17 @@ local function Col(name)
   c.icon:SetSize(18, 18)
   c.icon:SetPoint("TOP", 0, -2)
   c.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+  -- picked here (not the route's own goal): a gold border round the icon
+  c.picked = {}
+  for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", 0, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, -1 },
+                       { "TOPLEFT", "BOTTOMLEFT", -1, 0 }, { "TOPRIGHT", "BOTTOMRIGHT", 1, 0 } }) do
+    local t = c:CreateTexture(nil, "OVERLAY")
+    t:SetColorTexture(1, 0.82, 0, 1)
+    t:SetPoint(e[1], c.icon, e[1], e[3] ~= 0 and e[3] or 0, e[4] ~= 0 and e[4] or 0)
+    t:SetPoint(e[2], c.icon, e[2], e[3] ~= 0 and e[3] or 0, e[4] ~= 0 and e[4] or 0)
+    if e[3] ~= 0 then t:SetWidth(1) else t:SetHeight(1) end
+    table.insert(c.picked, t)
+  end
   c.goal = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   c.goal:SetPoint("TOP", c.icon, "BOTTOM", 0, -1)   -- (stacked under the icon)
   c:SetScript("OnEnter", function(self)
@@ -306,7 +337,10 @@ local function Col(name)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(p.name)
     if p.cur and p.goal then
-      GameTooltip:AddLine(string.format("%s %d > %d", p.picked and "Guide" or "Route", p.cur, p.goal), 1, 1, 1)
+      local rank = RankOf(p.goal)
+      GameTooltip:AddLine(string.format("To %d - %s", p.goal, CR.ColorText(rank[2], rank[3])), 1, 1, 1)
+      GameTooltip:AddLine(p.picked and "Picked here (gold border) - pick \"Route goal\" to follow the route again."
+        or "Following the route's own goal.", 0.8, 0.8, 0.8, true)
     end
     if p.empty then
       GameTooltip:AddLine("Nothing to track - its guide is done, or uses no materials.", 0.4, 0.8, 1, true)
@@ -395,6 +429,7 @@ local function Col(name)
     end
     Refresh()
   end)
+  PassWheel(c)
   cols[name] = c
   return c
 end
@@ -429,6 +464,7 @@ local function AddButton()
     GameTooltip:Show()
   end)
   a:SetScript("OnLeave", GameTooltip_Hide)
+  PassWheel(a)
   addBtn = a
   CR.AllMaterialsAdd = a   -- (tests)
   return a
@@ -472,7 +508,9 @@ function Refresh(moveOnly)
     c.p = p
     c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
     -- the goal it tracks to (picked here: gold)
-    c.goal:SetText(p.goal and (p.picked and CR.ColorText(tostring(p.goal), "ffd100") or tostring(p.goal)) or "")
+    -- the goal in its rank's colour; picked here: the gold border round the icon
+    c.goal:SetText(p.goal and CR.ColorText(tostring(p.goal), RankOf(p.goal)[3]) or "")
+    for _, t in ipairs(c.picked) do t:SetShown(p.picked and true or false) end
     c:ClearAllPoints()
     c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
     c:SetAlpha(p.empty and 0.6 or 1)
@@ -607,7 +645,7 @@ local function SetSize(scale, nameW, h)
   if scale then
     scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20))
     local l, t = frame:GetLeft(), frame:GetTop()
-    local old = frame:GetScale()
+    local old = tonumber(frame:GetScale()) or 1
     s.scale = scale
     frame:SetScale(scale)
     if l and t then
