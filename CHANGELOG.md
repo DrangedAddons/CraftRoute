@@ -3,8 +3,6 @@
 ## 0.68.1
 
 - Profession window tab (issue #10): an enchant's **Optional Target** (the label and the item box) and the status line under it ("Select an item to enchant.") are in line with the details above them (Reagents:, the costs) instead of sitting at the column's edge, with a little more room between them.
-- All Materials window: another character's column plans to **that character's** current rank cap by default (not yours).
-
 ## 0.68.0
 
 - All Materials window: **add another character's profession**. The **+** menu lists your other characters (each character's professions are recorded when it logs in - log in on each once); pick one, then which of its professions - it gets its own column, its name over the icon in its class colour, planned from **that character's** skill (to its current rank's cap; click the icon to pick 75 / 150 / 225 / 300 like any other). Right-click takes it off again.
