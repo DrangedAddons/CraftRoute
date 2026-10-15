@@ -475,23 +475,20 @@ local function Col(name)
   c.char:SetPoint("BOTTOM", c.icon, "TOP", 0, 2)
   c.char:SetWidth(COL_W)
   c.char:SetWordWrap(false)
+  -- just whose profession and its skill - above the window, over its column, clear of the header
   c:SetScript("OnEnter", function(self)
     local p = self.p
     if not p then return end
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText(p.label or p.name)
-    if p.char then GameTooltip:AddLine(string.format("%s's skill: %d", p.charName, p.cur or 0), 0.8, 0.8, 0.8) end
-    if p.cur and p.goal then
-      local rank = RankOf(p.goal)
-      GameTooltip:AddLine(string.format("To %d - %s", p.goal, CR.ColorText(rank[2], rank[3])), 1, 1, 1)
-      GameTooltip:AddLine(p.picked and "Picked here (gold border) - pick \"Route goal\" to follow the route again."
-        or "Following the route's own goal.", 0.8, 0.8, 0.8, true)
+    GameTooltip:SetOwner(self, "ANCHOR_NONE")
+    local x = self:GetCenter()
+    local fl = frame:GetLeft()
+    if x and fl then
+      GameTooltip:SetPoint("BOTTOM", frame, "TOPLEFT", x - fl, 4)
+    else
+      GameTooltip:SetPoint("BOTTOM", self, "TOP", 0, 60)
     end
-    if p.empty then
-      GameTooltip:AddLine("Nothing to track - its guide is done, or uses no materials.", 0.4, 0.8, 1, true)
-    end
-    GameTooltip:AddLine("Click to pick which guide this column tracks: the route's own goal, or to 75 / 150 / 225 / 300.",
-      0.6, 0.6, 0.6, true)
+    GameTooltip:SetText((p.label or p.name) .. " Skill:")
+    GameTooltip:AddLine(tostring(p.cur or 0), 1, 1, 1)
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", GameTooltip_Hide)

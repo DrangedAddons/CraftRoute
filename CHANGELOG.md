@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.75.3
+
+- All Materials window: a profession icon's tooltip is just whose profession and its skill ("Confuçius's Fishing Skill: 75"), shown above the window so it doesn't cover the header.
+
 ## 0.75.2
 
 - Shopping cart window: hovering an item shows its tooltip (with CraftRoute's lines).
