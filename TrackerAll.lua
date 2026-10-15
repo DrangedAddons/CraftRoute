@@ -57,7 +57,8 @@ end
 local function RecordCharacter()
   local key = MyKey()
   if not (key and CraftRouteDB) then return end
-  local _, class = UnitClass and UnitClass("player")
+  -- (UnitClass's second value: the class's file name, MAGE - what the class colours go by)
+  local class = UnitClass and select(2, UnitClass("player"))
   local c = Characters()[key] or {}
   c.name, c.class = UnitName("player"), class or c.class
   c.profs = {}
@@ -65,6 +66,23 @@ local function RecordCharacter()
     c.profs[prof] = { rank = sk.rank or 0, maxRank = sk.maxRank or 0 }
   end
   Characters()[key] = c
+end
+-- a character's class (MAGE...): recorded when it logged in, else from Syndicator (which keeps
+-- every character's) - and kept, once found
+local function CharClass(key, c)
+  if c and c.class then return c.class end
+  local api = Syndicator and Syndicator.API and Syndicator.API.GetByCharacterFullName
+  if api and key then
+    local name, realm = key:match("^(.-)%-(.*)$")
+    for _, full in ipairs({ key, name and realm and (name .. "-" .. realm:gsub("[%s%-]", "")) or key }) do
+      local ok, data = pcall(api, full)
+      local class = ok and type(data) == "table" and data.details and data.details.className
+      if class then
+        if c then c.class = class end
+        return class
+      end
+    end
+  end
 end
 local function ClassHex(class)
   local cc = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -87,7 +105,7 @@ local function Column(key)
     local c = Characters()[char]
     local sk = c and c.profs and c.profs[prof]
     if not (sk and CR.Route and CR.Route(prof)) then return nil end
-    return { key = key, prof = prof, char = char, charName = c.name or char, class = c.class,
+    return { key = key, prof = prof, char = char, charName = c.name or char, class = CharClass(char, c),
              cur = sk.rank, maxRank = sk.maxRank }
   end
   local cur, maxRank, detected = CR.GetSkill(key)
@@ -683,7 +701,7 @@ function OpenSub(char, row)
   local names = {}
   for prof in pairs(c.profs or {}) do if CR.Route and CR.Route(prof) then table.insert(names, prof) end end
   table.sort(names)
-  local lines = { { head = CR.ColorText(c.name or char, ClassHex(c.class)) .. "'s professions" } }
+  local lines = { { head = CR.ColorText(c.name or char, ClassHex(CharClass(char, c))) .. "'s professions" } }
   for _, prof in ipairs(names) do
     local key = "alt:" .. char .. ":" .. prof
     local sk = c.profs[prof]
@@ -738,7 +756,7 @@ function OpenAdd()
     table.insert(lines, { head = "Other characters" })
     for _, key in ipairs(others) do
       local c = Characters()[key]
-      table.insert(lines, { text = CR.ColorText(c.name or key, ClassHex(c.class)), more = true,
+      table.insert(lines, { text = CR.ColorText(c.name or key, ClassHex(CharClass(key, c))), more = true,
         onClick = function(row) OpenSub(key, row) end,
         onEnter = function(row) if subMenu and subMenu:IsShown() and subMenu.char ~= key then OpenSub(key, row) end end })
     end

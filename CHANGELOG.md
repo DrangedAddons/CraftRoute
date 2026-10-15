@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.2
+
+- All Materials window: **other characters' class colours** show (their names over the columns, the column tints, the + menu). Their class wasn't being recorded; now it is, and for characters recorded before, it's taken from Syndicator - no need to log in on each again.
+
 ## 0.72.1
 
 - All Materials window: the **+** menu stays where it opened while you tick - adding or removing columns moves the + button, but no longer the menu under your cursor.
