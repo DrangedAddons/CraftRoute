@@ -1,4 +1,6 @@
--- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab.
+-- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab -
+-- where it was when last closed this session (else your first profession); with the window up, it
+-- shows CraftRoute's tab, or closes the window when that's showing.
 -- Always the tab. With no crafting profession to open (nothing learned, or only gathering) it
 -- opens the main window's Professions tab instead: pick a profession, pin its nearest trainer. It opens the profession picked in
 -- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
@@ -33,12 +35,21 @@ function CraftRoute_KeybindPressed()
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
   -- read the professions fresh: the list from login can be empty or out of date
   if CR.ScanSkills then pcall(CR.ScanSkills) end
-  -- the window's already up (any profession): show CraftRoute's tab, or close the window
+  -- the window's up (whatever profession): CraftRoute's tab if it isn't showing, else close the
+  -- window - never a switch to another profession
   if ProfessionsFrame and ProfessionsFrame:IsShown() and CR.KeybindToggleView then
     -- up but empty (no profession loaded, e.g. after a reload): load one, on CraftRoute's tab
     if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then return end
-    local prof = Target()
-    if not prof or CR.TradeSkillOpenFor(prof) then CR.KeybindToggleView() return end
+    CR.KeybindToggleView()
+    return
+  end
+  -- closed: open it on CraftRoute's tab, where it was when last closed this session (else your
+  -- first profession)
+  local line = CR.KeybindReopen and CR.KeybindReopen()
+  if line then
+    if CR.KeybindWillOpen then CR.KeybindWillOpen() end
+    C_TradeSkillUI.OpenTradeSkill(line)
+    return
   end
   local prof = Target()
   if not prof then

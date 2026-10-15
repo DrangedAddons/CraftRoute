@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.78.1
+
+- **The CraftRoute key** is predictable:
+  - Window closed: it opens on CraftRoute's tab, with whatever profession it was on when you last closed it this session - including a profession you'd picked in the tab's dropdown - or, the first time, your first profession.
+  - Window open: it shows CraftRoute's tab, or closes the window if that's showing. It never switches profession (it used to jump to your first crafting profession when the window was on one CraftRoute plans without a window, like Skinning - so one press switched, the next closed).
+- Opening on CraftRoute's tab, Blizzard's own profession tab no longer stays highlighted next to it (it lit up once the profession finished loading).
+
 ## 0.78.0
 
 - Settings page:

@@ -59,6 +59,10 @@ local ui = {
 -- Profession frame helpers
 ---------------------------------------------------------------------------
 
+-- this session: what the profession window was on when it last closed (the CraftRoute key opens it
+-- there again) - its skill line, its profession, and the one this tab was showing
+local session = {}
+
 local function OpenProfessionName()
   local info
   if ProfessionsFrame then
@@ -123,6 +127,8 @@ end
 local function SyncOpenProfession()
   local name = OpenProfessionName()
   if not name or name == "" then return end
+  -- (the window's profession has loaded: a restored view has done its job)
+  if ui.restoreView and name == ui.restoreWindow then ui.restoreView, ui.restoreWindow = nil, nil end
   if name == ui.openProf then return end
   ui.openProf = name
   local prof = name and CR.professions[name]
@@ -3504,6 +3510,15 @@ local function OpenCompact()
   pcall(AlignToBlizzardButtons)
   pcall(HidePages)
   ui.openProf = nil
+  if ui.restoreView and DB() then
+    -- reopened by the CraftRoute key: the profession this tab was showing, not the window's
+    ui.openProf = ui.restoreWindow
+    ui.pinned = ui.restoreView
+    if DB().profession ~= ui.restoreView then
+      DB().profession = ui.restoreView
+      CR.InvalidatePlan()
+    end
+  end
   ui.keepScroll = false
   overlay:Show()
   SetEntryChecked(true)
@@ -3530,6 +3545,20 @@ end
 -- should come up once it has. With the window already open: shows this view, or closes the
 -- window when this view is what's showing.
 function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
+
+-- The CraftRoute key, the window closed: what to open - what it was on when last closed this
+-- session (and this tab's own profession then, if it was showing another), else your first
+-- profession with a window (CR.FallbackProfession). Returns the skill line to open.
+function CR.KeybindReopen()
+  local line = session.line
+  if line then
+    if session.view and session.window and session.view ~= session.window then
+      ui.restoreView, ui.restoreWindow = session.view, session.window
+    end
+    return line
+  end
+  return CR.FallbackProfession and (CR.FallbackProfession())
+end
 function CR.KeybindToggleView()
   if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return false end
   if overlay and overlay:IsShown() then
@@ -3552,10 +3581,17 @@ local function KeepNow()
 end
 local function ReopenSoon()
   if not Keeping() then return end
-  for _, delay in ipairs({ 0, 0.1, 0.3, 0.6 }) do
+  for _, delay in ipairs({ 0, 0.1, 0.3, 0.6, 1, 1.5 }) do
     C_Timer.After(delay, function()
       if not Keeping() or InCombatLockdown() or not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
-      if overlay and overlay:IsShown() then pcall(HidePages) else OpenCompact() end
+      if overlay and overlay:IsShown() then
+        pcall(HidePages)
+        -- (Blizzard ticks the profession's own tab once it has loaded: only this tab is lit)
+        pcall(ClearOtherChecks)
+        SetEntryChecked(true)
+      else
+        OpenCompact()
+      end
     end)
   end
 end
@@ -3930,9 +3966,10 @@ local function BuildOverlay()
     .. "aim to make - what they cost, whether you know them, where to get them, and crafting. Opens here once a "
     .. "profession is at " .. TRUE_MAX .. ".")
   -- the version: top left, just above the Craft button
-  if frame.version then
-    frame.version:ClearAllPoints()
-    frame.version:SetPoint("BOTTOMLEFT", frame.viewDest, "TOPLEFT", 2, 3)
+  local versionFS = rawget(frame, "version")
+  if versionFS then
+    versionFS:ClearAllPoints()
+    versionFS:SetPoint("BOTTOMLEFT", frame.viewDest, "TOPLEFT", 2, 3)
   end
 
   frame.destSearch = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
@@ -5123,6 +5160,14 @@ local function Install()
     -- the materials panel doesn't come back by itself: open it again when you want it
     if matPanel then matPanel:Hide() end
     if Keeping() then return end   -- switching profession from this view: it stays open
+    -- what it was on, for the CraftRoute key to bring back this session: the window's profession,
+    -- and (on this tab) the profession the tab was showing - which can be another one, picked here
+    local info = C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+    if info and info.professionID then
+      session.line = info.professionID
+      session.window = OpenProfessionName()
+      session.view = (overlay and overlay:IsShown() and DB()) and DB().profession or nil
+    end
     local wasOpen = overlay and overlay:IsShown()
     if wasOpen then
       HideOverlay("window closed")
