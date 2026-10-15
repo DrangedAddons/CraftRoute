@@ -2,7 +2,7 @@
 --
 -- This file does not change the /cr window. It adds one button on Blizzard's
 -- ProfessionsFrame, beside TrainerSpells, and opens its own view in the frame.
--- Plan and Recipes stay on /cr. This view is only the current craft on the route:
+-- Plan and Recipes stay on /cr window. This view is only the current craft on the route:
 -- the route down the left, the selected recipe and its reagents on the right.
 --
 -- Profession, goal, and route mode are the same saved settings as /cr. Changing
@@ -3777,7 +3777,7 @@ local function BuildOverlay()
     frame.version:SetPoint("RIGHT", frame.mainBtn, "LEFT", -6, 0)
     frame.version:SetText("v" .. version)
   end
-  -- the All Materials window, open / closed (the full CraftRoute window: /cr)
+  -- the All Materials window, open / closed (the full CraftRoute window: /cr window)
   frame.mainBtn:SetScript("OnClick", function()
     if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
   end)
@@ -3786,7 +3786,7 @@ local function BuildOverlay()
     GameTooltip:SetText("Materials")
     GameTooltip:AddLine("Opens / closes the All Materials window: every material your professions' routes still "
       .. "need, in one list. Double-click a profession's icon there for its own tracker.", 1, 1, 1, true)
-    GameTooltip:AddLine("The full CraftRoute window: /cr.", 0.6, 0.6, 0.6, true)
+    GameTooltip:AddLine("The full CraftRoute window: /cr window.", 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
   end)
   frame.mainBtn:SetScript("OnLeave", GameTooltip_Hide)

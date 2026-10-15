@@ -140,7 +140,7 @@ function CR.CraftSpell(spell, count, profName)
     end
     CR.Print("Couldn't find that recipe in the profession window.")
   else
-    CR.Print("This client has no CraftRecipe. Use /cr.")
+    CR.Print("This client has no CraftRecipe. Use /cr window.")
   end
 end
 

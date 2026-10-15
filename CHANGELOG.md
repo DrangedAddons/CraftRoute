@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.77.0
+
+- **Settings**: `/cr` now opens CraftRoute's settings - a page in the game's Options, also under **Options > AddOns > CraftRoute**: buttons for the CraftRoute window and the Materials window, the global options (Count alts' materials, Show professions I haven't learned, Show minimap button, and the window look with EllesmereUI), the keybind and the commands.
+- The full CraftRoute window (Plan, Recipes, Professions) moves to **`/cr window`** (or the button in Settings).
+- **Minimap button**: left-click for Settings, right-click for the Materials window; drag it round the minimap. EllesmereUI's minimap gathers it with its other addon buttons. Hide it in Settings.
+
 ## 0.76.0
 
 - Characters' **first and last names** are recorded (Forever's characters have both) - the All Materials icon tooltips show the full name ("Confuçius Say"); the names over the columns stay first names. With the full name, a character's class is also found in Syndicator by an exact full-name match. Each character records its last name the next time it logs in.

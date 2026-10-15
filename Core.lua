@@ -201,10 +201,14 @@ SlashCmdList.CRAFTROUTE = function(msg)
     if CR.DebugRankBar then CR.DebugRankBar() end
   elseif msg == "recipes" then
     CR.SafeCall(CR.ShowWindow, "recipes")
-  elseif msg == "help" then
-    CR.Print("/cr - toggle window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession, /cr tracker (or /cr all) - the materials window on/off")
-  else
+  elseif msg == "window" then
+    -- the full CraftRoute window (Plan, Recipes, Professions)
     CR.SafeCall(CR.ToggleWindow)
+  elseif msg == "help" then
+    CR.Print("/cr - settings, /cr window - the CraftRoute window, /cr all - the Materials window, /cr recipes - recipe picker, /cr skill <n> - planning skill if not learned yet, /cr tasks reset - undo \"Mark as done\" for this profession")
+  else
+    -- /cr: the settings (the CraftRoute window is /cr window)
+    if CR.OpenSettings then CR.SafeCall(CR.OpenSettings) else CR.SafeCall(CR.ToggleWindow) end
   end
 end
 

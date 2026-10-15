@@ -584,11 +584,7 @@ local function CreateWindow()
       end
       return opts
     end, function() return CraftRouteDB.theme or "default" end,
-    function(v)
-      CraftRouteDB.theme = v
-      CR.ApplyTheme(frame)
-      CR.RefreshWindow()
-    end)
+    function(v) CR.SetLook(v) end)
     lookDD:SetPoint("LEFT", lookLabel, "RIGHT", 6, 0)
     lookDD:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")  -- beside it, so it never covers the open menu
@@ -646,6 +642,32 @@ function CR.ToggleWindow()
 end
 
 function CR.IsWindowShown() return frame and frame:IsShown() and true or false end
+
+-- The window look (CR.THEMES), from here or the Settings page: saved, and the window redrawn
+function CR.SetLook(v)
+  CraftRouteDB.theme = v
+  if frame then
+    CR.ApplyTheme(frame)
+    CR.RefreshWindow()
+  end
+end
+-- the look picker's choices (with EllesmereUI)
+function CR.LookOptions()
+  local opts = {}
+  for _, t in ipairs(CR.THEMES) do
+    if not t.foreverOnly or EllesmereUI.IS_FOREVER then
+      local text = t.text
+      if t.key == "auto" then
+        local ok, look = pcall(EllesmereUI.RenderedLook)
+        for _, x in ipairs(CR.THEMES) do
+          if ok and x.key == look then text = text .. " (" .. x.text .. ")" end
+        end
+      end
+      table.insert(opts, { value = t.key, text = text })
+    end
+  end
+  return opts
+end
 function CR.CurrentTab() return frame and frame.current end
 
 function CR.RefreshWindow()
