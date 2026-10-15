@@ -3345,6 +3345,12 @@ end
 -- buttons or icons), copied - same art, crop, colour and alpha, so an EllesmereUI skin carries
 -- over - to the same place on this tab. Done as the tab opens, before Blizzard's page is hidden,
 -- and again for each profession (its art changes). /cr bg lists what was copied.
+-- Each copy is attached to the texture it copies, not given a size: the tab can open in the very
+-- moment the window does (the CraftRoute key), before Blizzard has sized its page - a size read
+-- then is too big, and stayed (a dark box out past the window's right edge). Attached, a copy
+-- follows Blizzard's page as it settles (it does, hidden or not). Copied again shortly after
+-- opening (a skin fading Blizzard's art does it a moment later - its alpha is copied), and
+-- nothing that reaches outside this tab is copied at all.
 local mirrored, mirrorLog = {}, {}
 local NINE_SLICE_KEYS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner",
                           "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "Center" }
@@ -3353,8 +3359,11 @@ local function MirrorBlizzardBackground()
   wipe(mirrorLog)
   local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
   local ol, ot = overlay and overlay:GetLeft(), overlay and overlay:GetTop()
-  if not (page and ol and ot) then return 0 end
+  local orr, ob = overlay and overlay:GetRight(), overlay and overlay:GetBottom()
+  if not (page and ol and ot and orr and ob) then return 0 end
   local os = overlay:GetEffectiveScale()
+  -- this tab's edges on screen (a texture reaching past them isn't the page's settled art)
+  local L, R, T, B = ol * os - 2, orr * os + 2, ot * os + 2, ob * os - 2
   local n = 0
   local function Visit(f, depth)
     if depth > 3 then return end
@@ -3369,7 +3378,9 @@ local function MirrorBlizzardBackground()
         local piece = false
         for _, k in ipairs(NINE_SLICE_KEYS) do if f[k] == r then piece = true break end end
         local edge = w and h and math.min(w, h) <= 16 and math.max(w, h) >= 100
-        if (layer == "BACKGROUND" or layer == "BORDER" or (piece and layer == "ARTWORK")) and l and t and w and h
+        local rs0 = r:GetEffectiveScale()
+        local inside = l and t and w and h and l * rs0 >= L and (l + w) * rs0 <= R and t * rs0 <= T and (t - h) * rs0 >= B
+        if (layer == "BACKGROUND" or layer == "BORDER" or (piece and layer == "ARTWORK")) and inside
           and (w * h >= 4000 or piece or edge) and (atlas or file) then
           n = n + 1
           local c = mirrored[n]
@@ -3394,10 +3405,9 @@ local function MirrorBlizzardBackground()
             if r.GetHorizTile then c:SetHorizTile(r:GetHorizTile()) c:SetVertTile(r:GetVertTile()) end
           end)
           c:SetAlpha(r:GetAlpha())
-          local rs = r:GetEffectiveScale()
           c:ClearAllPoints()
-          c:SetPoint("TOPLEFT", overlay, "TOPLEFT", (l * rs - ol * os) / os, (t * rs - ot * os) / os)
-          c:SetSize(w * rs / os, h * rs / os)
+          c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
+          c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
           c:Show()
           table.insert(mirrorLog, string.format("%s %s  %dx%d  alpha %.2f  (%s)", layer, tostring(atlas or file),
             w, h, r:GetAlpha(), tostring(r.GetDebugName and r:GetDebugName() or depth)))
@@ -3494,6 +3504,12 @@ local function OpenCompact()
   if ts and ts:IsShown() then ts:Hide() end
   ClearOtherChecks()
   pcall(MirrorBlizzardBackground)   -- (before its page is hidden: its art's still laid out)
+  -- again once things have settled: a skin's fade, art that was still out of place
+  for _, delay in ipairs({ 0.5, 2 }) do
+    C_Timer.After(delay, function()
+      if overlay and overlay:IsShown() then pcall(MirrorBlizzardBackground) pcall(AlignToBlizzardButtons) end
+    end)
+  end
   pcall(AlignToBlizzardButtons)
   pcall(HidePages)
   ui.openProf = nil

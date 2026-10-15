@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.58.4
+
+- Profession window tab: no more **dark box** sticking out past the window's right edge, behind the side tabs. Opening the window straight onto CraftRoute's tab (the CraftRoute key) copied Blizzard's page background in the very moment the window appeared, before Blizzard had sized its page - its recipe panel's border was read too big (and before a skin had faded it), and stayed that way. Each copied texture now follows the Blizzard texture it copies as the page settles, it's copied again shortly after opening (picking up a skin's fade), and nothing reaching outside the tab is copied. The crafting buttons' places are re-read at the same moments.
+
 ## 0.58.3
 
 - The profession bar at the top of the profession window stays on Blizzard's own bar. It no longer picks up the bar texture from EllesmereUI's Resource & Cast Bars. The colour bar under a recipe still does.
