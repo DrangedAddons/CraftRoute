@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.71.0
+
+- All Materials window, with another character's professions on it: every column says whose it is - **one name across a character's neighbouring columns** (not a cut-off name over each), in its **class colour** - your own columns too - and each column is faintly tinted in that class colour down the list.
+
 ## 0.70.8
 
 - All Materials window, **Route order** follows the profession in the **first column**: its route's materials first, in the order its steps use them, then what only the next column uses, in its order, and so on. Drag another profession into the first column and the list re-sorts to its route. (Each Milestones band is ordered the same way.)

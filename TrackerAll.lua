@@ -33,6 +33,8 @@ local editing = false
 local function Top() return 28 end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
+local charLabels, colTints = {}, {}   -- the characters' names over their columns, the columns' tints
+CR.AllMaterialsNames = function() return charLabels, colTints end   -- (tests)
 local sizePanel, sizePanelSync
 
 local function Settings()
@@ -734,7 +736,7 @@ function Refresh(moveOnly)
     shownCol[p.name] = true
     c.p = p
     c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.prof or p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
-    c.char:SetText(p.char and CR.ColorText(p.charName or "", ClassHex(p.class)) or "")
+    c.char:SetText("")   -- (the character's name goes across all its columns - below)
     -- the goal it tracks to (picked here: gold)
     -- the goal in its rank's colour; picked here: the gold border round the icon
     c.goal:SetText(p.goal and CR.ColorText(tostring(p.goal), RankOf(p.goal)[3]) or "")
@@ -861,6 +863,54 @@ function Refresh(moveOnly)
   frame.cost:SetText(#items > 0 and (CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or "")) or "")
   frame.slot:SetHeight(ICON_H + 2 + math.max(1, vis) * ROW_H)
+
+  -- whose columns: with another character's here, every column says whose it is - one name, in the
+  -- class colour, across a character's neighbouring columns (not a cut-off copy over each), and
+  -- each column faintly tinted in that colour down the list
+  local anyAlt = false
+  for _, p in ipairs(profs) do if p.char then anyAlt = true end end
+  local myClass = UnitClass and select(2, UnitClass("player"))
+  local function Whose(p)
+    if p.char then return p.char, p.charName, p.class end
+    if anyAlt then return MyKey() or "me", UnitName and UnitName("player") or "", myClass end
+  end
+  local labelY = -Top() - HEAD_H + ICON_H - 1        -- just over the icons
+  local tintTop = Top() + HEAD_H - ICON_H - 14       -- from the name...
+  local tintH = (top + math.max(1, vis) * ROW_H) - tintTop   -- ...to the list's end
+  local g, i = 0, 1
+  while i <= #profs do
+    local key, name, class = Whose(profs[i])
+    local j = i
+    if key then
+      while j < #profs and Whose(profs[j + 1]) == key do j = j + 1 end
+      local cc = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+      local r, gg, b = cc and cc.r or 1, cc and cc.g or 1, cc and cc.b or 1
+      g = g + 1
+      local fs = charLabels[g]
+      if not fs then fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") fs:SetWordWrap(false) charLabels[g] = fs end
+      fs:ClearAllPoints()
+      fs:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, labelY)
+      fs:SetWidth((j - i + 1) * COL_W)
+      fs:SetJustifyH("CENTER")
+      fs:SetText(name or "")
+      fs:SetTextColor(r, gg, b)
+      fs:Show()
+      for k = i, j do
+        local t = colTints[k]
+        if not t then t = frame:CreateTexture(nil, "BACKGROUND", nil, 1) colTints[k] = t end
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (k - 1) * COL_W + 1, -tintTop)
+        t:SetSize(COL_W - 2, tintH)
+        t:SetColorTexture(r, gg, b, 0.07)
+        t:Show()
+      end
+    else
+      for k = i, j do if colTints[k] then colTints[k]:Hide() end end
+    end
+    i = j + 1
+  end
+  for k = g + 1, #charLabels do charLabels[k]:Hide() end
+  for k = #profs + 1, #colTints do colTints[k]:Hide() end
   frame.empty:ClearAllPoints()
   frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetShown(#items == 0)
