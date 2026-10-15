@@ -149,9 +149,14 @@ local function Build()
       hint:SetText("Click to set, right-click to clear")
     end
   end
+  -- (keys only while it's waiting for one - otherwise every key, Escape too, goes on as usual)
+  local function Listen(on)
+    kb:EnableKeyboard(on)
+    if not InCombatLockdown() and kb.SetPropagateKeyboardInput then pcall(kb.SetPropagateKeyboardInput, kb, not on) end
+  end
   local function Stop()
     capturing = false
-    kb:EnableKeyboard(false)
+    Listen(false)
     Show()
   end
   local function Save()
@@ -167,12 +172,14 @@ local function Build()
       return
     end
     capturing = not capturing
-    kb:EnableKeyboard(capturing)
+    Listen(capturing)
     Show()
   end)
   kb:SetScript("OnKeyDown", function(self, key)
-    if not capturing then return end
-    self:SetPropagateKeyboardInput(false)
+    if not capturing then
+      if not InCombatLockdown() then pcall(self.SetPropagateKeyboardInput, self, true) end
+      return
+    end
     if key == "ESCAPE" then Stop() return end
     -- a modifier on its own isn't the key - wait for the rest
     if key:match("^[LR]?SHIFT$") or key:match("^[LR]?CTRL$") or key:match("^[LR]?ALT$") or key:match("^[LR]?META$") then return end
@@ -185,6 +192,7 @@ local function Build()
     Stop()
   end)
   kb:SetScript("OnHide", Stop)
+  Listen(false)
   table.insert(syncs, Show)
   y = y - 40
 

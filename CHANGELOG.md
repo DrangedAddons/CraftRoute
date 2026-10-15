@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.4
+
+- Settings page: Escape closes the window again - the key-binding button only takes the keyboard while it's waiting for a key.
+
 ## 0.78.3
 
 - **Count alts' materials**: ticking or unticking any of its boxes (the profession window tab, the Materials window, the trackers, Settings) shows on all of them at once.
