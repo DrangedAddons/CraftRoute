@@ -34,7 +34,7 @@ local function Top() return 28 end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
 local charLabels, colTints, headTints = {}, {}, {}   -- names over a character's columns, the columns' tints (list / header)
-CR.AllMaterialsNames = function() return charLabels, colTints end   -- (tests)
+CR.AllMaterialsNames = function() return charLabels, colTints, headTints end   -- (tests)
 local sizePanel, sizePanelSync
 
 local function Settings()
@@ -1036,9 +1036,12 @@ function Refresh(moveOnly)
         -- (stronger over the header)
         local h = headTints[k]
         if not h then h = frame:CreateTexture(nil, "BACKGROUND", nil, 2) headTints[k] = h end
+        -- (a character's neighbouring columns: one solid band over the header, no gap between them -
+        -- the list below keeps its column gaps)
+        local inL, inR = (k == i) and 1 or 0, (k == j) and 1 or 0
         h:ClearAllPoints()
-        h:SetPoint("TOPLEFT", t, "TOPLEFT", 0, 0)
-        h:SetSize(COL_W - 2, Top() + HEAD_H - tintTop + 2)
+        h:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (k - 1) * COL_W + inL, -tintTop)
+        h:SetSize(COL_W - inL - inR, Top() + HEAD_H - tintTop + 2)
         h:SetColorTexture(r, gg, b, 0.16)
       end
     else

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.6
+
+- All Materials window: over the header, a character's neighbouring columns are one solid band of its class colour (no gap between them); the list below keeps its column gaps.
+
 ## 0.72.5
 
 - All Materials window: the characters' names sit higher in the header band, and the guide targets a little lower under the icons.
