@@ -475,7 +475,7 @@ local function Col(name)
   c.char:SetPoint("BOTTOM", c.icon, "TOP", 0, 2)
   c.char:SetWidth(COL_W)
   c.char:SetWordWrap(false)
-  -- just whose profession and its skill - above the window, over its column, clear of the header
+  -- the profession, whose, its skill - above the window, over its column, clear of the header
   c:SetScript("OnEnter", function(self)
     local p = self.p
     if not p then return end
@@ -487,8 +487,13 @@ local function Col(name)
     else
       GameTooltip:SetPoint("BOTTOM", self, "TOP", 0, 60)
     end
-    GameTooltip:SetText((p.label or p.name) .. " Skill:")
-    GameTooltip:AddLine(tostring(p.cur or 0), 1, 1, 1)
+    -- the profession; whose (in the class colour); its skill / the guide it's tracking to
+    GameTooltip:SetText(p.prof or p.name)
+    local who, class = p.charName, p.class
+    if not p.char then who, class = UnitName("player"), select(2, UnitClass("player")) end
+    local cc = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    GameTooltip:AddLine(who or "", cc and cc.r or 1, cc and cc.g or 1, cc and cc.b or 1)
+    GameTooltip:AddLine(string.format("Skill: %d / %d", p.cur or 0, p.goal or 0), 1, 1, 1)
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", GameTooltip_Hide)

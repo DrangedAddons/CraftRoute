@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.75.4
+
+- All Materials window: a profession icon's tooltip - the profession, the character (in its class colour), and "Skill: 151 / 300" (its skill / the guide it's tracking to).
+
 ## 0.75.3
 
 - All Materials window: a profession icon's tooltip is just whose profession and its skill ("Confuçius's Fishing Skill: 75"), shown above the window so it doesn't cover the header.
