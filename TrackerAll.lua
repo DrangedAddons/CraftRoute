@@ -746,9 +746,17 @@ function OpenAdd()
   if #lines == 0 then table.insert(lines, { text = CR.ColorText("Nothing to add - log in on your other characters once", "888888"), more = true }) end
   local wasShown = addMenu:IsShown()
   FillMenu(addMenu, lines)
+  -- placed under the + where it opens, then left there on screen: ticking adds or drops columns,
+  -- which moves the + - the menu (and the cursor's place in it) mustn't move with it
   if not wasShown then
     addMenu:ClearAllPoints()
-    addMenu:SetPoint("TOPLEFT", addBtn, "BOTTOMLEFT", 0, -2)
+    local l, b = addBtn:GetLeft(), addBtn:GetBottom()
+    if l and b then
+      local k = addBtn:GetEffectiveScale() / UIParent:GetEffectiveScale()
+      addMenu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * k, b * k - 2)
+    else
+      addMenu:SetPoint("TOPLEFT", addBtn, "BOTTOMLEFT", 0, -2)
+    end
   end
   addMenu:Show()
   if addBtn and addBtn.watch then pcall(addBtn.watch.RegisterEvent, addBtn.watch, "GLOBAL_MOUSE_DOWN") end

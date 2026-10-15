@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.1
+
+- All Materials window: the **+** menu stays where it opened while you tick - adding or removing columns moves the + button, but no longer the menu under your cursor.
+
 ## 0.72.0
 
 - All Materials window, the **+** menu: **tick boxes**, and it stays open while you tick - your professions (ticked: on the window) and your other characters. Clicking a character (or hovering another, with one open) opens **its professions beside that row**, ticked when they're on the window; tick several in one go. A click anywhere else closes the menus.
