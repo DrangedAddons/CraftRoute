@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.70.8
+
+- All Materials window, **Route order** follows the profession in the **first column**: its route's materials first, in the order its steps use them, then what only the next column uses, in its order, and so on. Drag another profession into the first column and the list re-sorts to its route. (Each Milestones band is ordered the same way.)
+
 ## 0.70.7
 
 - Profession window tab: the route cost bar's cart button reads **Buy Route**.

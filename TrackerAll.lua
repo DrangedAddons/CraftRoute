@@ -5,7 +5,8 @@
 -- that profession's column. Open with the main window's "All" button or /cr all.
 -- Like the trackers: size panel (width of the names, scale, height - shorter scrolls) and a corner
 -- grip for the height, Ctrl+wheel scales; the Alts tick; above the materials, vendor items shown
--- or not, and the order - Route order (by where the routes first use each), Milestones (split by
+-- or not, and the order - Route order (by the first column's route, then the next column's...),
+-- Milestones (split by
 -- rank band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you
 -- have counting towards the earliest bands first; each band's line has what reaching it still
 -- costs) or A-Z. (No shopping carts here.)
@@ -172,13 +173,21 @@ local function Gather()
     local e = col and PlanFor(col)
     local mats = e and e.plan and e.plan.materials
     local any = false
+    -- the order this column's route uses its materials (each step's reagents, what a step has you buy)
+    local pos, n = {}, 0
+    local function Seen(id) n = n + 1 if id and not pos[id] then pos[id] = n end end
+    for _, st in ipairs(e and e.plan and e.plan.steps or {}) do
+      if st.recipe then for _, rg in ipairs(st.recipe.reagents or {}) do Seen(rg[1]) end end
+      for _, x in ipairs(st.items or {}) do Seen(x[1]) end
+      for _, x in ipairs(st.has or {}) do Seen(x[1]) end
+    end
     for _, m in ipairs(mats or {}) do
       if (m.need or 0) > 0 and not (not col.char and HiddenIn(name, m.id)) and not (hideVendor and CR.IsVendorItem and CR.IsVendorItem(m.id)) then
         any = true
         local it = byId[m.id]
         if not it then
           it = { id = m.id, name = m.name or CR.ItemName(m.id), per = {}, need = 0, have = 0, crafted = 0,
-                 price = m.price, first = math.huge, band = {} }
+                 price = m.price, first = math.huge, band = {}, order = {} }
           byId[m.id] = it
           table.insert(items, it)
         end
@@ -187,6 +196,8 @@ local function Gather()
         it.have = math.max(it.have, m.have or 0)   -- (what you have is the same stock for each)
         it.crafted = it.crafted + (m.crafted or 0)
         it.price = it.price or m.price
+        -- (where it comes in this column's route; never seen in its steps: after the rest)
+        it.order[name] = pos[m.id] or (100000 + (m.usage and m.usage[1] and m.usage[1].at or 0))
         -- by band: where in the route each use is (a use with no skill: where you are now)
         local uses = m.usage
         if not uses or #uses == 0 then uses = { { n = m.need, at = e.cur or 1 } } end
@@ -226,8 +237,26 @@ local function ToBuy(lines, label)
   return { prof = label, materials = mats }, cost, unpriced
 end
 
+-- route order across the columns: by the first column's route (where it uses each material), then
+-- what only the second uses, by its route, and so on - so whichever profession is in the first
+-- column leads (drag another there and the list follows)
+local function RouteKey(it, profs)
+  for j, p in ipairs(profs) do
+    local o = it.order[p.name]
+    if o then return j, o end
+  end
+  return #profs + 1, it.first
+end
+local function RouteBefore(a, b, profs)
+  local ja, oa = RouteKey(a, profs)
+  local jb, ob = RouteKey(b, profs)
+  if ja ~= jb then return ja < jb end
+  if oa ~= ob then return oa < ob end
+  return (a.name or "") < (b.name or "")
+end
+
 -- the lines to show: { head = "1-75" } and { it = item, per, need, have } in display order
-local function Lines(items)
+local function Lines(items, profs)
   local out = {}
   local function Line(it, per, need, have)
     return { it = it, per = per, need = need, have = have }
@@ -240,7 +269,7 @@ local function Lines(items)
     table.sort(list, function(a, b)
       local da, db = a.have >= a.need, b.have >= b.need
       if da ~= db then return not da end
-      if sort ~= "name" and a.it.first ~= b.it.first then return a.it.first < b.it.first end
+      if sort ~= "name" then return RouteBefore(a.it, b.it, profs) end
       return (a.it.name or "") < (b.it.name or "")
     end)
     return list
@@ -261,10 +290,7 @@ local function Lines(items)
       end
     end
     if #list > 0 then
-      table.sort(list, function(a, b)
-        if a.first ~= b.first then return a.first < b.first end
-        return (a.it.name or "") < (b.it.name or "")
-      end)
+      table.sort(list, function(a, b) return RouteBefore(a.it, b.it, profs) end)
       -- the milestone's line: what reaching it still costs, and its own shopping list
       local label = string.format("%d-%d", band[1], band[2])
       local _, cost, unpriced = ToBuy(list, "All Materials " .. label)
@@ -687,7 +713,7 @@ function Refresh(moveOnly)
   if moveOnly then PlaceDragged() return end
   local profs, items = Gather()
   frame.profs = profs
-  local lines = Lines(items)
+  local lines = Lines(items, profs)
   -- the name column: as wide as the longest name, or the width you set (within limits)
   local m = frame.measure
   local nameW = MIN_NAME
