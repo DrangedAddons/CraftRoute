@@ -1029,8 +1029,10 @@ function Refresh(moveOnly)
         local t = colTints[k]
         if not t then t = frame:CreateTexture(nil, "BACKGROUND", nil, 1) colTints[k] = t end
         t:ClearAllPoints()
-        t:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (k - 1) * COL_W + 1, -tintTop)
-        t:SetSize(COL_W - 2, tintH)
+        -- (the list's own: from under the header row down - the header has its solid band, below)
+        local listTop = Top() + HEAD_H + 2
+        t:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (k - 1) * COL_W + 1, -listTop)
+        t:SetSize(COL_W - 2, math.max(1, tintH - (listTop - tintTop)))
         t:SetColorTexture(r, gg, b, 0.07)
         t:Show()
         -- (stronger over the header)

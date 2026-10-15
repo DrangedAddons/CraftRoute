@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.7
+
+- All Materials window: the columns' faint class tint starts below the header row, so the header shows only its solid band (joined across a character's columns) - no column gaps showing through it.
+
 ## 0.72.6
 
 - All Materials window: over the header, a character's neighbouring columns are one solid band of its class colour (no gap between them); the list below keeps its column gaps.
