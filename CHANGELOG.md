@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.78.0
+
+- Settings page:
+  - **Set the CraftRoute key right there**: click the key button, press the key (with Shift / Ctrl / Alt if you like) - Escape cancels, right-click clears it. The same binding as in Options > Keybindings.
+  - **Recommended addons**, each shown installed or not: **Auctionator** (prices, costs, profit, shopping lists), **Syndicator** with Baganator (alts' materials), **TrainerSpells** (live recipe data, trainers and vendors with map pins), **EllesmereUI** (the matching looks, loot feed counts, movers and minimap).
+
 ## 0.77.0
 
 - **Settings**: `/cr` now opens CraftRoute's settings - a page in the game's Options, also under **Options > AddOns > CraftRoute**: buttons for the CraftRoute window and the Materials window, the global options (Count alts' materials, Show professions I haven't learned, Show minimap button, and the window look with EllesmereUI), the keybind and the commands.

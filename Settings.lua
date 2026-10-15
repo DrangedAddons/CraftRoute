@@ -1,12 +1,14 @@
 -- CraftRoute's settings: one page in the game's Options (Options > AddOns > CraftRoute), which /cr
 -- and the minimap button open too. The windows (the CraftRoute window, now /cr window; the
 -- Materials window), the global options (alts' materials, unlearned professions, the minimap button,
--- the look with EllesmereUI), the keybind and the commands.
+-- the look with EllesmereUI), the CraftRoute key (set right here), the addons that add to it, and
+-- the commands.
 -- The minimap button: left-click Settings, right-click the Materials window, drag it round the
 -- minimap. A named button on the minimap, so EllesmereUI's minimap gathers it like any other.
 local _, CR = ...
 
 local ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"   -- (the profession window tab's)
+local BIND = "CRAFTROUTE_PROFESSION_TAB"   -- (Bindings.xml)
 
 ---------------------------------------------------------------------------
 -- The page
@@ -127,12 +129,90 @@ local function Build()
   y = y - 12
 
   Heading("Key binding")
-  local kb = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  kb:SetPoint("TOPLEFT", 22, y)
-  kb:SetWidth(560)
-  kb:SetJustifyH("LEFT")
-  kb:SetText("A key for CraftRoute's profession window tab: Options > Keybindings > AddOns > CraftRoute.")
-  y = y - 34
+  -- the CraftRoute key (the same binding as in Options > Keybindings > AddOns): click, then press it
+  local kbLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  kbLabel:SetPoint("TOPLEFT", 22, y - 5)
+  kbLabel:SetText("Profession tab")
+  local kb = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+  kb:SetSize(180, 24)
+  kb:SetPoint("LEFT", kbLabel, "RIGHT", 12, 0)
+  kb:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  local hint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  hint:SetPoint("LEFT", kb, "RIGHT", 10, 0)
+  local capturing = false
+  local function Show()
+    local key = GetBindingKey and GetBindingKey(BIND)
+    if capturing then
+      kb:SetText(CR.ColorText("Press a key...", "ffd100"))
+      hint:SetText("Escape cancels")
+    else
+      kb:SetText(key and (GetBindingText and GetBindingText(key) or key) or CR.ColorText("Not bound", "888888"))
+      hint:SetText("Click to set, right-click to clear")
+    end
+  end
+  local function Stop()
+    capturing = false
+    kb:EnableKeyboard(false)
+    Show()
+  end
+  local function Save()
+    if SaveBindings and GetCurrentBindingSet then SaveBindings(GetCurrentBindingSet()) end
+  end
+  kb:SetScript("OnClick", function(_, mouse)
+    if InCombatLockdown() then CR.Print("Can't change key bindings in combat.") return end
+    if mouse == "RightButton" then
+      -- cleared: every key it had
+      for _, k in ipairs({ GetBindingKey(BIND) }) do SetBinding(k) end
+      Save()
+      Stop()
+      return
+    end
+    capturing = not capturing
+    kb:EnableKeyboard(capturing)
+    Show()
+  end)
+  kb:SetScript("OnKeyDown", function(self, key)
+    if not capturing then return end
+    self:SetPropagateKeyboardInput(false)
+    if key == "ESCAPE" then Stop() return end
+    -- a modifier on its own isn't the key - wait for the rest
+    if key:match("^[LR]?SHIFT$") or key:match("^[LR]?CTRL$") or key:match("^[LR]?ALT$") or key:match("^[LR]?META$") then return end
+    local combo = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
+      .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
+    -- the old key goes; the new one is this binding's (taken from whatever had it)
+    for _, k in ipairs({ GetBindingKey(BIND) }) do SetBinding(k) end
+    SetBinding(combo, BIND)
+    Save()
+    Stop()
+  end)
+  kb:SetScript("OnHide", Stop)
+  table.insert(syncs, Show)
+  y = y - 40
+
+  -- what else to install for everything CraftRoute can do (each shown installed or not)
+  Heading("Recommended addons")
+  local function Loaded(name)
+    local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    return isLoaded and isLoaded(name) and true or false
+  end
+  for _, a in ipairs({
+    { "Auctionator", "Auction House prices - costs, profit and the route cost - and the shopping lists." },
+    { "Syndicator", "Counts your alts' bags, bank and mail (Count alts' materials). Comes with Baganator." },
+    { "TrainerSpells", "Live recipe data, and where trainers and vendors are, with map pins." },
+    { "EllesmereUI", "The matching window looks, have/need counts on its loot feed, its movers and minimap." },
+  }) do
+    local line = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    line:SetPoint("TOPLEFT", 22, y)
+    line:SetWidth(580)
+    line:SetJustifyH("LEFT")
+    table.insert(syncs, function()
+      local ok = Loaded(a[1])
+      line:SetText(CR.ColorText(a[1], "ffd100") .. "  " .. (ok and CR.ColorText("installed", "40ff40")
+        or CR.ColorText("not installed", "ff6060")) .. CR.ColorText("  -  " .. a[2], "cccccc"))
+    end)
+    y = y - 20
+  end
+  y = y - 16
 
   Heading("Commands")
   local cmds = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
