@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.64.0
+
+- All Materials window:
+  - Sorting has three orders: **Route order** (one list, by where the routes first use each material - as it first was), **Milestones** (the split by rank band: 1-75, 75-150, 150-225, 225-300) and **A-Z**.
+  - The Vendor items tick and the sort are behind an **Edit** button on the title bar (Done hides them again), like the trackers.
+
 ## 0.63.0
 
 - All Materials window - the profession icons along the top:

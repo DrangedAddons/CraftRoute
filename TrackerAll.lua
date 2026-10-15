@@ -4,9 +4,10 @@
 -- learned whose route uses materials; an item hidden in a profession's own tracker is left out of
 -- that profession's column. Open with the main window's "All" button or /cr all.
 -- Like the trackers: size panel (width of the names, scale, height - shorter scrolls) and a corner
--- grip for the height, Ctrl+wheel scales; the Alts tick; Route order / A-Z; vendor items shown or
--- not. In route order the list is split by rank band (1-75, 75-150, 150-225, 225-300): each band
--- has what the routes use in it, and what you have counts towards the earliest bands first.
+-- grip for the height, Ctrl+wheel scales; the Alts tick; and behind Edit: vendor items shown or
+-- not, and the order - Route order (by where the routes first use each), Milestones (split by rank
+-- band - 1-75, 75-150, 150-225, 225-300 - each band with what the routes use in it, what you have
+-- counting towards the earliest bands first) or A-Z.
 -- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
 -- 225 / 300 (Settings().goals[profession]). Right-click an icon to take that profession off
 -- (Settings().removed), drag it to move its column (Settings().order), double-click it for that
@@ -18,7 +19,9 @@ local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 22, 18, 25
 local COL_W, TOTAL_W, MIN_NAME, MAX_NAME = 44, 74, 100, 320
 local MIN_S, MAX_S, MIN_H, MAX_H = 0.6, 2, 120, 900
 local BANDS = { { 1, 75 }, { 75, 150 }, { 150, 225 }, { 225, 300 } }
-local TOP = 28 + 22   -- title bar, then the bar with Vendor / sort
+-- the title bar, then (while editing) the bar with Vendor / sort
+local editing = false
+local function Top() return 28 + (editing and 22 or 0) end
 
 local frame, rows, cols, offset = nil, {}, {}, 0
 local sizePanel, sizePanelSync
@@ -137,17 +140,20 @@ local function Lines(items)
   local function Line(it, per, need, have)
     return { it = it, per = per, need = need, have = have }
   end
-  if Settings().sort == "name" then
+  local sort = Settings().sort
+  if sort ~= "milestone" then
+    -- one list: still-needed first, then by where the routes first use it (route order) or by name
     local list = {}
     for _, it in ipairs(items) do table.insert(list, Line(it, it.per, it.need, it.have)) end
     table.sort(list, function(a, b)
       local da, db = a.have >= a.need, b.have >= b.need
       if da ~= db then return not da end
+      if sort ~= "name" and a.it.first ~= b.it.first then return a.it.first < b.it.first end
       return (a.it.name or "") < (b.it.name or "")
     end)
     return list
   end
-  -- route order, split by band; what you have fills the earliest band first
+  -- milestones: split by band; what you have fills the earliest band first
   local left = {}
   for _, it in ipairs(items) do left[it] = it.have end
   for i, band in ipairs(BANDS) do
@@ -424,21 +430,21 @@ function Refresh()
     -- the goal it tracks to (picked here: gold)
     c.goal:SetText(p.goal and (p.picked and CR.ColorText(tostring(p.goal), "ffd100") or tostring(p.goal)) or "")
     c:ClearAllPoints()
-    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -TOP)
+    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -Top())
     c:Show()
   end
   for i = #profs + 1, #cols do cols[i]:Hide() end
   local add = AddButton()
   add:ClearAllPoints()
-  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -TOP - HEAD_H / 2)
+  add:SetPoint("LEFT", frame, "TOPLEFT", left + #profs * COL_W + 4, -Top() - HEAD_H / 2)
   add:Show()
   frame.itemHead:ClearAllPoints()
-  frame.itemHead:SetPoint("TOPLEFT", 8, -TOP - 5)
+  frame.itemHead:SetPoint("TOPLEFT", 8, -Top() - 5)
   frame.totalHead:ClearAllPoints()
-  frame.totalHead:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -TOP - 5)
+  frame.totalHead:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -Top() - 5)
 
   -- how many lines fit: the height you set, else the whole list (up to MAX_ROWS)
-  local top = TOP + HEAD_H + 2
+  local top = Top() + HEAD_H + 2
   local bottom = 30
   local setH = Settings().height
   local vis = setH and math.max(1, math.floor((setH - top - bottom) / ROW_H)) or math.min(#lines, MAX_ROWS)
@@ -522,10 +528,15 @@ function Refresh()
   end
   frame.cost:SetText(#items > 0 and (CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or "")) or "")
+  frame.empty:ClearAllPoints()
+  frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetShown(#items == 0)
   frame.alts:Sync()
   frame.vendor:SetChecked(not Settings().hideVendor)
-  frame.sortDD:Sync()
+  frame.vendor:SetShown(editing)
+  frame.sortDD:SetShown(editing)
+  if editing then frame.sortDD:Sync() elseif frame.sortDD.menu then frame.sortDD.menu:Hide() end
+  frame.edit:SetText(editing and "Done" or "Edit")
   frame:SetSize(math.max(width, 300), top + math.max(1, vis) * ROW_H + bottom)
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
 end
@@ -666,6 +677,23 @@ local function Build()
     GameTooltip:Show()
   end)
   frame.size:SetScript("OnLeave", GameTooltip_Hide)
+  -- Edit: shows the bar with Vendor items and the order (Done hides it again)
+  frame.edit = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.edit:SetSize(40, 18)
+  frame.edit:SetPoint("RIGHT", frame.size, "LEFT", -3, 0)
+  frame.edit:SetText("Edit")
+  if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.edit) end
+  frame.edit:SetScript("OnClick", function()
+    editing = not editing
+    Refresh()
+  end)
+  frame.edit:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(editing and "Done" or "Edit")
+    GameTooltip:AddLine("Vendor items shown or not, and the order.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.edit:SetScript("OnLeave", GameTooltip_Hide)
 
   -- the bar under it: vendor items shown or not, and the order
   frame.vendor = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
@@ -687,9 +715,9 @@ local function Build()
   end)
   frame.vendor:SetScript("OnLeave", GameTooltip_Hide)
   frame.sortDD = CR.CreateDropdown(frame, 92, {
-    { value = "route", text = "Route order" }, { value = "name", text = "A-Z" },
-  }, function() return Settings().sort == "name" and "name" or "route" end, function(v)
-    Settings().sort = (v == "name") and "name" or nil
+    { value = "route", text = "Route order" }, { value = "milestone", text = "Milestones" }, { value = "name", text = "A-Z" },
+  }, function() return Settings().sort or "route" end, function(v)
+    Settings().sort = (v ~= "route") and v or nil
     offset = 0
     Refresh()
   end)
@@ -698,8 +726,9 @@ local function Build()
   frame.sortDD:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Sort")
-    GameTooltip:AddLine("Route order: split by rank band (1-75, 75-150, ...), each band in the order the routes "
-      .. "use them. A-Z: one list by name, still-needed ones on top.", 1, 1, 1, true)
+    GameTooltip:AddLine("Route order: by where the routes first use each material. Milestones: split by rank band "
+      .. "(1-75, 75-150, ...), each band in the order the routes use them. A-Z: by name. Still-needed ones "
+      .. "on top in Route order and A-Z.", 1, 1, 1, true)
     GameTooltip:Show()
   end)
   frame.sortDD:SetScript("OnLeave", GameTooltip_Hide)
@@ -725,7 +754,7 @@ local function Build()
   frame.alts:SetSize(18, 18)
   frame.alts:SetPoint("BOTTOMRIGHT", -44, 5)
   frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  frame.empty:SetPoint("TOPLEFT", 8, -TOP - HEAD_H - 4)
+  frame.empty:SetPoint("TOPLEFT", 8, -Top() - HEAD_H - 4)
   frame.empty:SetText("No materials needed - none of your professions' routes uses any right now.")
 
   -- the corner grip: drag for the height (shorter scrolls)
