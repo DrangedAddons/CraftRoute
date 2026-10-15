@@ -2,15 +2,24 @@
 -- routes still needs down the left, a column per profession (what that route needs of it), and the
 -- total on the right (what you have of what they need together). Professions are the ones you've
 -- learned whose route uses materials; an item hidden in a profession's own tracker is left out of
--- that profession's column. Open with the main window's "All" button or /cr all. Its place, scale
--- and whether it's open are kept per character (CraftRouteCharDB.trackerAll).
+-- that profession's column. Open with the main window's "All" button or /cr all.
+-- Like the trackers: size panel (width of the names, scale, height - shorter scrolls) and a corner
+-- grip for the height, Ctrl+wheel scales; the Alts tick; Route order / A-Z; vendor items shown or
+-- not. In route order the list is split by rank band (1-75, 75-150, 150-225, 225-300): each band
+-- has what the routes use in it, and what you have counts towards the earliest bands first.
+-- Click a profession's icon to pick which guide it tracks: its route's own goal, or to 75 / 150 /
+-- 225 / 300 (Settings().goals[profession]).
+-- Kept per character (CraftRouteCharDB.trackerAll).
 local _, CR = ...
 
-local ROW_H, HEAD_H, MAX_ROWS = 20, 22, 25
-local COL_W, TOTAL_W, MIN_NAME, MAX_NAME = 44, 74, 120, 220
-local MIN_S, MAX_S = 0.6, 2
+local ROW_H, HEAD_H, BAND_H, MAX_ROWS = 20, 22, 18, 25
+local COL_W, TOTAL_W, MIN_NAME, MAX_NAME = 44, 74, 100, 320
+local MIN_S, MAX_S, MIN_H, MAX_H = 0.6, 2, 120, 900
+local BANDS = { { 1, 75 }, { 75, 150 }, { 150, 225 }, { 225, 300 } }
+local TOP = 28 + 22   -- title bar, then the bar with Vendor / sort
 
 local frame, rows, cols, offset = nil, {}, {}, 0
+local sizePanel, sizePanelSync
 
 local function Settings()
   local db = CraftRouteCharDB
@@ -18,6 +27,7 @@ local function Settings()
   db.trackerAll = db.trackerAll or {}
   return db.trackerAll
 end
+local function Scale() return Settings().scale or 1 end
 
 -- an item hidden in that profession's own tracker
 local function HiddenIn(prof, id)
@@ -25,20 +35,44 @@ local function HiddenIn(prof, id)
   return t and t.hidden and t.hidden[prof] and t.hidden[prof][id] and true or false
 end
 
--- { profs = { { name, cur, goal } }, items = { { id, name, per = { [prof] = n }, need, have, price, crafted } } }
+local function BandOf(at)
+  for i, b in ipairs(BANDS) do if at < b[2] then return i end end
+  return #BANDS
+end
+
+-- a profession's plan: the route's own (CraftRoute's goal), or one built to the goal picked here -
+-- those are kept until something changes (bags, skills, the routes: plans wiped)
+local plans = {}
+local function PlanFor(name)
+  local goals = Settings().goals
+  local goal = goals and goals[name]
+  if not goal then return CR.GetPlans and CR.GetPlans(name) end
+  local key = name .. ":" .. goal
+  if plans[key] then return plans[key] end
+  local cur = CR.GetSkill(name)
+  local e = { cur = cur, goal = goal, picked = true,
+              plan = (goal > (cur or 0)) and CR.BuildPlan(name, cur, goal) or { materials = {}, steps = {} } }
+  plans[key] = e
+  return e
+end
+
+-- profs = { { name, cur, goal } }; items = { { id, name, per = { [prof] = n }, need, have, price,
+-- crafted, first, band = { [i] = { per = { [prof] = n }, need, first } } } }
 local function Gather()
   local profs, byId, items = {}, {}, {}
+  local hideVendor = Settings().hideVendor
   for _, name in ipairs(CR.SupportedProfessions()) do
     local _, _, detected = CR.GetSkill(name)
-    local e = detected and CR.GetPlans and CR.GetPlans(name)
+    local e = detected and PlanFor(name)
     local mats = e and e.plan and e.plan.materials
     local any = false
     for _, m in ipairs(mats or {}) do
-      if (m.need or 0) > 0 and not HiddenIn(name, m.id) then
+      if (m.need or 0) > 0 and not HiddenIn(name, m.id) and not (hideVendor and CR.IsVendorItem and CR.IsVendorItem(m.id)) then
         any = true
         local it = byId[m.id]
         if not it then
-          it = { id = m.id, name = m.name or CR.ItemName(m.id), per = {}, need = 0, have = 0, crafted = 0, price = m.price }
+          it = { id = m.id, name = m.name or CR.ItemName(m.id), per = {}, need = 0, have = 0, crafted = 0,
+                 price = m.price, first = math.huge, band = {} }
           byId[m.id] = it
           table.insert(items, it)
         end
@@ -47,17 +81,67 @@ local function Gather()
         it.have = math.max(it.have, m.have or 0)   -- (what you have is the same stock for each)
         it.crafted = it.crafted + (m.crafted or 0)
         it.price = it.price or m.price
+        -- by band: where in the route each use is (a use with no skill: where you are now)
+        local uses = m.usage
+        if not uses or #uses == 0 then uses = { { n = m.need, at = e.cur or 1 } } end
+        for _, u in ipairs(uses) do
+          local at = u.at or e.cur or 1
+          local b = it.band[BandOf(at)]
+          if not b then b = { per = {}, need = 0, first = math.huge } it.band[BandOf(at)] = b end
+          b.per[name] = (b.per[name] or 0) + (u.n or 0)
+          b.need = b.need + (u.n or 0)
+          b.first = math.min(b.first, at)
+          it.first = math.min(it.first, at)
+        end
       end
     end
-    if any then table.insert(profs, { name = name, cur = e.cur, goal = e.goal }) end
+    -- (a profession whose picked guide needs nothing still gets its column - to pick another)
+    if any or (e and e.picked) then table.insert(profs, { name = name, cur = e.cur, goal = e.goal, picked = e.picked }) end
   end
-  -- still short first, then A to Z
-  table.sort(items, function(a, b)
-    local da, db = a.have >= a.need, b.have >= b.need
-    if da ~= db then return not da end
-    return (a.name or "") < (b.name or "")
-  end)
   return profs, items
+end
+
+-- the lines to show: { head = "1-75" } and { it = item, per, need, have } in display order
+local function Lines(items)
+  local out = {}
+  local function Line(it, per, need, have)
+    return { it = it, per = per, need = need, have = have }
+  end
+  if Settings().sort == "name" then
+    local list = {}
+    for _, it in ipairs(items) do table.insert(list, Line(it, it.per, it.need, it.have)) end
+    table.sort(list, function(a, b)
+      local da, db = a.have >= a.need, b.have >= b.need
+      if da ~= db then return not da end
+      return (a.it.name or "") < (b.it.name or "")
+    end)
+    return list
+  end
+  -- route order, split by band; what you have fills the earliest band first
+  local left = {}
+  for _, it in ipairs(items) do left[it] = it.have end
+  for i, band in ipairs(BANDS) do
+    local list = {}
+    for _, it in ipairs(items) do
+      local b = it.band[i]
+      if b and b.need > 0 then
+        local have = math.min(b.need, left[it])
+        left[it] = left[it] - have
+        local l = Line(it, b.per, b.need, have)
+        l.first = b.first
+        table.insert(list, l)
+      end
+    end
+    if #list > 0 then
+      table.sort(list, function(a, b)
+        if a.first ~= b.first then return a.first < b.first end
+        return (a.it.name or "") < (b.it.name or "")
+      end)
+      table.insert(out, { head = string.format("%d-%d", band[1], band[2]) })
+      for _, l in ipairs(list) do table.insert(out, l) end
+    end
+  end
+  return out
 end
 
 local function SavePos()
@@ -72,6 +156,13 @@ local function Place()
   if p then frame:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else frame:SetPoint("CENTER", UIParent, "CENTER", 0, 120) end
 end
 
+local function StartDrag() frame:StartMoving() end
+local function StopDrag()
+  frame:StopMovingOrSizing()
+  if frame.SetUserPlaced then pcall(frame.SetUserPlaced, frame, false) end
+  SavePos()
+end
+
 local function Cell(parent, justify, font)
   local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
   fs:SetJustifyH(justify)
@@ -82,57 +173,98 @@ end
 local function Row(i)
   local r = rows[i]
   if r then return r end
-  r = CreateFrame("Button", nil, frame.body)
-  r:SetHeight(ROW_H)
+  r = CreateFrame("Button", nil, frame)
   r.icon = r:CreateTexture(nil, "ARTWORK")
   r.icon:SetSize(ROW_H - 4, ROW_H - 4)
   r.icon:SetPoint("LEFT", 0, 0)
   r.name = Cell(r, "LEFT")
   r.name:SetPoint("LEFT", r.icon, "RIGHT", 5, 0)
+  r.head = Cell(r, "LEFT", "GameFontNormalSmall")
+  r.head:SetPoint("LEFT", 0, -1)
+  r.line = r:CreateTexture(nil, "ARTWORK")
+  r.line:SetHeight(1)
+  r.line:SetColorTexture(1, 0.82, 0.35, 0.25)
+  r.line:SetPoint("LEFT", r.head, "RIGHT", 6, 0)
+  r.line:SetPoint("RIGHT", 0, -1)
   r.cells = {}
   r.total = Cell(r, "RIGHT")
-  local hl = r:CreateTexture(nil, "HIGHLIGHT")
-  hl:SetAllPoints()
-  hl:SetColorTexture(1, 1, 1, 0.06)
+  r.hl = r:CreateTexture(nil, "HIGHLIGHT")
+  r.hl:SetAllPoints()
+  r.hl:SetColorTexture(1, 1, 1, 0.06)
   r:SetScript("OnEnter", function(self)
-    local it = self.it
-    if not it then return end
+    local l = self.l
+    if not (l and l.it) then return end
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetItemByID(it.id)
+    GameTooltip:SetItemByID(l.it.id)
     for _, p in ipairs(frame.profs or {}) do
-      local n = it.per[p.name]
+      local n = l.per[p.name]
       if n then GameTooltip:AddDoubleLine(p.name, tostring(n), 0.8, 0.8, 0.8, 1, 1, 1) end
     end
-    GameTooltip:AddLine(string.format("Together %d - you have %d%s.", it.need, it.have,
-      it.crafted > 0 and string.format(", %d made on the way", it.crafted) or ""), 0.4, 0.8, 1, true)
+    GameTooltip:AddLine(string.format("Together %d - you have %d%s.", l.it.need, l.it.have,
+      l.it.crafted > 0 and string.format(", %d made on the way", l.it.crafted) or ""), 0.4, 0.8, 1, true)
     GameTooltip:Show()
   end)
   r:SetScript("OnLeave", GameTooltip_Hide)
   r:RegisterForDrag("LeftButton")
-  r:SetScript("OnDragStart", function() frame:StartMoving() end)
-  r:SetScript("OnDragStop", function() frame:StopMovingOrSizing() SavePos() end)
+  r:SetScript("OnDragStart", StartDrag)
+  r:SetScript("OnDragStop", StopDrag)
   rows[i] = r
   if CR.NoteThemeFonts then CR.NoteThemeFonts(r) end
   return r
 end
 
--- a profession's column heading: its icon (its name and route on hover)
+-- a profession's column heading: its icon and the goal it's tracking to; click it to pick which
+-- guide it tracks (the route's own goal, or 75 / 150 / 225 / 300)
+local Refresh
+local GOAL_OPTS = { 75, 150, 225, 300 }
 local function Col(i)
   local c = cols[i]
   if c then return c end
-  c = CreateFrame("Frame", nil, frame)
+  c = CR.CreateDropdown(frame, COL_W, function()
+    local p = c and c.p
+    local e = p and CR.GetPlans and CR.GetPlans(p.name)
+    local opts = { { value = "route", text = "Route goal" .. (e and e.goal and string.format(" (%d)", e.goal) or ""),
+                     radio = true } }
+    for _, g in ipairs(GOAL_OPTS) do
+      table.insert(opts, { value = g, text = string.format("%s to %d", p and p.name or "", g), radio = true })
+    end
+    return opts
+  end, function()
+    local goals = Settings().goals
+    return c and c.p and goals and goals[c.p.name] or "route"
+  end, function(v)
+    local p = c.p
+    if not p then return end
+    local st = Settings()
+    st.goals = st.goals or {}
+    st.goals[p.name] = (v ~= "route") and v or nil
+    offset = 0
+    Refresh()
+  end)
   c:SetSize(COL_W, HEAD_H)
+  -- (the box itself: just the icon and the goal - no frame, no text, no arrow)
+  if c.SetBackdropColor then c:SetBackdropColor(0, 0, 0, 0) end
+  if c.SetBackdropBorderColor then c:SetBackdropBorderColor(0, 0, 0, 0) end
+  c.text:SetAlpha(0)
+  for _, r in ipairs({ c:GetRegions() }) do
+    if r ~= c.text and r.GetText and r:GetText() == "v" then r:Hide() end
+  end
   c.icon = c:CreateTexture(nil, "ARTWORK")
   c.icon:SetSize(18, 18)
   c.icon:SetPoint("RIGHT", -2, 0)
   c.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-  c:EnableMouse(true)
+  c.goal = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  c.goal:SetPoint("RIGHT", c.icon, "LEFT", -2, 0)
   c:SetScript("OnEnter", function(self)
     local p = self.p
     if not p then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(p.name)
-    if p.cur and p.goal then GameTooltip:AddLine(string.format("Route %d > %d", p.cur, p.goal), 1, 1, 1) end
+    if p.cur and p.goal then
+      GameTooltip:AddLine(string.format("%s %d > %d", p.picked and "Guide" or "Route", p.cur, p.goal), 1, 1, 1)
+    end
+    GameTooltip:AddLine("Click to pick which guide this column tracks: the route's own goal, or to 75 / 150 / 225 / 300.",
+      0.6, 0.6, 0.6, true)
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", GameTooltip_Hide)
@@ -140,18 +272,20 @@ local function Col(i)
   return c
 end
 
-local function Refresh()
+function Refresh()
   if not (frame and frame:IsShown()) then return end
   local profs, items = Gather()
   frame.profs = profs
-  -- the name column: as wide as the longest name (within limits)
+  local lines = Lines(items)
+  -- the name column: as wide as the longest name, or the width you set (within limits)
   local m = frame.measure
   local nameW = MIN_NAME
   for _, it in ipairs(items) do
     m:SetText(it.name or "")
     nameW = math.max(nameW, (tonumber(m:GetStringWidth()) or 0) + 4)
   end
-  nameW = math.min(MAX_NAME, math.ceil(nameW))
+  nameW = math.min(Settings().nameW or 220, math.ceil(nameW))
+  nameW = math.max(MIN_NAME, math.min(MAX_NAME, nameW))
   local left = 8 + (ROW_H - 4) + 5 + nameW
   local width = left + #profs * COL_W + TOTAL_W + 8 + 10
 
@@ -160,50 +294,80 @@ local function Refresh()
     local c = Col(i)
     c.p = p
     c.icon:SetTexture(CR.ProfessionIcon and CR.ProfessionIcon(p.name) or "Interface\\Icons\\INV_Misc_QuestionMark")
+    -- the goal it tracks to (picked here: gold)
+    c.goal:SetText(p.goal and (p.picked and CR.ColorText(tostring(p.goal), "ffd100") or tostring(p.goal)) or "")
     c:ClearAllPoints()
-    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -28)
+    c:SetPoint("TOPLEFT", frame, "TOPLEFT", left + (i - 1) * COL_W, -TOP)
     c:Show()
   end
   for i = #profs + 1, #cols do cols[i]:Hide() end
+  frame.itemHead:ClearAllPoints()
+  frame.itemHead:SetPoint("TOPLEFT", 8, -TOP - 5)
   frame.totalHead:ClearAllPoints()
-  frame.totalHead:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -28 - 5)
+  frame.totalHead:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -18, -TOP - 5)
 
-  -- rows
-  local vis = math.min(#items, MAX_ROWS)
-  offset = math.max(0, math.min(offset, #items - vis))
-  local top = 28 + HEAD_H + 2
+  -- how many lines fit: the height you set, else the whole list (up to MAX_ROWS)
+  local top = TOP + HEAD_H + 2
+  local bottom = 30
+  local setH = Settings().height
+  local vis = setH and math.max(1, math.floor((setH - top - bottom) / ROW_H)) or math.min(#lines, MAX_ROWS)
+  vis = math.min(vis, #lines)
+  offset = math.max(0, math.min(offset, #lines - vis))
+  local y = top
   for i = 1, vis do
-    local it, r = items[offset + i], Row(i)
-    r.it = it
+    local l, r = lines[offset + i], Row(i)
+    r.l = l
     r:ClearAllPoints()
-    r:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -top - (i - 1) * ROW_H)
+    r:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -y)
     r:SetPoint("RIGHT", frame, "RIGHT", -18, 0)
-    r.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(it.id) or (GetItemIcon and GetItemIcon(it.id)))
-    r.name:SetWidth(nameW)
-    r.name:SetText(it.name or "?")
-    for j, p in ipairs(profs) do
-      local fs = r.cells[j]
-      if not fs then fs = Cell(r, "RIGHT") r.cells[j] = fs end
-      fs:ClearAllPoints()
-      fs:SetPoint("RIGHT", r, "LEFT", left - 8 + j * COL_W - 2, 0)
-      fs:SetWidth(COL_W - 4)
-      local n = it.per[p.name]
-      fs:SetText(n and tostring(n) or CR.ColorText("-", "555555"))
-      fs:Show()
+    if l.head then
+      -- a band's heading, with a line across
+      r:SetHeight(ROW_H)
+      r.head:SetText(l.head)
+      r.head:Show()
+      r.line:Show()
+      r.icon:Hide()
+      r.name:Hide()
+      r.total:Hide()
+      r.hl:SetAlpha(0)
+      for _, fs in ipairs(r.cells) do fs:Hide() end
+    else
+      r:SetHeight(ROW_H)
+      r.head:Hide()
+      r.line:Hide()
+      r.hl:SetAlpha(1)
+      r.icon:Show()
+      r.name:Show()
+      r.total:Show()
+      local it = l.it
+      r.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(it.id) or (GetItemIcon and GetItemIcon(it.id)))
+      r.name:SetWidth(nameW)
+      r.name:SetText(it.name or "?")
+      for j, p in ipairs(profs) do
+        local fs = r.cells[j]
+        if not fs then fs = Cell(r, "RIGHT") r.cells[j] = fs end
+        fs:ClearAllPoints()
+        fs:SetPoint("RIGHT", r, "LEFT", left - 8 + j * COL_W - 2, 0)
+        fs:SetWidth(COL_W - 4)
+        local n = l.per[p.name]
+        fs:SetText(n and tostring(n) or CR.ColorText("-", "555555"))
+        fs:Show()
+      end
+      for j = #profs + 1, #r.cells do r.cells[j]:Hide() end
+      r.total:ClearAllPoints()
+      r.total:SetPoint("RIGHT", r, "RIGHT", 0, 0)
+      r.total:SetWidth(TOTAL_W)
+      local enough = l.have >= l.need
+      r.total:SetText(CR.ColorText(string.format("%d/%d", l.have, l.need), enough and "40ff40" or "ffd100")
+        .. ((it.crafted > 0 and not enough) and CR.ColorText(" +", "33ccff") or ""))
     end
-    for j = #profs + 1, #r.cells do r.cells[j]:Hide() end
-    r.total:ClearAllPoints()
-    r.total:SetPoint("RIGHT", r, "RIGHT", 0, 0)
-    r.total:SetWidth(TOTAL_W)
-    local enough = it.have >= it.need
-    r.total:SetText(CR.ColorText(string.format("%d/%d", it.have, it.need), enough and "40ff40" or "ffd100")
-      .. ((it.crafted > 0 and not enough) and CR.ColorText(" +", "33ccff") or ""))
     r:Show()
+    y = y + ROW_H
   end
   for i = vis + 1, #rows do rows[i]:Hide() end
 
   -- the scroll mark, when there's more than fits
-  local scrolling = #items > vis
+  local scrolling = #lines > vis
   frame.track:SetShown(scrolling)
   frame.thumb:SetShown(scrolling)
   if scrolling then
@@ -211,9 +375,9 @@ local function Refresh()
     frame.track:ClearAllPoints()
     frame.track:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -top)
     frame.track:SetHeight(trackH)
-    local thumbH = math.max(12, trackH * vis / #items)
+    local thumbH = math.max(12, trackH * vis / #lines)
     frame.thumb:ClearAllPoints()
-    frame.thumb:SetPoint("TOP", frame.track, "TOP", 0, -(trackH - thumbH) * offset / math.max(1, #items - vis))
+    frame.thumb:SetPoint("TOP", frame.track, "TOP", 0, -(trackH - thumbH) * offset / math.max(1, #lines - vis))
     frame.thumb:SetHeight(thumbH)
   end
 
@@ -228,15 +392,114 @@ local function Refresh()
   frame.cost:SetText(#items > 0 and (CR.ColorText("Cost  ", "aaaaaa") .. CR.FormatMoney(cost)
     .. (unpriced > 0 and CR.ColorText(string.format("  (+%d unpriced)", unpriced), "ff9966") or "")) or "")
   frame.empty:SetShown(#items == 0)
-  frame:SetSize(math.max(width, 260), top + math.max(1, vis) * ROW_H + 30)
+  frame.alts:Sync()
+  frame.vendor:SetChecked(not Settings().hideVendor)
+  frame.sortDD:Sync()
+  frame:SetSize(math.max(width, 300), top + math.max(1, vis) * ROW_H + bottom)
   if CR.ApplyThemeFonts then pcall(CR.ApplyThemeFonts, frame) end
+end
+
+-- new scale (the top-left corner stays put on screen) / names width / height; nil: unchanged
+local function SetSize(scale, nameW, h)
+  local s = Settings()
+  if nameW then s.nameW = math.floor(math.max(MIN_NAME, math.min(MAX_NAME, nameW)) + 0.5) end
+  if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
+  if scale then
+    scale = math.max(MIN_S, math.min(MAX_S, math.floor(scale * 20 + 0.5) / 20))
+    local l, t = frame:GetLeft(), frame:GetTop()
+    local old = frame:GetScale()
+    s.scale = scale
+    frame:SetScale(scale)
+    if l and t then
+      frame:ClearAllPoints()
+      frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * old / scale, t * old / scale)
+      SavePos()
+    end
+  end
+  Refresh()
+end
+
+-- a labelled slider with its value (the size panel)
+local function Slider(parent, label, lo, hi, step, get, set, fmt)
+  local f = CreateFrame("Frame", nil, parent)
+  f:SetSize(210, 34)
+  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  f.label:SetPoint("TOPLEFT", 0, 0)
+  f.label:SetText(label)
+  f.value = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  f.value:SetPoint("TOPRIGHT", 0, 0)
+  local sl = CreateFrame("Slider", nil, f, "BackdropTemplate")
+  sl:SetOrientation("HORIZONTAL")
+  sl:SetHeight(12)
+  sl:SetPoint("TOPLEFT", 0, -16)
+  sl:SetPoint("RIGHT", 0, 0)
+  sl:SetMinMaxValues(lo, hi)
+  sl:SetValueStep(step)
+  if sl.SetObeyStepOnDrag then sl:SetObeyStepOnDrag(true) end
+  CR.Backdrop(sl, 0.1, 0.1, 0.1, 0.9)
+  sl:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+  local syncing = false
+  sl:SetScript("OnValueChanged", function(_, v)
+    f.value:SetText(string.format(fmt, v))
+    if not syncing then set(v) end
+  end)
+  function f:Sync()
+    syncing = true
+    local v = get()
+    sl:SetValue(v)
+    f.value:SetText(string.format(fmt, v))
+    syncing = false
+  end
+  return f
+end
+
+local function SizePanel(owner)
+  if not sizePanel then
+    -- on UIParent: as the window's child it would scale too, moving the slider you're dragging
+    local p = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    p:SetSize(234, 168)
+    p:SetFrameStrata("DIALOG")
+    CR.Backdrop(p, 0.05, 0.05, 0.07, 0.97)
+    p:EnableMouse(true)
+    p:Hide()
+    local wsl = Slider(p, "Width (the names)", MIN_NAME, MAX_NAME, 10, function() return Settings().nameW or 220 end,
+      function(v) SetSize(nil, v) end, "%d")
+    wsl:SetPoint("TOPLEFT", 12, -10)
+    local ssl = Slider(p, "Scale", MIN_S, MAX_S, 0.05, Scale, function(v) SetSize(v) end, "%.2f")
+    ssl:SetPoint("TOPLEFT", 12, -50)
+    local hsl = Slider(p, "Height (shorter scrolls)", MIN_H, MAX_H, 10,
+      function() return Settings().height or math.floor(frame:GetHeight() + 0.5) end,
+      function(v) SetSize(nil, nil, v) end, "%d")
+    hsl:SetPoint("TOPLEFT", 12, -90)
+    local reset = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
+    reset:SetSize(80, 22)
+    reset:SetPoint("BOTTOMLEFT", 12, 10)
+    reset:SetText("Reset")
+    if CR.ThemeRegisterButton then CR.ThemeRegisterButton(reset) end
+    reset:SetScript("OnClick", function()
+      Settings().nameW, Settings().height = nil, nil
+      SetSize(1)
+      wsl:Sync() ssl:Sync() hsl:Sync()
+    end)
+    sizePanelSync = function() if p:IsShown() then wsl:Sync() ssl:Sync() hsl:Sync() end end
+    p:SetScript("OnShow", function(self) wsl:Sync() ssl:Sync() hsl:Sync() pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+    p:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+    p:SetScript("OnEvent", function(self)
+      if not self:IsMouseOver() and not (self.owner and self.owner:IsMouseOver()) then self:Hide() end
+    end)
+    sizePanel = p
+  end
+  sizePanel.owner = owner
+  sizePanel:ClearAllPoints()
+  sizePanel:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -4)
+  sizePanel:SetShown(not sizePanel:IsShown())
 end
 
 local function Build()
   if frame then return end
   frame = CreateFrame("Frame", "CraftRouteAllMaterials", UIParent, "BackdropTemplate")
   frame:SetSize(400, 200)
-  frame:SetScale(Settings().scale or 1)
+  frame:SetScale(Scale())
   frame:SetClampedToScreen(true)
   frame:SetMovable(true)
   frame:EnableMouse(true)
@@ -245,9 +508,10 @@ local function Build()
   frame:Hide()
   -- moved by any free space (the rows too)
   frame:RegisterForDrag("LeftButton")
-  frame:SetScript("OnDragStart", function() frame:StartMoving() end)
-  frame:SetScript("OnDragStop", function() frame:StopMovingOrSizing() SavePos() end)
+  frame:SetScript("OnDragStart", StartDrag)
+  frame:SetScript("OnDragStop", StopDrag)
 
+  -- title bar: name, size panel, close
   frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   frame.title:SetPoint("TOPLEFT", 8, -8)
   frame.title:SetText("All Materials")
@@ -258,13 +522,61 @@ local function Build()
   frame.close:SetText("x")
   if CR.ThemeRegisterButton then CR.ThemeRegisterButton(frame.close) end
   frame.close:SetScript("OnClick", function() CR.ToggleAllMaterials(false) end)
+  frame.size = CreateFrame("Button", nil, frame)
+  frame.size:SetSize(16, 16)
+  frame.size:SetPoint("RIGHT", frame.close, "LEFT", -4, 0)
+  frame.size:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
+  frame.size:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  frame.size:SetScript("OnClick", function(self) SizePanel(self) end)
+  frame.size:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Size and scale")
+    GameTooltip:AddLine("Ctrl+mouse wheel over the window also scales it.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.size:SetScript("OnLeave", GameTooltip_Hide)
+
+  -- the bar under it: vendor items shown or not, and the order
+  frame.vendor = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+  frame.vendor:SetSize(20, 20)
+  frame.vendor:SetPoint("TOPLEFT", 6, -26)
+  frame.vendor.label = frame.vendor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.vendor.label:SetPoint("LEFT", frame.vendor, "RIGHT", 2, 0)
+  frame.vendor.label:SetText("Vendor items")
+  frame.vendor:SetHitRectInsets(0, -76, 0, 0)
+  frame.vendor:SetScript("OnClick", function(self)
+    Settings().hideVendor = (not self:GetChecked()) or nil
+    Refresh()
+  end)
+  frame.vendor:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Vendor items")
+    GameTooltip:AddLine("Ticked: materials vendors sell (thread, dyes, flux...) are listed too. Unticked: left out.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.vendor:SetScript("OnLeave", GameTooltip_Hide)
+  frame.sortDD = CR.CreateDropdown(frame, 92, {
+    { value = "route", text = "Route order" }, { value = "name", text = "A-Z" },
+  }, function() return Settings().sort == "name" and "name" or "route" end, function(v)
+    Settings().sort = (v == "name") and "name" or nil
+    offset = 0
+    Refresh()
+  end)
+  frame.sortDD:SetHeight(18)
+  frame.sortDD:SetPoint("LEFT", frame.vendor.label, "RIGHT", 10, 0)
+  frame.sortDD:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Sort")
+    GameTooltip:AddLine("Route order: split by rank band (1-75, 75-150, ...), each band in the order the routes "
+      .. "use them. A-Z: one list by name, still-needed ones on top.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  frame.sortDD:SetScript("OnLeave", GameTooltip_Hide)
 
   frame.itemHead = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.itemHead:SetText("Material")
-  frame.itemHead:SetPoint("TOPLEFT", 8, -28 - 5)
   frame.totalHead = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   frame.totalHead:SetText("Total")
-  frame.body = frame
   frame.measure = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.measure:SetAlpha(0)
 
@@ -275,27 +587,45 @@ local function Build()
   frame.thumb:SetWidth(4)
   frame.thumb:SetColorTexture(1, 0.82, 0.35, 0.6)
 
+  -- the bottom line: the cost, and the Alts tick (the same setting as everywhere)
   frame.cost = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   frame.cost:SetPoint("BOTTOMLEFT", 8, 9)
+  frame.alts = CR.CreateAltsCheck(frame, "Alts")
+  frame.alts:SetSize(18, 18)
+  frame.alts:SetPoint("BOTTOMRIGHT", -44, 5)
   frame.empty = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  frame.empty:SetPoint("TOPLEFT", 8, -28 - HEAD_H - 4)
+  frame.empty:SetPoint("TOPLEFT", 8, -TOP - HEAD_H - 4)
   frame.empty:SetText("No materials needed - none of your professions' routes uses any right now.")
+
+  -- the corner grip: drag for the height (shorter scrolls)
+  local grip = CreateFrame("Button", nil, frame)
+  grip:SetSize(12, 12)
+  grip:SetPoint("BOTTOMRIGHT", -2, 2)
+  grip:SetFrameLevel(frame:GetFrameLevel() + 10)
+  grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  grip:SetScript("OnMouseDown", function(self)
+    local _, cy = GetCursorPosition()
+    self.startY, self.startH = cy, frame:GetHeight()
+    self:SetScript("OnUpdate", function()
+      local _, y = GetCursorPosition()
+      local dy = (self.startY - y) / frame:GetEffectiveScale()
+      local h = math.floor(math.max(MIN_H, math.min(MAX_H, self.startH + dy)) + 0.5)
+      if h ~= Settings().height then Settings().height = h Refresh() end
+    end)
+  end)
+  grip:SetScript("OnMouseUp", function(self)
+    self:SetScript("OnUpdate", nil)
+    if sizePanelSync then sizePanelSync() end
+  end)
 
   -- the wheel scrolls; Ctrl+wheel scales
   frame:EnableMouseWheel(true)
   frame:SetScript("OnMouseWheel", function(_, delta)
     if IsControlKeyDown() then
-      local s = math.max(MIN_S, math.min(MAX_S, math.floor(((Settings().scale or 1) + delta * 0.05) * 20 + 0.5) / 20))
-      local l, t = frame:GetLeft(), frame:GetTop()
-      local old = frame:GetScale()
-      Settings().scale = s
-      frame:SetScale(s)
-      -- (the top-left corner stays put on screen)
-      if l and t then
-        frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l * old / s, t * old / s)
-        SavePos()
-      end
+      SetSize(Scale() + delta * 0.05)
+      if sizePanelSync then sizePanelSync() end
       return
     end
     offset = offset - delta * 3
@@ -342,6 +672,6 @@ ev:SetScript("OnEvent", function(_, event)
     return
   end
   if Settings().shown then CR.ToggleAllMaterials(true) end
-  -- bags, plans, skills changing: refresh
-  CR.OnChange(Refresh)
+  -- bags, plans, skills changing: the plans built to a picked goal again, and refresh
+  CR.OnChange(function() wipe(plans) Refresh() end)
 end)

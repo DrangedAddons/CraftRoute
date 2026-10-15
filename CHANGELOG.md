@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.62.0
+
+- All Materials window, more like the trackers:
+  - **Size**: the gear opens Width (the names), Scale and Height (shorter scrolls), with Reset; drag the corner grip for the height; Ctrl+scroll still scales.
+  - **Alts** tick at the bottom (the same setting as everywhere).
+  - **Vendor items** tick - unticked leaves out what vendors sell.
+  - **Sort**: Route order or A-Z. In **route order** the list is split by rank band - **1-75, 75-150, 150-225, 225-300** - each band holding what the routes use in it, in the order they're used; what you have counts towards the earliest bands first.
+  - **Pick each profession's guide**: click a profession's icon to track its route's own goal or a guide **to 75, 150, 225 or 300** - its column then shows the materials for that. The goal it tracks to is shown beside the icon (gold when picked here).
+
 ## 0.61.0
 
 - New **All Materials** window: every material your professions' routes still need, in one list - the materials down the left, a column per profession you've learned whose route uses materials (what that route needs of it; hover a column's icon for the profession and its route), and the **total** on the right: what you have against what they need together (green once you have enough). Still-short items first. The cost of what's left to buy is at the bottom. Open it with the main window's **All** button (beside Tracker) or `/cr all`; move it by any free space, scroll the list, Ctrl+scroll to scale. It remembers its place and comes back after a reload if it was open. Items hidden in a profession's own tracker are left out of that profession's column. The per-profession trackers are unchanged.
