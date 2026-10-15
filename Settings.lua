@@ -79,9 +79,7 @@ local function Build()
   end
 
   Heading("Windows")
-  Button("CraftRoute window", 170, 16, function() CR.SafeCall(CR.ShowWindow) end,
-    "The full window: the Plan, the Recipes picker and the Professions tab. (Also /cr window.)")
-  Button("Materials window", 170, 196, function() if CR.ToggleAllMaterials then CR.ToggleAllMaterials(true) end end,
+  Button("Materials window", 170, 16, function() if CR.ToggleAllMaterials then CR.ToggleAllMaterials(true) end end,
     "Every material your professions' routes still need, in one window. (Also /cr all.)")
   y = y - 40
 
@@ -98,6 +96,7 @@ local function Build()
         return
       end
       CraftRouteCharDB.includeAlts = v
+      if CR.SyncAltsChecks then CR.SyncAltsChecks() end
       if CR.InvalidateLocations then CR.InvalidateLocations() end
       CR.NotifyChanged()
     end)
@@ -195,22 +194,37 @@ local function Build()
     local isLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
     return isLoaded and isLoaded(name) and true or false
   end
+  -- three columns: the addon, installed or not, what it adds (wrapped in its own column)
+  local NAME_W, STATUS_W, DESC_W = 110, 100, 400
   for _, a in ipairs({
     { "Auctionator", "Auction House prices - costs, profit and the route cost - and the shopping lists." },
     { "Syndicator", "Counts your alts' bags, bank and mail (Count alts' materials). Comes with Baganator." },
     { "TrainerSpells", "Live recipe data, and where trainers and vendors are, with map pins." },
     { "EllesmereUI", "The matching window looks, have/need counts on its loot feed, its movers and minimap." },
   }) do
-    local line = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    line:SetPoint("TOPLEFT", 22, y)
-    line:SetWidth(580)
-    line:SetJustifyH("LEFT")
+    local name = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    name:SetPoint("TOPLEFT", 22, y)
+    name:SetWidth(NAME_W)
+    name:SetJustifyH("LEFT")
+    name:SetText(a[1])
+    local status = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    status:SetPoint("TOPLEFT", 22 + NAME_W, y)
+    status:SetWidth(STATUS_W)
+    status:SetJustifyH("LEFT")
+    local desc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    desc:SetPoint("TOPLEFT", 22 + NAME_W + STATUS_W, y)
+    desc:SetWidth(DESC_W)
+    desc:SetJustifyH("LEFT")
+    desc:SetJustifyV("TOP")
+    desc:SetWordWrap(true)
+    desc:SetTextColor(0.8, 0.8, 0.8)
+    desc:SetText(a[2])
     table.insert(syncs, function()
       local ok = Loaded(a[1])
-      line:SetText(CR.ColorText(a[1], "ffd100") .. "  " .. (ok and CR.ColorText("installed", "40ff40")
-        or CR.ColorText("not installed", "ff6060")) .. CR.ColorText("  -  " .. a[2], "cccccc"))
+      status:SetText(ok and CR.ColorText("installed", "40ff40") or CR.ColorText("not installed", "ff6060"))
     end)
-    y = y - 20
+    -- (the row is as tall as its description)
+    y = y - math.max(18, (tonumber(desc:GetStringHeight()) or 14)) - 8
   end
   y = y - 16
 

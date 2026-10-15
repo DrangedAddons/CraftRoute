@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.78.3
+
+- **Count alts' materials**: ticking or unticking any of its boxes (the profession window tab, the Materials window, the trackers, Settings) shows on all of them at once.
+- Settings page: no "CraftRoute window" button (that window is on /cr window); the recommended addons are laid out in three columns - name, installed or not, and what it adds (wrapped in its own column).
+
 ## 0.78.2
 
 - The CraftRoute key opens the window again after you've closed it with the key (the third press did nothing): it reopened by the profession window's own ID, which the game doesn't open a profession by - now by the profession, through your profession list.

@@ -23,8 +23,16 @@ CR.Backdrop = Backdrop
 -- "Count alts' materials" tickbox: one per-character setting (includeAlts), shown on the Plan
 -- tab, the Craft tab and the profession-window tab. Unticked, only this character's bags, bank
 -- and mail count anywhere in CraftRoute. :Sync() after a change elsewhere.
+-- every Count alts tick there is (and the Settings page's): one setting, so a change on any of them
+-- shows on all of them at once
+local altsChecks = {}
+function CR.SyncAltsChecks()
+  for _, cb in ipairs(altsChecks) do cb:Sync() end
+  if CR.SettingsSync then pcall(CR.SettingsSync) end
+end
 function CR.CreateAltsCheck(parent, label)
   local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+  table.insert(altsChecks, cb)
   cb:SetSize(20, 20)
   cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
@@ -38,6 +46,7 @@ function CR.CreateAltsCheck(parent, label)
       return
     end
     CraftRouteCharDB.includeAlts = self:GetChecked() and true or false
+    CR.SyncAltsChecks()
     CR.InvalidateLocations()
     CR.NotifyChanged()
   end)
