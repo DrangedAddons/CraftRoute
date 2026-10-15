@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.72.4
+
+- All Materials window: a character's class comes from CraftRoute's own record (saved when that character logs in), or from Syndicator only for exactly the same character - no more matching by first name. Characters recorded before 0.72.2 get their colour once they've logged in again.
+
 ## 0.72.3
 
 - All Materials window:

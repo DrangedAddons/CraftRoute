@@ -67,8 +67,9 @@ local function RecordCharacter()
   end
   Characters()[key] = c
 end
--- a character's class (MAGE...): recorded when it logged in, else from Syndicator (which keeps
--- every character's) - and kept, once found
+-- a character's class (MAGE...): CraftRoute's own record, made when that character logs in. Else
+-- Syndicator's - only for exactly the same character (its full name and realm), never a guess by
+-- name - and kept, once found
 local function CharClass(key, c)
   if c and c.class then return c.class end
   local api = Syndicator and Syndicator.API
@@ -80,17 +81,6 @@ local function CharClass(key, c)
       local ok, data = pcall(get, full)
       local class = ok and type(data) == "table" and data.details and data.details.className
       if class then return Found(class) end
-    end
-    -- Syndicator can know a character by another name and realm than the game gives here (e.g.
-    -- "Confuçius Say" on "PvP" for Confuçius on "Classic Beta PvP 2"): its characters, by first name
-    local okAll, all = pcall(api.GetAllCharacters)
-    if okAll and type(all) == "table" and name then
-      for _, full in ipairs(all) do
-        local ok, data = pcall(get, full)
-        local d = ok and type(data) == "table" and data.details
-        local who = d and d.character
-        if who and d.className and (who == name or who:match("^(%S+)") == name) then return Found(d.className) end
-      end
     end
   end
 end
