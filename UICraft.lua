@@ -407,22 +407,35 @@ end
 -- OnLeave run (the button, or its row); the glow is always the button's.
 function CR.CoverHover(cover, button, hoverFrame)
   hoverFrame = hoverFrame or button
+  cover.hoverFrame = hoverFrame
+  -- Highlight and tooltip follow cover.target. Menu rows are rebuilt on each open, so a
+  -- cover reused for one profession is pointed at that open's button before it shows.
+  local function Current()
+    local btn = cover.target or button
+    local hover = cover.hoverFrame or btn
+    if hover == button then hover = btn end
+    return btn, hover
+  end
   cover:SetScript("OnEnter", function()
-    if button.LockHighlight then button:LockHighlight() end
-    local f = hoverFrame:GetScript("OnEnter")
-    if f then f(hoverFrame) end
+    local btn, hover = Current()
+    if btn.LockHighlight then btn:LockHighlight() end
+    local f = hover.GetScript and hover:GetScript("OnEnter")
+    if f then f(hover) end
   end)
   cover:SetScript("OnLeave", function()
-    if button.UnlockHighlight then button:UnlockHighlight() end
-    if button.SetButtonState then button:SetButtonState("NORMAL") end
-    local f = hoverFrame:GetScript("OnLeave")
-    if f then f(hoverFrame) end
+    local btn, hover = Current()
+    if btn.UnlockHighlight then btn:UnlockHighlight() end
+    if btn.SetButtonState then btn:SetButtonState("NORMAL") end
+    local f = hover.GetScript and hover:GetScript("OnLeave")
+    if f then f(hover) end
   end)
   cover:HookScript("OnMouseDown", function()
-    if button.SetButtonState and (not button.IsEnabled or button:IsEnabled()) then button:SetButtonState("PUSHED") end
+    local btn = Current()
+    if btn.SetButtonState and (not btn.IsEnabled or btn:IsEnabled()) then btn:SetButtonState("PUSHED") end
   end)
   cover:HookScript("OnMouseUp", function()
-    if button.SetButtonState then button:SetButtonState("NORMAL") end
+    local btn = Current()
+    if btn.SetButtonState then btn:SetButtonState("NORMAL") end
   end)
 end
 

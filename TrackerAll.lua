@@ -37,6 +37,9 @@ local charLabels, colTints, headTints = {}, {}, {}   -- names over a character's
 local charGrabs = {}   -- the names as handles: drag one to move all that character's columns
 CR.AllMaterialsNames = function() return charLabels, colTints, headTints end   -- (tests)
 local sizePanel, sizePanelSync
+-- the open/close flight. SettleFlight (set once the flight exists) snaps it to its end.
+local anim, skipAnim, openedFrom
+local SettleFlight
 
 local function Settings()
   local db = CraftRouteCharDB
@@ -348,7 +351,12 @@ local function Place()
   if p then frame:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else frame:SetPoint("CENTER", UIParent, "CENTER", 0, 120) end
 end
 
-local function StartDrag() frame:StartMoving() end
+local function StartDrag()
+  -- a drag during the flight would save the in-flight scale and point
+  if SettleFlight then SettleFlight() end
+  if not frame:IsShown() then return end
+  frame:StartMoving()
+end
 local function StopDrag()
   frame:StopMovingOrSizing()
   if frame.SetUserPlaced then pcall(frame.SetUserPlaced, frame, false) end
@@ -580,6 +588,8 @@ local function Col(name)
     end
   end
   c:SetScript("OnDragStart", function(self)
+    if SettleFlight then SettleFlight() end
+    if not frame:IsShown() then return end
     pending = nil
     dragged[self] = true
     if self.menu then self.menu:Hide() end
@@ -889,6 +899,8 @@ function GroupGrab(g)
     end
   end
   b:SetScript("OnDragStart", function(self)
+    if SettleFlight then SettleFlight() end
+    if not frame:IsShown() then return end
     preview = {}
     for _, q in ipairs(frame.profs or {}) do table.insert(preview, q.name) end
     self.dragKeys = self.keys
@@ -1171,6 +1183,9 @@ end
 
 -- new scale (the top-left corner stays put on screen) / names width / height; nil: unchanged
 local function SetSize(scale, nameW, h)
+  -- Ctrl+wheel and the scale slider read GetScale. Finish the flight first, or that
+  -- temporary scale is what gets saved.
+  if anim and SettleFlight then SettleFlight() end
   local s = Settings()
   if nameW then s.nameW = math.floor(math.max(MIN_NAME, math.min(MAX_NAME, nameW)) + 0.5) end
   if h then s.height = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5) end
@@ -1399,6 +1414,8 @@ local function Build()
   grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
   grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
   grip:SetScript("OnMouseDown", function(self)
+    if SettleFlight then SettleFlight() end
+    if not frame:IsShown() then return end
     local _, cy = GetCursorPosition()
     self.startY, self.startH = cy, frame:GetHeight()
     self:SetScript("OnUpdate", function()
@@ -1417,6 +1434,8 @@ local function Build()
   frame:EnableMouseWheel(true)
   frame:SetScript("OnMouseWheel", function(_, delta)
     if IsControlKeyDown() then
+      -- closing: settle hides the window, and the wheel must not then save a new scale
+      if anim and anim.closing then SettleFlight() return end
       SetSize(Scale() + delta * 0.05)
       if sizePanelSync then sizePanelSync() end
       return
@@ -1427,14 +1446,237 @@ local function Build()
   Place()
 end
 
--- show (true) / hide (false) / toggle (nil); remembered, so it comes back after a reload
-function CR.ToggleAllMaterials(show)
-  Build()
-  if show == nil then show = not frame:IsShown() end
+-- Open and close scale the window between the button that launched it and its saved
+-- spot. One OnUpdate, 160ms out and 130ms back. It changes this frame's scale, anchor,
+-- and alpha only, so the row layout is not rebuilt per frame. The in-flight scale is
+-- never written to trackerAll. The stable center is the quantity SetSize already keeps
+-- still across a scale change. The launcher is parented to ProfessionsFrame, so its
+-- center is converted with GetEffectiveScale before that division.
+local ANIM_OPEN, ANIM_CLOSE, ANIM_FROM = 0.16, 0.13, 0.22
+local mouseWas
+
+local function EaseOutCubic(t)
+  local u = 1 - t
+  return 1 - u * u * u
+end
+local function EaseInCubic(t)
+  return t * t * t
+end
+
+-- UIParent-space center. SetPoint divides it by the frame's own scale (see SetSize).
+local function StableCenter(widget)
+  if not (widget and widget.GetCenter) then return nil end
+  local x, y = widget:GetCenter()
+  if not (x and y) then return nil end
+  local eff = widget:GetEffectiveScale() or 1
+  local parent = UIParent and UIParent:GetEffectiveScale() or 1
+  if parent == 0 then parent = 1 end
+  return x * eff / parent, y * eff / parent
+end
+
+local function ApplyCenter(x, y, scale)
+  if scale < 0.05 then scale = 0.05 end
+  frame:SetScale(scale)
+  frame:ClearAllPoints()
+  frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+end
+
+-- clicks pass through the flying window, so the button under it can reverse the flight
+local function MouseOff()
+  if mouseWas then return end
+  mouseWas = {}
+  local function walk(f)
+    -- the close button stays clickable so it can turn the flight around
+    if f ~= frame.close and f.IsMouseEnabled and f:IsMouseEnabled() and f.EnableMouse then
+      mouseWas[f] = true
+      f:EnableMouse(false)
+    end
+    for _, c in ipairs({ f:GetChildren() }) do walk(c) end
+  end
+  walk(frame)
+end
+local function MouseOn()
+  if not mouseWas then return end
+  for f in pairs(mouseWas) do
+    if f.EnableMouse then f:EnableMouse(true) end
+  end
+  mouseWas = nil
+end
+
+local function HideChrome()
+  if sizePanel then sizePanel:Hide() end
+  if CloseMenus then CloseMenus() end
+  for _, c in pairs(cols) do
+    if c.menu then c.menu:Hide() end
+  end
+  if frame.sortDD and frame.sortDD.menu then frame.sortDD.menu:Hide() end
+  if GameTooltip_Hide then GameTooltip_Hide() end
+end
+
+local function Shown(widget)
+  return widget and widget.IsShown and widget:IsShown() and true or false
+end
+-- the button just clicked, else the compact Materials button, else the /cr window's.
+-- None of those: the window zooms on its own center.
+local function OriginWidget()
+  if Shown(openedFrom) then return openedFrom end
+  if Shown(CR.CompactMaterialsButton) then return CR.CompactMaterialsButton end
+  if Shown(CR.WindowMaterialsButton) then return CR.WindowMaterialsButton end
+end
+
+local function AlphaFor(opening, t)
+  if opening then
+    if t >= 0.4 then return 1 end
+    return 0.15 + 0.85 * (t / 0.4)
+  end
+  if t <= 0.4 then return 1 end
+  return 1 - (t - 0.4) / 0.6
+end
+
+local function FinishFlight()
+  if not anim then return end
+  local closing = anim.closing
+  anim = nil
+  frame:SetScript("OnUpdate", nil)
+  frame:SetAlpha(1)
+  frame:SetScale(Scale())
+  frame:SetClampedToScreen(true)
+  MouseOn()
+  Place()
+  frame:SetShown(not closing)
+end
+
+local function Drive(_, dt)
+  local a = anim
+  if not a then frame:SetScript("OnUpdate", nil) return end
+  a.elapsed = a.elapsed + (dt or 0)
+  local t = a.dur > 0 and a.elapsed / a.dur or 1
+  if t >= 1 then FinishFlight() return end
+  local e = a.closing and EaseInCubic(t) or EaseOutCubic(t)
+  ApplyCenter(a.fromX + (a.toX - a.fromX) * e, a.fromY + (a.toY - a.fromY) * e,
+    a.fromScale + (a.toScale - a.fromScale) * e)
+  if a.startAlpha then
+    frame:SetAlpha(a.startAlpha + (a.endAlpha - a.startAlpha) * e)
+  else
+    frame:SetAlpha(AlphaFor(not a.closing, t))
+  end
+end
+
+local function CurrentPose()
+  local a = anim
+  local t = a.dur > 0 and a.elapsed / a.dur or 1
+  if t < 0 then t = 0 elseif t > 1 then t = 1 end
+  local e = a.closing and EaseInCubic(t) or EaseOutCubic(t)
+  return a.fromX + (a.toX - a.fromX) * e, a.fromY + (a.toY - a.fromY) * e,
+    a.fromScale + (a.toScale - a.fromScale) * e
+end
+
+-- no flight: login, and a window that has no rectangle yet
+local function ShowInstant(show)
+  if anim then
+    anim = nil
+    frame:SetScript("OnUpdate", nil)
+  end
+  MouseOn()
+  frame:SetAlpha(1)
+  frame:SetScale(Scale())
+  frame:SetClampedToScreen(true)
   Settings().shown = show or nil
   if show then Place() end
-  frame:SetShown(show)
+  frame:SetShown(show and true or false)
   Refresh()
+end
+
+local function Begin(show, from)
+  Settings().shown = show or nil
+  if skipAnim then ShowInstant(show) return end
+  -- already heading where this call asked to go
+  if anim and anim.closing == (not show) then return end
+  if not anim and (frame:IsShown() and true or false) == (show and true or false) then
+    if show then Place() Refresh() end
+    return
+  end
+  if show then
+    if from then openedFrom = from
+    elseif not anim then openedFrom = nil end
+  end
+
+  HideChrome()
+  local restX, restY, restScale, originX, originY
+  local reversing = anim ~= nil
+  if reversing then
+    restX, restY, restScale = anim.restX, anim.restY, anim.restScale
+    originX, originY = anim.originX, anim.originY
+  else
+    frame:SetAlpha(1)
+    frame:SetScale(Scale())
+    frame:SetClampedToScreen(true)
+    if show then
+      Place()
+      frame:Show()
+      Refresh()
+    end
+    restX, restY = StableCenter(frame)
+    restScale = Scale()
+    if not restX then ShowInstant(show) return end
+    originX, originY = StableCenter(OriginWidget())
+    if not originX then originX, originY = restX, restY end
+  end
+
+  local small = restScale * ANIM_FROM
+  if small < 0.05 then small = 0.05 end
+  local fromX, fromY, fromScale
+  -- a reverse covers only the ground already travelled, so a click right after
+  -- the start does not play the whole 160ms backwards
+  local flightDur = show and ANIM_OPEN or ANIM_CLOSE
+  if reversing then
+    local t = anim.dur > 0 and anim.elapsed / anim.dur or 1
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    flightDur = math.max(0.04, flightDur * t)
+    fromX, fromY, fromScale = CurrentPose()
+  elseif show then
+    fromX, fromY, fromScale = originX, originY, small
+  else
+    fromX, fromY, fromScale = restX, restY, restScale
+  end
+  local toX, toY, toScale
+  if show then
+    toX, toY, toScale = restX, restY, restScale
+  else
+    toX, toY, toScale = originX, originY, small
+  end
+
+  anim = {
+    closing = not show, elapsed = 0, dur = flightDur,
+    fromX = fromX, fromY = fromY, fromScale = fromScale,
+    toX = toX, toY = toY, toScale = toScale,
+    restX = restX, restY = restY, restScale = restScale,
+    originX = originX, originY = originY,
+  }
+  -- a reverse keeps the alpha already on screen. Restarting the open fade
+  -- would drop a still-large window to 0.15.
+  if reversing then
+    anim.startAlpha = frame:GetAlpha() or 1
+    anim.endAlpha = show and 1 or 0
+  end
+  frame:SetClampedToScreen(false)
+  frame:Show()
+  ApplyCenter(fromX, fromY, fromScale)
+  if not reversing then frame:SetAlpha(AlphaFor(show, 0)) end
+  if not reversing then MouseOff() end
+  frame:SetScript("OnUpdate", Drive)
+end
+
+SettleFlight = FinishFlight
+
+-- show (true) / hide (false) / toggle (nil). from: the button just clicked.
+-- Remembered, so it comes back after a reload. Login shows it in place.
+function CR.ToggleAllMaterials(show, from)
+  Build()
+  if show == nil then
+    if anim then show = anim.closing else show = not frame:IsShown() end
+  end
+  Begin(show and true or false, from)
 end
 CR.RefreshAllMaterials = Refresh
 
@@ -1469,7 +1711,8 @@ function CR.AllMaterialsButton(owner)
   b:SetSize(80, 22)
   b:SetText("Materials")
   if CR.ThemeRegisterButton then CR.ThemeRegisterButton(b) end
-  b:SetScript("OnClick", function() CR.ToggleAllMaterials() end)
+  b:SetScript("OnClick", function(self) CR.ToggleAllMaterials(nil, self) end)
+  CR.WindowMaterialsButton = b
   b:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
     GameTooltip:SetText("All Materials")
@@ -1487,12 +1730,18 @@ ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_LOGOUT")
 ev:SetScript("OnEvent", function(_, event)
   if event == "PLAYER_LOGOUT" then
+    -- don't store the in-flight point; finish onto the saved one first
+    if SettleFlight then SettleFlight() end
     if frame and frame:IsShown() then SavePos() end
     return
   end
   RecordCharacter()
   ForceAlts()
-  if Settings().shown then CR.ToggleAllMaterials(true) end
+  if Settings().shown then
+    skipAnim = true
+    CR.ToggleAllMaterials(true)
+    skipAnim = false
+  end
   -- bags, plans, skills changing: the plans built to a picked goal again, and refresh
   CR.OnChange(function() RecordCharacter() wipe(plans) Refresh() end)
 end)

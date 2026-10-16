@@ -79,7 +79,7 @@ local function Build()
   end
 
   Heading("Windows")
-  Button("Materials window", 170, 16, function() if CR.ToggleAllMaterials then CR.ToggleAllMaterials(true) end end,
+  Button("Materials window", 170, 16, function(self) if CR.ToggleAllMaterials then CR.ToggleAllMaterials(true, self) end end,
     "Every material your professions' routes still need, in one window. (Also /cr all.)")
   y = y - 40
 
@@ -311,9 +311,9 @@ local function MakeButton()
   border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
   border:SetSize(53, 53)
   border:SetPoint("TOPLEFT")
-  b:SetScript("OnClick", function(_, mouse)
+  b:SetScript("OnClick", function(self, mouse)
     if mouse == "RightButton" then
-      if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
+      if CR.ToggleAllMaterials then CR.ToggleAllMaterials(nil, self) end
     else
       CR.OpenSettings()
     end

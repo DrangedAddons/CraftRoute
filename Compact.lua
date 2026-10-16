@@ -2518,17 +2518,46 @@ local function LayoutHeader()
   end
   local custom = overlay.customBox:IsShown() and 42 or 0
   local goal = overlay.goalDD:IsShown()
-  local profW = goal and math.min(avail - gap - custom - 90, math.max(130, math.floor((avail - gap - custom) / 2))) or avail
-  overlay.profDD:ClearAllPoints()
-  overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y)
-  overlay.profDD:SetWidth(profW)
-  local prev = overlay.profDD
-  if goal then
-    overlay.goalDD:ClearAllPoints()
-    overlay.goalDD:SetPoint("LEFT", prev, "RIGHT", gap, 0)
-    overlay.goalDD:SetWidth(avail - gap - custom - profW)
-    prev = overlay.goalDD
+  -- The holder art is inset inside the texture, so a 6px widget gap reads as a wide dark
+  -- band and the route box was crossing the recipe pane. A negative gap pulls the visible
+  -- frames together. The right edge stays on the column: the recipe icon's frame is the limit.
+  local rightBound = leftW - 1
+  local frameW = overlay:GetWidth() or 0
+  if frameW > 0 and overlay.mainBtn then
+    local btnLeft = frameW - 8 - (overlay.mainBtn:GetWidth() or 130)
+    rightBound = math.min(rightBound, btnLeft - 8 - 3)
   end
+  local columnBound = leftW - 4 - 3
+  if rightBound < columnBound then rightBound = columnBound end
+  -- Visible gap lands near 5px. The widget overlap sits in the texture's empty side padding,
+  -- short of the arrow and the route label.
+  local pickerGap = -14
+  local profLeft = goal and (x - 2) or x
+  local customBlock = custom > 0 and (custom + gap + 4) or 0
+  local profW
+  if goal then
+    local profRoom = rightBound - profLeft - pickerGap - customBlock
+    -- Goal keeps enough for "Journeyman (150)". Profession takes the rest: it also carries the icon.
+    local goalMin = custom > 0 and 96 or 124
+    local goalW = math.floor(profRoom * 0.40)
+    if goalW < goalMin then goalW = goalMin end
+    if profRoom - goalW < 150 then goalW = math.max(72, profRoom - 150) end
+    if goalW > profRoom - 80 then goalW = profRoom - 80 end
+    if goalW < 1 then goalW = math.floor(profRoom / 2) end
+    profW = profRoom - goalW
+    overlay.profDD:ClearAllPoints()
+    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", profLeft, y)
+    overlay.profDD:SetWidth(profW)
+    overlay.goalDD:ClearAllPoints()
+    overlay.goalDD:SetPoint("LEFT", overlay.profDD, "RIGHT", pickerGap, 0)
+    overlay.goalDD:SetWidth(goalW)
+  else
+    profW = rightBound - profLeft - customBlock
+    overlay.profDD:ClearAllPoints()
+    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", profLeft, y)
+    overlay.profDD:SetWidth(profW)
+  end
+  local prev = goal and overlay.goalDD or overlay.profDD
   if custom > 0 then
     overlay.customBox:ClearAllPoints()
     overlay.customBox:SetPoint("LEFT", prev, "RIGHT", gap + 4, 0)
@@ -3739,6 +3768,174 @@ local function CreateEntryButton()
   return tab
 end
 
+-- Profession, goal, and route pickers. The closed control is WowStyle1DropdownTemplate
+-- (the arrow is its Arrow texture) and the open list is MenuUtil, the same pair TrainerSpells
+-- uses. The textholder is a fixed frame (common-dropdown-classic-textholder). Stretching it
+-- down to the 20px row squashes that frame until the first click, when the mixin sets the
+-- atlas again. The hang below is the template's own (-9, 8 / 8, -9) plus a few pixels of
+-- frame, and the label is centred in it. The widget stays 20px, so the list does not move.
+local function FitDropdownChrome(dd)
+  local bg = dd.Background
+  if bg then
+    local atlas = bg.GetAtlas and bg:GetAtlas()
+    if atlas and atlas ~= "" and bg.SetAtlas then bg:SetAtlas(atlas, false) end
+    bg:ClearAllPoints()
+    -- Template hang is 8px above and 9px below a 24px box. Same frame here, plus 2px,
+    -- with the sides held in so the box stays inside the left column.
+    bg:SetPoint("TOPLEFT", dd, "TOPLEFT", -3, 10)
+    bg:SetPoint("BOTTOMRIGHT", dd, "BOTTOMRIGHT", 3, -11)
+  end
+  local text, arrow = dd.Text, dd.Arrow
+  if arrow then
+    arrow:ClearAllPoints()
+    -- The holder hangs 3px past the widget. The chevron art sits 2px above the gold frame
+    -- when it is centred on the 20px widget, so the button is set 2px lower.
+    arrow:SetPoint("RIGHT", dd, "RIGHT", -5, -2)
+  end
+  if text then
+    text:ClearAllPoints()
+    text:SetPoint("LEFT", dd, "LEFT", 10, 0)
+    if arrow then text:SetPoint("RIGHT", arrow, "LEFT", -4, 0)
+    else text:SetPoint("RIGHT", dd, "RIGHT", -20, 0) end
+    if text.SetJustifyH then text:SetJustifyH("LEFT") end
+    if text.SetJustifyV then text:SetJustifyV("MIDDLE") end
+    if text.SetWordWrap then text:SetWordWrap(false) end
+  end
+end
+
+local function CapDropdownFont(dd)
+  local text = dd.Text
+  local small = GameFontHighlightSmall
+  if not (text and text.GetFont and text.SetFont and small and small.GetFont) then return end
+  local font, size, flags = text:GetFont()
+  local _, smallSize = small:GetFont()
+  if not (font and size and smallSize) then return end
+  -- One pixel under the closed label the row was using (that cap was the small font + 2).
+  -- Recorded once: a later show resets the template size, and this puts the same size back.
+  -- The open menu is a different fontstring and is not changed.
+  if not dd.crFontDrop then
+    local base = size
+    if base > smallSize + 2 then base = smallSize + 2 end
+    dd.crFontDrop = math.max(smallSize, base - 1)
+  end
+  if size > dd.crFontDrop then text:SetFont(font, dd.crFontDrop, flags) end
+end
+
+-- One secure cover per profession. The menu builds a new row button every open, so the cover
+-- is pointed at that button instead of making another secure button. A menu callback can't cast.
+local function ArmProfessionCover(dd)
+  if not CR.SyncSecureCovers then return end
+  CR.SyncSecureCovers()
+  if dd.crCoverArm or not (C_Timer and C_Timer.After) then return end
+  dd.crCoverArm = true
+  C_Timer.After(0, function()
+    dd.crCoverArm = false
+    if CR.SyncSecureCovers then CR.SyncSecureCovers() end
+  end)
+end
+
+local function RetargetProfessionCover(dd, button, value, openMacro, setter)
+  if InCombatLockdown() or not CR.SecureCover or not button then return end
+  dd.crCovers = dd.crCovers or {}
+  local cover = dd.crCovers[value]
+  if openMacro(value) == nil then
+    if cover then
+      cover.target = nil
+      cover:Hide()
+      cover:SetScript("OnUpdate", nil)
+    end
+    return
+  end
+  if not cover then
+    cover = CR.SecureCover(button, function()
+      local macro = openMacro(value) or ""
+      if dd.CloseMenu then dd:CloseMenu() end
+      setter(value)
+      if dd.Sync then dd:Sync() end
+      return macro
+    end, function()
+      local c = dd.crCovers and dd.crCovers[value]
+      return c and c.target and c.target:IsVisible() and openMacro(value) ~= nil
+    end)
+    if not cover then return end
+    dd.crCovers[value] = cover
+  else
+    cover.target = button
+  end
+  ArmProfessionCover(dd)
+end
+
+local function CompactDropdown(parent, width, options, getter, setter, openMacro)
+  if not (MenuUtil and MenuUtil.CreateRootMenuDescription) then
+    return CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
+  end
+  local ok, dd = pcall(CreateFrame, "DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+  if not (ok and dd and dd.SetupMenu) then
+    return CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
+  end
+  dd:SetSize(width, 20)
+  dd.disableSelectionText = true
+  CapDropdownFont(dd)
+  FitDropdownChrome(dd)
+  -- The mixin resets the holder on show, on resize, and on the click that used to unclamp it.
+  dd:HookScript("OnShow", function(self) CapDropdownFont(self) FitDropdownChrome(self) end)
+  dd:HookScript("OnSizeChanged", function(self) CapDropdownFont(self) FitDropdownChrome(self) end)
+  dd:HookScript("OnMouseUp", function(self) CapDropdownFont(self) FitDropdownChrome(self) end)
+  dd:HookScript("OnHide", function(self)
+    if self.CloseMenu then pcall(self.CloseMenu, self) end
+  end)
+
+  local function Opts()
+    return type(options) == "function" and options() or options
+  end
+
+  function dd:Sync()
+    local v = getter()
+    local label
+    for _, o in ipairs(Opts() or {}) do
+      if not o.header and o.value == v then
+        label = o.short or o.text
+        break
+      end
+    end
+    if self.SetText then self:SetText(label or tostring(v or "")) end
+  end
+
+  -- The rank-bar arrow calls Click(). The template opens from OnMouseDown, which Click() does not run.
+  function dd:Click()
+    if self.IsMenuOpen and self.SetMenuOpen then
+      self:SetMenuOpen(not self:IsMenuOpen())
+    elseif self.OpenMenu then
+      self:OpenMenu()
+    end
+  end
+
+  local function BuildMenu(_, root)
+    for _, o in ipairs(Opts() or {}) do
+      if o.header then
+        root:CreateTitle(o.header)
+      elseif o.value ~= nil then
+        local value = o.value
+        local radio = root:CreateRadio(o.text or tostring(value),
+          function() return getter() == value end,
+          function() setter(value) end)
+        if openMacro and radio and radio.AddInitializer then
+          radio:AddInitializer(function(button)
+            RetargetProfessionCover(dd, button, value, openMacro, setter)
+          end)
+        end
+      end
+    end
+  end
+  if not pcall(dd.SetupMenu, dd, BuildMenu) then
+    dd:Hide()
+    dd:SetParent(nil)
+    return CR.CreateDropdown(parent, width, options, getter, setter, openMacro)
+  end
+  dd:Sync()
+  return dd
+end
+
 local function BuildOverlay()
   local parent = ProfessionsFrame
   local frame = CreateFrame("Frame", "CraftRouteCompactFrame", parent)
@@ -3755,9 +3952,9 @@ local function BuildOverlay()
   frame.divider = frame:CreateTexture(nil, "BORDER")
   frame.divider:SetColorTexture(1, 0.82, 0.35, 0.18)
 
-  frame.profDD = CR.CreateDropdown(frame, 200, ProfessionOptions,
+  frame.profDD = CompactDropdown(frame, 200, ProfessionOptions,
     function() return DB() and DB().profession or "" end, SelectProfession, CR.OpenProfessionMacro)
-  frame.goalDD = CR.CreateDropdown(frame, 168, CR.GoalOptions,
+  frame.goalDD = CompactDropdown(frame, 168, CR.GoalOptions,
     function() return CR.GoalValue() end,
     function(v)
       local db = DB()
@@ -3779,7 +3976,7 @@ local function BuildOverlay()
     Changed()
   end)
   frame.customBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-  frame.modeDD = CR.CreateDropdown(frame, 130, function()
+  frame.modeDD = CompactDropdown(frame, 130, function()
     local _, prof = PlanProfession()
     local opts = {}
     for _, mode in ipairs(prof and prof.routeOrder or {}) do
@@ -3823,9 +4020,10 @@ local function BuildOverlay()
     frame.version:SetText("v" .. version)
   end
   -- the All Materials window, open / closed (the full CraftRoute window: /cr window)
-  frame.mainBtn:SetScript("OnClick", function()
-    if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
+  frame.mainBtn:SetScript("OnClick", function(self)
+    if CR.ToggleAllMaterials then CR.ToggleAllMaterials(nil, self) end
   end)
+  CR.CompactMaterialsButton = frame.mainBtn
   frame.mainBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Materials")
@@ -3925,9 +4123,9 @@ local function BuildOverlay()
   costBar.popout:SetText("")
   CR.ThemeRegisterButton(costBar.popout)
   CR.AddPopoutIcon(costBar.popout)
-  costBar.popout:SetScript("OnClick", function()
+  costBar.popout:SetScript("OnClick", function(self)
     -- the All Materials window (one profession's own tracker: double-click its icon there)
-    if CR.ToggleAllMaterials then CR.ToggleAllMaterials() end
+    if CR.ToggleAllMaterials then CR.ToggleAllMaterials(nil, self) end
   end)
   costBar.popout:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")

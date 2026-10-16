@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.78.8
+
+- The Materials frame now features a brief maximize / minimize animation for enhanced readability.
+- The Profession and Route selection dropdown boxes now match the Blizzard aesthetic.
+
 ## 0.78.7
 
 - Marked for Classic Beta and Forever (`## X-DrangedAddons-Games: _classic_beta_, _forever_` in the .toc) - the DrangedAddons manager only offers it in those games.
