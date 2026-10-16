@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.4
+
+- A reagent's **Vendor** button pins the nearest vendor for that item. Questie provides the locations (listed under Recommended addons); WaypointUI names the pin when it's installed. Standing at a vendor that sells it still turns the button into **Buy**.
+
 ## 0.79.3
 
 - The reload prompt is only set up when the game's popup table is there (no error loading without it).

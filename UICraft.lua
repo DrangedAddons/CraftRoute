@@ -786,14 +786,20 @@ end
 local function VendorTip(self)
   GameTooltip:SetOwner(self, "ANCHOR_TOP")
   GameTooltip:SetText("Buy from a vendor")
-  GameTooltip:AddLine("Vendors sell this - it's not on the Auctionator shopping list. Talk to one that has it "
-    .. "and this becomes a Buy button.", 1, 1, 1, true)
+  local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  if loaded and loaded("Questie") then
+    GameTooltip:AddLine("Click to pin the nearest vendor. Talk to one that has it "
+      .. "and this becomes a Buy button.", 1, 1, 1, true)
+  else
+    GameTooltip:AddLine("Click would pin the nearest vendor, but Questie is needed. Talk to one that has it "
+      .. "and this becomes a Buy button.", 1, 1, 1, true)
+  end
   GameTooltip:Show()
 end
 
 -- A short reagent's button: "Buy" while a vendor that sells it is open (onClick opens the buy box),
--- "Vendor" (same look, a reminder) when it's a vendor item but no such vendor is open. Returns
--- the width it takes, 0 when hidden.
+-- "Vendor" when it's a vendor item but no such vendor is open. Clicking Vendor pins the nearest
+-- seller. Returns the width it takes, 0 when hidden.
 function CR.SetBuyButton(btn, itemID, onClick)
   btn.crBuyW = btn.crBuyW or tonumber(btn:GetWidth()) or 40
   if CR.MerchantSells(itemID) then
@@ -807,7 +813,7 @@ function CR.SetBuyButton(btn, itemID, onClick)
   elseif CR.IsVendorItem(itemID) then
     btn:SetText("Vendor")
     btn:SetWidth(58)
-    btn:SetScript("OnClick", VendorTip)
+    btn:SetScript("OnClick", function() CR.PinVendorItem(itemID) end)
     btn:SetScript("OnEnter", VendorTip)
     btn:SetScript("OnLeave", GameTooltip_Hide)
     btn:Show()

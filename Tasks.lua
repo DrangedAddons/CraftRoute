@@ -4,7 +4,8 @@
 -- what it needs and costs, and ticks itself off when the game shows it's done - with a manual
 -- "Mark as done" as the fallback.
 -- NPC locations come from the TrainerSpells addon when it's installed (profession trainers and
--- recipe vendors), plus a few guide NPCs it doesn't list.
+-- recipe vendors), plus a few guide NPCs it doesn't list. A reagent's Vendor button asks Questie
+-- for that item's sellers when clicked; those coordinates are not saved here.
 local _, CR = ...
 
 ---------------------------------------------------------------------------
@@ -223,6 +224,97 @@ function CR.PinPlace(place)
     if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
   end
   CR.Print(string.format("Map pin set: %s, %s (%.0f, %.0f).", place.name, place.zone or "", place.x, place.y))
+end
+
+-- Reagent sellers for one item, from Questie, for this character's faction. Kept for the session
+-- so a busy vendor list (thread, vials) is only walked once. A miss while Questie's zone map is
+-- still starting is not remembered, so the next click tries again. An empty list is remembered:
+-- the lookup finished and there was nothing to pin. Questie's Forever coordinates are already on
+-- the redrawn maps, so these percentages go straight to the pin.
+local vendorPlaces = {}
+
+local function CanPinMap(uiMap)
+  if not (C_Map and C_Map.CanSetUserWaypointOnMap) then return true end
+  local ok, can = pcall(C_Map.CanSetUserWaypointOnMap, uiMap)
+  return ok and can
+end
+
+-- nil, "down" when ZoneDB is not ready. Otherwise the place list.
+local function VendorPlaces(itemID)
+  local cached = vendorPlaces[itemID]
+  if cached then return cached end
+  local ids
+  if type(ItemDB.vendors) == "function" then ids = ItemDB.vendors(itemID)
+  elseif type(ItemDB.Get) == "function" then ids = ItemDB.Get(itemID, "vendors") end
+  if type(ids) ~= "table" then
+    vendorPlaces[itemID] = {}
+    return vendorPlaces[itemID]
+  end
+  local loader = QuestieLoader
+  if not (loader and loader.ImportModule) then return nil, "down" end
+  local okMod, ZoneDB = pcall(loader.ImportModule, loader, "ZoneDB")
+  if not okMod or type(ZoneDB) ~= "table" or type(ZoneDB.GetUiMapIdByAreaId) ~= "function" then
+    return nil, "down"
+  end
+  local places = {}
+  for i = 1, #ids do
+    local npcID = ids[i]
+    if type(npcID) == "number" then
+      local name = NpcDB.name(npcID)
+      local faction = NpcDB.friendlyToFaction(npcID)
+      -- Skip an id Questie doesn't name. A nil faction still counts as friendly, same as the
+      -- trainer list. Spawns, not the patrol path: the pin is one place.
+      if type(name) == "string" and name ~= "" and ForMyFaction(faction) then
+        local spawns = NpcDB.spawns(npcID)
+        if type(spawns) == "table" then
+          for areaId, spots in pairs(spawns) do
+            local ok, uiMap = pcall(ZoneDB.GetUiMapIdByAreaId, ZoneDB, areaId)
+            if not ok then return nil, "down" end
+            -- Skip a map the pin cannot use, so the nearest pick is one PinPlace can place.
+            if type(uiMap) == "number" and uiMap > 0 and CanPinMap(uiMap) and type(spots) == "table" then
+              for s = 1, #spots do
+                local spot = spots[s]
+                local x, y = type(spot) == "table" and spot[1], type(spot) == "table" and spot[2]
+                if type(x) == "number" and type(y) == "number" and x > 0 and x <= 100 and y > 0 and y <= 100 then
+                  places[#places + 1] = { name = name, uiMapID = uiMap, x = x, y = y, faction = faction }
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  vendorPlaces[itemID] = places
+  return places
+end
+
+-- Pin the nearest vendor who sells itemID. The button stays "Vendor" when this cannot.
+function CR.PinVendorItem(itemID)
+  if not itemID then return end
+  local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  if not (loaded and loaded("Questie") and LibQuestieDB and ItemDB and NpcDB) then
+    CR.Print("Questie is needed to find the nearest vendor.")
+    return
+  end
+  if type(ItemDB.vendors) ~= "function" or type(NpcDB.name) ~= "function"
+    or type(NpcDB.friendlyToFaction) ~= "function" or type(NpcDB.spawns) ~= "function"
+    or (LibQuestieDB.RequireContract and not LibQuestieDB.RequireContract(4)) then
+    CR.Print("Questie's database is too old to look up vendors.")
+    return
+  end
+  local places, zoneDown = VendorPlaces(itemID)
+  if zoneDown then
+    CR.Print("Questie isn't ready to look up vendor maps yet.")
+    return
+  end
+  local nearest = places and Nearest(places, 1)
+  local place = nearest and nearest[1]
+  if not place then
+    CR.Print("No vendor location for " .. CR.ItemName(itemID) .. ".")
+    return
+  end
+  CR.PinPlace(place)
 end
 
 ---------------------------------------------------------------------------
