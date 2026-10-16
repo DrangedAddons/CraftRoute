@@ -29,6 +29,12 @@ win:Hide()
 table.insert(UISpecialFrames, "CraftRouteSettings")   -- (Escape closes it)
 local winClose = CreateFrame("Button", nil, win, "UIPanelCloseButton")
 winClose:SetPoint("TOPRIGHT", -2, -2)
+-- and a Close button at the bottom
+local closeBtn = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+closeBtn:SetSize(100, 24)
+closeBtn:SetPoint("BOTTOMRIGHT", -16, 14)
+closeBtn:SetText("Close")
+closeBtn:SetScript("OnClick", function() win:Hide() end)
 
 -- Options > AddOns > CraftRoute: a button to the window
 local panel = CreateFrame("Frame")
@@ -283,7 +289,7 @@ local function Build()
     .. CR.ColorText("/cr recipes", "ffd100") .. "  the recipe picker\n"
     .. CR.ColorText("/cr help", "ffd100") .. "  every command")
   -- (the window's height: down to the end of the commands)
-  win.contentH = -y + math.max(80, tonumber(cmds:GetStringHeight()) or 80) + 24
+  win.contentH = -y + math.max(80, tonumber(cmds:GetStringHeight()) or 80) + 24 + 36   -- (+ the Close button)
 end
 
 function CR.SettingsSync()

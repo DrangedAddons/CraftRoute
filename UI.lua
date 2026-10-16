@@ -653,8 +653,22 @@ end
 function CR.IsWindowShown() return frame and frame:IsShown() and true or false end
 
 -- The window look (CR.THEMES), from here or the Settings page: saved, and the window redrawn
+-- after a new look: some of it only takes hold after a reload - offered, not forced
+StaticPopupDialogs = StaticPopupDialogs or {}
+StaticPopupDialogs["CRAFTROUTE_RELOAD_LOOK"] = {
+  text = "Some parts of CraftRoute's new look only take effect after a reload.\n\nReload the UI now?",
+  button1 = "Reload now",
+  button2 = "Later",
+  OnAccept = function() ReloadUI() end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
 function CR.SetLook(v)
+  local changed = (CraftRouteDB.theme or "default") ~= v
   CraftRouteDB.theme = v
+  if changed and StaticPopup_Show then StaticPopup_Show("CRAFTROUTE_RELOAD_LOOK") end
   if frame then
     CR.ApplyTheme(frame)
     CR.RefreshWindow()

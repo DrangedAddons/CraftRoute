@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.79.1
+
+- Choosing a new window look asks whether to reload the UI now (some of the look only takes hold after a reload) - Reload now, or Later.
+- The settings window has a **Close** button at the bottom.
+
 ## 0.79.0
 
 - Gathering professions (Mining, Herbalism, Skinning, and Fishing's own guide) on the profession window tab: a choice of zones is **one dropdown line** - the band and your pick, e.g. "1-65: Durotar" - instead of "Choose one" and a row per zone; open it to pick another. (Picking a zone costs nothing either way, so there's nothing to compare. Crafting professions and the Cooking + Fishing guide keep their option rows with costs.)
