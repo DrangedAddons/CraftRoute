@@ -1915,6 +1915,15 @@ AttachPlainCover = function(target, onClick, wanted)
   return b
 end
 
+-- How far up from the right column's bottom the crafting buttons' row reaches: where Blizzard's
+-- Create buttons sit (measured from its page), else the row's own height. Content stops above it.
+local function ButtonRowTop()
+  local r = CraftRouteDB and CraftRouteDB.blizButtons and CraftRouteDB.blizButtons.createAll
+  -- (r: from the window's bottom; the right column starts 8 above that)
+  if r and r[2] and r[4] then return math.max(24, r[2] + r[4] - 8) end
+  return 26
+end
+
 local function FillSchematic(info)
   local frame = overlay
   local st = info and info.selected
@@ -1924,9 +1933,12 @@ local function FillSchematic(info)
     if not frame.crTaskCard then
       frame.crTaskCard = CR.CreateTaskScroll(frame.schematic, 300)
       -- starts below the Open CraftRoute button (top right), so its title doesn't run under it
-      frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, (RANK_DROP_Y + 1 - 22 - 8) - DIVIDER_TOP)
-      frame.crTaskCard:SetPoint("BOTTOMLEFT", frame.schematic, "BOTTOMLEFT", 4, 8)
     end
+    -- from below the Materials button (top right) down to just above the crafting buttons' row - the
+    -- row is kept clear, as on Blizzard's page (the card scrolls within that)
+    frame.crTaskCard:ClearAllPoints()
+    frame.crTaskCard:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 4, (RANK_DROP_Y + 1 - 22 - 8) - DIVIDER_TOP)
+    frame.crTaskCard:SetPoint("BOTTOMLEFT", frame.schematic, "BOTTOMLEFT", 4, ButtonRowTop() + 6)
     local sw = frame.schemW or frame.schematic:GetWidth() or 0
     if sw < 40 then sw = 300 end
     frame.crTaskCard:Fill(task, math.max(200, math.min(420, sw - 28)))

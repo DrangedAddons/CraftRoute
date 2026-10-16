@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.13
+
+- Profession window tab: a step's details (the to-do steps) stop above the crafting buttons' row, as Blizzard's page does - that row is kept clear, and the details scroll within the space above it.
+
 ## 0.78.12
 
 - Step details (to-do steps on the profession window tab and in the main window) stay inside their area: the Pin buttons, the places and Mark as done no longer run off the bottom of the page - they scroll with the rest. The reagents list (with its Shopping List button and Count alts tick) is kept to its area the same way.
