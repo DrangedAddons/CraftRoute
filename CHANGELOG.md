@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.5
+
+- **Anvil required**, **Forge required**, and **Cooking Fire required** on the Route tab pin the nearest one when you click the words. Questie provides the locations. The line stays red until you are standing at one, and a green line does not pin. Alchemy Lab and the other camp stations still show, and are not clickable.
+
 ## 0.79.4
 
 - A reagent's **Vendor** button pins the nearest vendor for that item. Questie provides the locations (listed under Recommended addons); WaypointUI names the pin when it's installed. Standing at a vendor that sells it still turns the button into **Buy**.

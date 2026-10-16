@@ -250,7 +250,7 @@ local function Build()
     { "Syndicator", "Counts your alts' bags, bank and mail (Count alts' materials). Comes with Baganator." },
     { "TrainerSpells", "Live recipe data, and where trainers and vendors are, with map pins." },
     { "EllesmereUI", "The matching window looks, have/need counts on its loot feed, its movers and minimap." },
-    { "Questie", "Pins the nearest vendor for a reagent's Vendor button. QuestieDB comes with it." },
+    { "Questie", "Pins the nearest vendor, and the nearest anvil, forge, or cooking fire. QuestieDB comes with it." },
   }) do
     local name = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     name:SetPoint("TOPLEFT", 22, y)

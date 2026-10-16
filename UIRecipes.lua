@@ -60,6 +60,51 @@ function CR.StructureText(r)
     .. CR.ColorText(" required", all and "40ff40" or "ff4040")
 end
 
+-- Stations the Route tab can pin, and the Questie object names that satisfy them.
+-- "Cooking Fire" is the requirement. Campfire, Bonfire, Cozy Fire, and Cooking Fire are the objects.
+local PIN_OBJECTS = {
+  ["Anvil"] = { "Anvil" },
+  ["Forge"] = { "Forge" },
+  ["Cooking Fire"] = { "Campfire", "Bonfire", "Cozy Fire", "Cooking Fire" },
+}
+local PIN_PHRASE = {
+  ["Anvil"] = "an anvil",
+  ["Forge"] = "a forge",
+  ["Cooking Fire"] = "a fire",
+}
+
+-- Object names still worth pinning, and a phrase for "No location for ...".
+-- Nil when the Pin Nearest button should hide: this recipe has none of those stations,
+-- or the player is already standing at each of them.
+function CR.StructurePin(r)
+  if not r then return nil end
+  local list = CR.RequiredStructures(r)
+  if #list == 0 then return nil end
+  local met = StructuresMet(r) or {}
+  local names, seen, phrases = {}, {}, {}
+  local any = false
+  for _, name in ipairs(list) do
+    local objs = PIN_OBJECTS[name]
+    if objs then
+      any = true
+      if met[name] ~= true then
+        phrases[#phrases + 1] = PIN_PHRASE[name]
+        for i = 1, #objs do
+          local obj = objs[i]
+          if not seen[obj] then
+            seen[obj] = true
+            names[#names + 1] = obj
+          end
+        end
+      end
+    end
+  end
+  if not any or #names == 0 then return nil end
+  local phrase = phrases[1]
+  if #phrases > 1 then phrase = table.concat(phrases, " or ") end
+  return names, phrase
+end
+
 function CR.RecipeTooltip(tt, r, crafts)
   if r.item > 0 then
     tt:SetItemByID(r.item)

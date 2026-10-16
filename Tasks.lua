@@ -239,6 +239,35 @@ local function CanPinMap(uiMap)
   return ok and can
 end
 
+local function QuestieZoneDB()
+  local loader = QuestieLoader
+  if not (loader and loader.ImportModule) then return nil end
+  local okMod, zone = pcall(loader.ImportModule, loader, "ZoneDB")
+  if not okMod or type(zone) ~= "table" or type(zone.GetUiMapIdByAreaId) ~= "function" then return nil end
+  return zone
+end
+
+-- One NPC's or object's spawns, as place records. nil, "down" if the zone map errors,
+-- so the caller does not cache that lookup. Spawns, not a patrol path.
+local function AddSpawns(places, zone, name, faction, spawns)
+  if type(spawns) ~= "table" then return true end
+  for areaId, spots in pairs(spawns) do
+    local ok, uiMap = pcall(zone.GetUiMapIdByAreaId, zone, areaId)
+    if not ok then return nil, "down" end
+    -- Skip a map the pin cannot use, so the nearest pick is one PinPlace can place.
+    if type(uiMap) == "number" and uiMap > 0 and CanPinMap(uiMap) and type(spots) == "table" then
+      for s = 1, #spots do
+        local spot = spots[s]
+        local x, y = type(spot) == "table" and spot[1], type(spot) == "table" and spot[2]
+        if type(x) == "number" and type(y) == "number" and x > 0 and x <= 100 and y > 0 and y <= 100 then
+          places[#places + 1] = { name = name, uiMapID = uiMap, x = x, y = y, faction = faction }
+        end
+      end
+    end
+  end
+  return true
+end
+
 -- nil, "down" when ZoneDB is not ready. Otherwise the place list.
 local function VendorPlaces(itemID)
   local cached = vendorPlaces[itemID]
@@ -250,12 +279,8 @@ local function VendorPlaces(itemID)
     vendorPlaces[itemID] = {}
     return vendorPlaces[itemID]
   end
-  local loader = QuestieLoader
-  if not (loader and loader.ImportModule) then return nil, "down" end
-  local okMod, ZoneDB = pcall(loader.ImportModule, loader, "ZoneDB")
-  if not okMod or type(ZoneDB) ~= "table" or type(ZoneDB.GetUiMapIdByAreaId) ~= "function" then
-    return nil, "down"
-  end
+  local zone = QuestieZoneDB()
+  if not zone then return nil, "down" end
   local places = {}
   for i = 1, #ids do
     local npcID = ids[i]
@@ -263,25 +288,10 @@ local function VendorPlaces(itemID)
       local name = NpcDB.name(npcID)
       local faction = NpcDB.friendlyToFaction(npcID)
       -- Skip an id Questie doesn't name. A nil faction still counts as friendly, same as the
-      -- trainer list. Spawns, not the patrol path: the pin is one place.
+      -- trainer list.
       if type(name) == "string" and name ~= "" and ForMyFaction(faction) then
-        local spawns = NpcDB.spawns(npcID)
-        if type(spawns) == "table" then
-          for areaId, spots in pairs(spawns) do
-            local ok, uiMap = pcall(ZoneDB.GetUiMapIdByAreaId, ZoneDB, areaId)
-            if not ok then return nil, "down" end
-            -- Skip a map the pin cannot use, so the nearest pick is one PinPlace can place.
-            if type(uiMap) == "number" and uiMap > 0 and CanPinMap(uiMap) and type(spots) == "table" then
-              for s = 1, #spots do
-                local spot = spots[s]
-                local x, y = type(spot) == "table" and spot[1], type(spot) == "table" and spot[2]
-                if type(x) == "number" and type(y) == "number" and x > 0 and x <= 100 and y > 0 and y <= 100 then
-                  places[#places + 1] = { name = name, uiMapID = uiMap, x = x, y = y, faction = faction }
-                end
-              end
-            end
-          end
-        end
+        local ok, down = AddSpawns(places, zone, name, faction, NpcDB.spawns(npcID))
+        if not ok then return nil, down end
       end
     end
   end
@@ -312,6 +322,65 @@ function CR.PinVendorItem(itemID)
   local place = nearest and nearest[1]
   if not place then
     CR.Print("No vendor location for " .. CR.ItemName(itemID) .. ".")
+    return
+  end
+  CR.PinPlace(place)
+end
+
+-- Anvils, forges, and fires, one list per Questie object name. Same cache rules as vendors.
+-- The first IdsByName builds Questie's object name index, so this stays on the click.
+local objectPlaces = {}
+local function ObjectPlaces(name)
+  local cached = objectPlaces[name]
+  if cached then return cached end
+  local ids = ObjectDB.IdsByName(name)
+  if type(ids) ~= "table" then
+    objectPlaces[name] = {}
+    return objectPlaces[name]
+  end
+  local zone = QuestieZoneDB()
+  if not zone then return nil, "down" end
+  local places = {}
+  for i = 1, #ids do
+    local id = ids[i]
+    if type(id) == "number" then
+      -- No faction filter. Object factionID is a mask, not "A" / "H". Distance picks the capital.
+      local ok, down = AddSpawns(places, zone, name, nil, ObjectDB.spawns(id))
+      if not ok then return nil, down end
+    end
+  end
+  objectPlaces[name] = places
+  return places
+end
+
+-- Pin the nearest Questie object among `names`. `phrase` finishes "No location for ...".
+function CR.PinNearestStructure(names, phrase)
+  if type(names) ~= "table" or #names == 0 then return end
+  local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  if not (loaded and loaded("Questie") and LibQuestieDB and ObjectDB) then
+    CR.Print("Questie is needed to find the nearest one.")
+    return
+  end
+  if type(ObjectDB.IdsByName) ~= "function" or type(ObjectDB.spawns) ~= "function"
+    or (LibQuestieDB.RequireContract and not LibQuestieDB.RequireContract(4)) then
+    CR.Print("Questie's database is too old to look up that.")
+    return
+  end
+  local places = {}
+  for i = 1, #names do
+    local list, down = ObjectPlaces(names[i])
+    if down then
+      CR.Print("Questie isn't ready to look up maps yet.")
+      return
+    end
+    if type(list) == "table" then
+      for j = 1, #list do places[#places + 1] = list[j] end
+    end
+  end
+  local nearest = Nearest(places, 1)
+  local place = nearest and nearest[1]
+  if not place then
+    CR.Print("No location for " .. (phrase or "that") .. ".")
     return
   end
   CR.PinPlace(place)

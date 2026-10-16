@@ -1982,6 +1982,28 @@ local function ButtonRowTop()
   return 26
 end
 
+-- The red "Anvil required" words are the pin. The hit is only as wide as the text, and it
+-- goes away once the line is green or the station is one we do not pin.
+local function SyncStructurePin(frame, recipe)
+  local btn = frame.rStructureHit
+  if not btn then return end
+  local names, phrase
+  if recipe and CR.StructurePin then names, phrase = CR.StructurePin(recipe) end
+  if not names then btn:Hide() return end
+  btn.phrase = phrase
+  local fs = frame.rStructure
+  local w = tonumber(fs:GetStringWidth()) or 0
+  local h = tonumber(fs:GetStringHeight()) or 0
+  local col = tonumber(fs:GetWidth()) or w
+  if col > 0 and w > col then w = col end
+  if w < 1 then w = 1 end
+  if h < 8 then h = 14 end
+  btn:ClearAllPoints()
+  btn:SetSize(w, h)
+  btn:SetPoint("TOPLEFT", fs, "TOPLEFT", 0, 0)
+  btn:Show()
+end
+
 local function FillSchematic(info)
   local frame = overlay
   local st = info and info.selected
@@ -2007,6 +2029,7 @@ local function FillSchematic(info)
   frame.rName:SetShown(recipe ~= nil)
   frame.rSub:SetShown(recipe ~= nil)
   if not recipe then frame.rBand:Hide() end
+  if not recipe and frame.rStructureHit then frame.rStructureHit:Hide() end
   frame.rStructure:SetShown(recipe ~= nil)
   frame.reagentsLabel:SetShown(recipe ~= nil)
   frame.cost:SetShown(recipe ~= nil)
@@ -2064,6 +2087,7 @@ local function FillSchematic(info)
   end
   local structure = CR.StructureText(recipe)
   frame.rStructure:SetText(structure or "")
+  SyncStructurePin(frame, recipe)
 
   local reagents = recipe.reagents or {}
   -- Destinations: compact - the icon tucked into the corner, the learned / source lines under it,
@@ -4793,6 +4817,30 @@ local function BuildOverlay()
   frame.rStructure:SetWidth(180)
   frame.rStructure:SetJustifyH("LEFT")
   frame.rStructure:SetWordWrap(false)
+  -- Invisible. Only the words are clickable, and only while they are a pin.
+  local hit = CreateFrame("Button", nil, schematic)
+  hit:SetScript("OnClick", function()
+    local sel = frame.info and frame.info.selected
+    local recipe = sel and not sel.task and sel.recipe
+    local names, phrase
+    if recipe and CR.StructurePin then names, phrase = CR.StructurePin(recipe) end
+    if names and CR.PinNearestStructure then CR.PinNearestStructure(names, phrase) end
+  end)
+  hit:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Pin nearest")
+    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    local phrase = self.phrase or "one"
+    if loaded and loaded("Questie") then
+      GameTooltip:AddLine("Click to pin the nearest " .. phrase .. ".", 1, 1, 1, true)
+    else
+      GameTooltip:AddLine("Click would pin the nearest " .. phrase .. ", but Questie is needed.", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+  end)
+  hit:SetScript("OnLeave", GameTooltip_Hide)
+  hit:Hide()
+  frame.rStructureHit = hit
 
   -- Destinations: learned or not, where to get it, map pins (FillDestDetail)
   frame.destInfo = schematic:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -5411,10 +5459,13 @@ local function BuildOverlay()
     SyncEnchantSecure()
     if slow < 0.4 then return end
     slow = 0
-    -- "Anvil required" turns green as you walk up to one
+    -- "Anvil required" turns green as you walk up to one. Pin Nearest hides with it.
     local sel = frame.info and frame.info.selected
     if sel and sel.recipe and not sel.task and frame.rStructure:IsShown() then
       frame.rStructure:SetText(CR.StructureText(sel.recipe) or "")
+      SyncStructurePin(frame, sel.recipe)
+    elseif frame.rStructureHit then
+      frame.rStructureHit:Hide()
     end
     local before = ui.openProf
     SyncOpenProfession()
