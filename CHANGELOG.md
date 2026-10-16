@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.3
+
+- The reload prompt is only set up when the game's popup table is there (no error loading without it).
+
 ## 0.79.2
 
 - Fixed: pressing **Escape** brought up "CraftRoute has been blocked from an action only available to the Blizzard UI" (and SpellStopCasting / SpellStopTargeting messages in chat) since 0.79.1 - the reload prompt's setup touched the game's popup table in a way that tainted it.

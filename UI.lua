@@ -656,16 +656,18 @@ function CR.IsWindowShown() return frame and frame:IsShown() and true or false e
 -- after a new look: some of it only takes hold after a reload - offered, not forced
 -- (an entry added to the game's table - never the table itself assigned: that taints it, and
 -- Escape's protected calls get blocked)
-StaticPopupDialogs["CRAFTROUTE_RELOAD_LOOK"] = {
-  text = "Some parts of CraftRoute's new look only take effect after a reload.\n\nReload the UI now?",
-  button1 = "Reload now",
-  button2 = "Later",
-  OnAccept = function() ReloadUI() end,
-  timeout = 0,
-  whileDead = true,
-  hideOnEscape = true,
-  preferredIndex = 3,
-}
+if StaticPopupDialogs then
+  StaticPopupDialogs["CRAFTROUTE_RELOAD_LOOK"] = {
+    text = "Some parts of CraftRoute's new look only take effect after a reload.\n\nReload the UI now?",
+    button1 = "Reload now",
+    button2 = "Later",
+    OnAccept = function() ReloadUI() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+  }
+end
 function CR.SetLook(v)
   local changed = (CraftRouteDB.theme or "default") ~= v
   CraftRouteDB.theme = v
