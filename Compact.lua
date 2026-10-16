@@ -1712,7 +1712,7 @@ local function BuildItems()
       table.insert(items, {
         kind = "note", step = st, gold = st.kind == "train",
         icon = st.kind == "train" and BOOK or nil,
-        text = CR.FactionText(st.text or ""),
+        text = st.title or CR.FactionText(st.text or ""),   -- (its short title, if it has one)
         tip = CR.FactionText(st.text or ""),
       })
     elseif st.recipe and (st.kind == "craft" or st.kind == "extra" or st.kind == "target") then

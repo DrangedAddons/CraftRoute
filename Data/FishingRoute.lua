@@ -22,13 +22,14 @@ local function Places(key, label, from, to, places)
   for _, p in ipairs(places) do
     table.insert(c.options, { key = p[1], label = p[2], faction = p[4] })
     table.insert(steps, { kind = "guide", from = from, to = to, when = { [key] = p[1] }, faction = p[4],
-                          text = p[3] })
+                          title = "Fish in " .. p[2], text = p[3] })
   end
   table.insert(choices, c)
 end
 
 table.insert(steps, { kind = "guide", from = 1, to = 75, items = { { POLE, 1 }, { SHINY_BAUBLE, 2 } },
-  text = "Learn Fishing from a Fishing trainer (they all stand next to water). Buy a Fishing Pole and a few "
+  title = "Learn Fishing and get a pole",
+      text = "Learn Fishing from a Fishing trainer (they all stand next to water). Buy a Fishing Pole and a few "
     .. "Shiny Baubles from a Fishing or Trade Supply vendor - in capitals they stand next to the trainer. "
     .. "Equip the pole, put on a Shiny Bauble and fish in a starting zone (not a capital) until 75." })
 Places("start", "1-75: fish in one starting zone", 1, 75, {
@@ -49,7 +50,8 @@ Places("start", "1-75: fish in one starting zone", 1, 75, {
 })
 
 table.insert(steps, { kind = "guide", from = 75, to = 150,
-  text = "If fish keep getting away, buy Nightcrawlers (need Fishing 50) from a Fishing Supply vendor." })
+  title = "Nightcrawlers, if fish get away",
+      text = "If fish keep getting away, buy Nightcrawlers (need Fishing 50) from a Fishing Supply vendor." })
 Places("mid", "75-150: fish in one of these", 75, 150, {
   { "orgrimmar", "Orgrimmar", "Fish in Orgrimmar until 150.", "Horde" },
   { "undercity", "Undercity", "Fish in Undercity until 150.", "Horde" },
@@ -65,7 +67,8 @@ Places("mid", "75-150: fish in one of these", 75, 150, {
 })
 
 table.insert(steps, { kind = "guide", from = 150, to = 225, items = { { BRIGHT_BAUBLES, 5 } },
-  text = "Buy a bunch of Bright Baubles from Old Man Heming in Booty Bay (bottom of the town, near the "
+  title = "Bright Baubles from Booty Bay",
+      text = "Buy a bunch of Bright Baubles from Old Man Heming in Booty Bay (bottom of the town, near the "
     .. "fishing sign) and keep one on your pole." })
 Places("expert", "150-225: fish in one of these", 150, 225, {
   { "dustwallow", "Dustwallow Marsh (recommended)", "Fish in Dustwallow Marsh until 225 - the Artisan quest "
@@ -79,7 +82,8 @@ Places("expert", "150-225: fish in one of these", 150, 225, {
 })
 
 table.insert(steps, { kind = "guide", from = 225, to = 300, items = { { BRIGHT_BAUBLES, 10 } },
-  text = "Keep Bright Baubles on - in these zones fish get away without them." })
+  title = "Keep Bright Baubles on",
+      text = "Keep Bright Baubles on - in these zones fish get away without them." })
 Places("artisan", "225-300: fish in one of these", 225, 300, {
   { "felwood", "Felwood", "Fish in Felwood until 300." },
   { "feralas", "Feralas", "Fish in Feralas until 300." },

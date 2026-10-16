@@ -20,7 +20,8 @@ end
 
 -- Flint and Tinder vendors as the guide lists them (Oct 2026); the named ones get map pins.
 table.insert(steps, { kind = "guide", from = 1, to = 50, items = { { 4471, 1 } },
-  text = "You need a fire to cook - there's often one burning next to the Cooking trainer. In Forever the "
+  title = "Get a fire to cook at",
+      text = "You need a fire to cook - there's often one burning next to the Cooking trainer. In Forever the "
     .. "campfire is an item: craft Basic Campfire Kits from Simple Wood and a Flint and Tinder (only needed to "
     .. "make the kits). Flint and Tinder is sold by "
     .. "{H:Xen'to (Orgrimmar), Ronald Burch (Undercity) and Naal Mistrunner (Thunder Bluff), each next to the "

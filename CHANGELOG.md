@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.14
+
+- **Fishing, Cooking + Fishing (and Fishing + Cooking) and Cooking guides**: every step has a short title ("Artisan Fishing: Nat Pagle's quest", "Dustwallow Marsh: fish to 255", "Fish in Feralas"...) - in the route list and as the step's heading - with the full instructions below it and the objectives as the details, instead of the same block of text three times.
+
 ## 0.78.13
 
 - Profession window tab: a step's details (the to-do steps) stop above the crafting buttons' row, as Blizzard's page does - that row is kept clear, and the details scroll within the space above it.
