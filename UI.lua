@@ -659,6 +659,8 @@ function CR.SetLook(v)
     CR.ApplyTheme(frame)
     CR.RefreshWindow()
   end
+  -- the profession window tab's pickers: Blizzard's with a Blizzard look, CraftRoute's otherwise
+  if CR.ApplyCompactPickers then CR.ApplyCompactPickers() end
 end
 -- the look picker's choices (with EllesmereUI)
 function CR.LookOptions()

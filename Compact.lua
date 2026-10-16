@@ -2521,6 +2521,18 @@ local function LayoutHeader()
   -- The holder art is inset inside the texture, so a 6px widget gap reads as a wide dark
   -- band and the route box was crossing the recipe pane. A negative gap pulls the visible
   -- frames together. The right edge stays on the column: the recipe icon's frame is the limit.
+  if overlay.pickerStyle ~= "blizzard" then
+    -- CraftRoute's own pickers: side by side, the goal taking the rest
+    local profW = goal and math.min(avail - gap - custom - 90, math.max(130, math.floor((avail - gap - custom) / 2))) or avail
+    overlay.profDD:ClearAllPoints()
+    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y)
+    overlay.profDD:SetWidth(profW)
+    if goal then
+      overlay.goalDD:ClearAllPoints()
+      overlay.goalDD:SetPoint("LEFT", overlay.profDD, "RIGHT", gap, 0)
+      overlay.goalDD:SetWidth(avail - gap - custom - profW)
+    end
+  else
   local rightBound = leftW - 1
   local frameW = overlay:GetWidth() or 0
   if frameW > 0 and overlay.mainBtn then
@@ -2556,6 +2568,7 @@ local function LayoutHeader()
     overlay.profDD:ClearAllPoints()
     overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", profLeft, y)
     overlay.profDD:SetWidth(profW)
+  end
   end
   local prev = goal and overlay.goalDD or overlay.profDD
   if custom > 0 then
@@ -3538,6 +3551,7 @@ local function OpenCompact()
   end
   pcall(AlignToBlizzardButtons)
   pcall(HidePages)
+  pcall(ApplyPickerStyle)   -- (the look may have changed - EllesmereUI's, followed)
   ui.openProf = nil
   if ui.restoreView and DB() then
     -- reopened by the CraftRoute key: the profession this tab was showing, not the window's
@@ -3936,6 +3950,32 @@ local function CompactDropdown(parent, width, options, getter, setter, openMacro
   return dd
 end
 
+-- Which pickers: Blizzard's dropdowns with one of the Blizzard looks (WoW Forever, Blizzard Style,
+-- Classic WoW UI), CraftRoute's own with any other look.
+local BLIZZARD_LOOKS = { forever = true, blizzard = true, classic = true }
+local function BlizzardPickers()
+  return CR.ActiveTheme and BLIZZARD_LOOKS[CR.ActiveTheme()] and true or false
+end
+local function ApplyPickerStyle()
+  local f = overlay
+  if not (f and f.pickers) then return end
+  local want = BlizzardPickers() and "blizzard" or "own"
+  if f.pickerStyle == want then return end
+  local old = f.pickerStyle and f.pickers[f.pickerStyle]
+  local new = f.pickers[want]
+  -- the new set takes over what's shown (the goal / mode pickers aren't always)
+  for _, k in ipairs({ "prof", "goal", "mode" }) do
+    local shown = old and old[k]:IsShown()
+    if old then old[k]:Hide() end
+    if shown or (not old and k == "prof") then new[k]:Show() end
+    if new[k].Sync then new[k]:Sync() end
+  end
+  f.profDD, f.goalDD, f.modeDD = new.prof, new.goal, new.mode
+  f.pickerStyle = want
+  if f.Refresh and f:IsShown() then f:Refresh() end
+end
+CR.ApplyCompactPickers = function() pcall(ApplyPickerStyle) end
+
 local function BuildOverlay()
   local parent = ProfessionsFrame
   local frame = CreateFrame("Frame", "CraftRouteCompactFrame", parent)
@@ -3952,16 +3992,50 @@ local function BuildOverlay()
   frame.divider = frame:CreateTexture(nil, "BORDER")
   frame.divider:SetColorTexture(1, 0.82, 0.35, 0.18)
 
-  frame.profDD = CompactDropdown(frame, 200, ProfessionOptions,
-    function() return DB() and DB().profession or "" end, SelectProfession, CR.OpenProfessionMacro)
-  frame.goalDD = CompactDropdown(frame, 168, CR.GoalOptions,
-    function() return CR.GoalValue() end,
-    function(v)
-      local db = DB()
-      if not db then return end
-      db.goalMode = v
-      Changed()
-    end)
+  -- the pickers in both kinds: Blizzard's dropdowns (with a Blizzard-style look) or CraftRoute's
+  -- own (any other look) - ApplyPickerStyle shows the one set and points profDD / goalDD / modeDD at it
+  local function GoalSet(v)
+    local db = DB()
+    if not db then return end
+    db.goalMode = v
+    Changed()
+  end
+  local function ModeOptions()
+    local _, prof = PlanProfession()
+    local opts = {}
+    for _, mode in ipairs(prof and prof.routeOrder or {}) do
+      table.insert(opts, { value = mode, text = prof.routes[mode].label })
+    end
+    return opts
+  end
+  local function ModeGet()
+    local pname = PlanProfession()
+    local route = pname and CR.Route(pname)
+    return route and route.mode or "solo"
+  end
+  local function ModeSet(v)
+    local db = DB()
+    local pname = PlanProfession()
+    if not db or not pname then return end
+    db.routeMode = db.routeMode or {}
+    db.routeMode[pname] = v
+    Changed()
+  end
+  local function ProfGet() return DB() and DB().profession or "" end
+  frame.pickers = {
+    blizzard = {
+      prof = CompactDropdown(frame, 200, ProfessionOptions, ProfGet, SelectProfession, CR.OpenProfessionMacro),
+      goal = CompactDropdown(frame, 168, CR.GoalOptions, CR.GoalValue, GoalSet),
+      mode = CompactDropdown(frame, 130, ModeOptions, ModeGet, ModeSet),
+    },
+    own = {
+      prof = CR.CreateDropdown(frame, 200, ProfessionOptions, ProfGet, SelectProfession, CR.OpenProfessionMacro),
+      goal = CR.CreateDropdown(frame, 168, CR.GoalOptions, CR.GoalValue, GoalSet),
+      mode = CR.CreateDropdown(frame, 130, ModeOptions, ModeGet, ModeSet),
+    },
+  }
+  for _, set in pairs(frame.pickers) do for _, dd in pairs(set) do dd:Hide() end end
+  frame.profDD, frame.goalDD, frame.modeDD = frame.pickers.own.prof, frame.pickers.own.goal, frame.pickers.own.mode
   frame.customBox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
   frame.customBox:SetSize(36, 18)
   frame.customBox:SetAutoFocus(false)
@@ -3976,25 +4050,6 @@ local function BuildOverlay()
     Changed()
   end)
   frame.customBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-  frame.modeDD = CompactDropdown(frame, 130, function()
-    local _, prof = PlanProfession()
-    local opts = {}
-    for _, mode in ipairs(prof and prof.routeOrder or {}) do
-      table.insert(opts, { value = mode, text = prof.routes[mode].label })
-    end
-    return opts
-  end, function()
-    local pname = PlanProfession()
-    local route = pname and CR.Route(pname)
-    return route and route.mode or "solo"
-  end, function(v)
-    local db = DB()
-    local pname = PlanProfession()
-    if not db or not pname then return end
-    db.routeMode = db.routeMode or {}
-    db.routeMode[pname] = v
-    Changed()
-  end)
 
   -- opens / closes the main CraftRoute window (Plan, Recipes and the full Craft tab)
   frame.mainBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
@@ -5305,6 +5360,7 @@ local function BuildOverlay()
     CR.RefreshCompact()
   end
   overlay = frame
+  pcall(ApplyPickerStyle)   -- (the pickers for the look)
   CR.compactFrame = frame
   frame:HookScript("OnHide", function()
     if deliberate then return end

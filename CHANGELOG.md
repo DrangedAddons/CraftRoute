@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.9
+
+- The profession window tab's Blizzard-style dropdowns (0.78.8) are used only with a Blizzard look - **WoW Forever, Blizzard Style or Classic WoW UI**. With any other look (CraftRoute default, EllesmereUI Style, or no EllesmereUI) the tab has CraftRoute's own dropdowns and their layout again, as in 0.78.7. Changing the look switches them straight away.
+
 ## 0.78.8
 
 - The Materials frame now features a brief maximize / minimize animation for enhanced readability.
