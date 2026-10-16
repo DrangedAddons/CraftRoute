@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.2
+
+- Fixed: pressing **Escape** brought up "CraftRoute has been blocked from an action only available to the Blizzard UI" (and SpellStopCasting / SpellStopTargeting messages in chat) since 0.79.1 - the reload prompt's setup touched the game's popup table in a way that tainted it.
+
 ## 0.79.1
 
 - Choosing a new window look asks whether to reload the UI now (some of the look only takes hold after a reload) - Reload now, or Later.

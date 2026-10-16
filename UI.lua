@@ -654,7 +654,8 @@ function CR.IsWindowShown() return frame and frame:IsShown() and true or false e
 
 -- The window look (CR.THEMES), from here or the Settings page: saved, and the window redrawn
 -- after a new look: some of it only takes hold after a reload - offered, not forced
-StaticPopupDialogs = StaticPopupDialogs or {}
+-- (an entry added to the game's table - never the table itself assigned: that taints it, and
+-- Escape's protected calls get blocked)
 StaticPopupDialogs["CRAFTROUTE_RELOAD_LOOK"] = {
   text = "Some parts of CraftRoute's new look only take effect after a reload.\n\nReload the UI now?",
   button1 = "Reload now",
