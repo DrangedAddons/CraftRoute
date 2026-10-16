@@ -538,7 +538,7 @@ local function ResetRow(row)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
   row.crEditing = qtyEd and qtyEd:IsShown() and row.crQtyBtn ~= nil and qtyEd.btn == row.crQtyBtn
-  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute", "crPick", "crQtyBtn" }) do
+  for _, w in ipairs({ "crPin", "crQty", "crCreate", "crAll", "crCart", "crRoute", "crPick", "crQtyBtn", "crChoice" }) do
     if row[w] then row[w]:Hide() end
   end
   if row.name.crBaseSize then
@@ -1166,6 +1166,49 @@ local function ApplyRow(row, item)
     return
   end
 
+  if item.kind == "choice" then
+    -- one dropdown: the band and the pick ("1-65: Durotar"); its list, every option
+    local dd = rawget(row, "crChoice")
+    if not dd then
+      dd = CR.CreateDropdown(row, 200, function()
+        local it = rawget(row, "item")
+        if not (it and it.opts) then return {} end
+        local out = { { header = it.fork.text or "Choose one" } }
+        for k, o in ipairs(it.opts) do
+          table.insert(out, { value = k, radio = true, text = CR.FactionText(o.label or "") })
+        end
+        return out
+      end, function()
+        local it = rawget(row, "item")
+        for k, o in ipairs(it and it.opts or {}) do if o.selected then return k end end
+      end, function(k)
+        local it = rawget(row, "item")
+        local o = it and it.opts and it.opts[k]
+        if not o or o.selected then return end
+        CR.ProfTable("choices", o.routeID)[o.choice] = o.option
+        ui.selectedKey = nil
+        ui.keepScroll = true
+        CR.InvalidatePlan()
+        if overlay and overlay:IsShown() then overlay:Refresh() end
+        CR.NotifyChanged()
+      end)
+      row.crChoice = dd
+    end
+    dd:ClearAllPoints()
+    dd:SetPoint("LEFT", row, "LEFT", 4, 0)
+    dd:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+    dd:SetHeight(20)
+    dd:Show()
+    -- the box: the band (from the choice's label) and what's picked
+    local chosen
+    for _, o in ipairs(item.opts) do if o.selected then chosen = o end end
+    local band = (item.fork.text or ""):match("^(%d+%-%d+)")
+    dd.text:SetText((band and (band .. ": ") or "") .. CR.FactionText((chosen or item.opts[1]).label or ""))
+    row.name:SetText("")
+    row:SetScript("OnClick", nil)
+    return
+  end
+
   if item.kind == "option" then
     local st = item.step
     local sel = st.selected
@@ -1698,9 +1741,24 @@ local function BuildItems()
     end
   end
 
+  -- Gathering professions (their own guides): a choice between zones costs nothing either way, so
+  -- it's one dropdown line - the band and the pick - instead of "Choose one" and a row per option.
+  local GATHERING = { Mining = true, Herbalism = true, Skinning = true, Fishing = true }
+  local route = CR.Route(name)
+  local choiceDD = GATHERING[name] and not (route and route.mode == "combo")
+
   local items = {}
-  for _, st in ipairs(plan.steps) do
-    if st.kind == "fork" then
+  for i, st in ipairs(plan.steps) do
+    if st.kind == "fork" and choiceDD then
+      local opts = {}
+      for j = i + 1, #plan.steps do
+        if plan.steps[j].kind ~= "option" then break end
+        table.insert(opts, plan.steps[j])
+      end
+      if #opts > 0 then table.insert(items, { kind = "choice", fork = st, opts = opts }) end
+    elseif st.kind == "option" and choiceDD then
+      -- (in the dropdown)
+    elseif st.kind == "fork" then
       table.insert(items, { kind = "note", gold = true, text = "Choose one", tip = st.text or "Choose one" })
     elseif st.kind == "option" then
       if not hiddenOpt[st] then table.insert(items, { kind = "option", step = st }) end

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.0
+
+- Gathering professions (Mining, Herbalism, Skinning, and Fishing's own guide) on the profession window tab: a choice of zones is **one dropdown line** - the band and your pick, e.g. "1-65: Durotar" - instead of "Choose one" and a row per zone; open it to pick another. (Picking a zone costs nothing either way, so there's nothing to compare. Crafting professions and the Cooking + Fishing guide keep their option rows with costs.)
+
 ## 0.78.14
 
 - **Fishing, Cooking + Fishing (and Fishing + Cooking) and Cooking guides**: every step has a short title ("Artisan Fishing: Nat Pagle's quest", "Dustwallow Marsh: fish to 255", "Fish in Feralas"...) - in the route list and as the step's heading - with the full instructions below it and the objectives as the details, instead of the same block of text three times.
