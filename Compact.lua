@@ -2496,6 +2496,36 @@ end
 -- The pickers sit above the route list, across the left column: profession and goal side by side
 -- (with the custom skill box when "Custom skill" is picked), and the route mode (Cooking: alone or
 -- with Fishing) on a second line when there is one. The list starts below them.
+-- How wide Blizzard's pickers must be for their longest labels, in their own font: the profession
+-- picker for any profession at 300/300 (with its icon), the goal picker for any goal choice. The
+-- label's left pad and the arrow come on top.
+local pickerMeasure
+local function PickerNeeds()
+  local dd = overlay and overlay.profDD
+  local text = dd and type(dd.Text) == "table" and dd.Text or (dd and type(dd.text) == "table" and dd.text) or nil
+  if not pickerMeasure then
+    pickerMeasure = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pickerMeasure:Hide()
+  end
+  local font, size, flags = text and text.GetFont and text:GetFont()
+  if font and size then pickerMeasure:SetFont(font, size, flags) end
+  local function W(t)
+    pickerMeasure:SetText(t)
+    return tonumber(pickerMeasure:GetStringWidth()) or (#t * 6)
+  end
+  local EXTRA = 10 + 4 + 26 + 5   -- left pad, gap, the arrow, its edge
+  local prof = 0
+  for _, name in ipairs(CR.SupportedProfessions()) do
+    local icon = CR.ProfessionIcon and CR.ProfessionIcon(name)
+    prof = math.max(prof, W((icon and ("|T" .. icon .. ":16:16|t ") or "") .. name .. "  300/300"))
+  end
+  local goal = W("Journeyman (150)")
+  for _, o in ipairs(CR.GoalOptions and CR.GoalOptions() or {}) do
+    if o.text then goal = math.max(goal, W(o.short or o.text)) end
+  end
+  return math.ceil(prof + EXTRA), math.ceil(goal + EXTRA)
+end
+
 local function LayoutHeader()
   if not overlay then return end
   local leftW = overlay.leftW or 300
@@ -2518,9 +2548,6 @@ local function LayoutHeader()
   end
   local custom = overlay.customBox:IsShown() and 42 or 0
   local goal = overlay.goalDD:IsShown()
-  -- The holder art is inset inside the texture, so a 6px widget gap reads as a wide dark
-  -- band and the route box was crossing the recipe pane. A negative gap pulls the visible
-  -- frames together. The right edge stays on the column: the recipe icon's frame is the limit.
   if overlay.pickerStyle ~= "blizzard" then
     -- CraftRoute's own pickers: side by side, the goal taking the rest
     local profW = goal and math.min(avail - gap - custom - 90, math.max(130, math.floor((avail - gap - custom) / 2))) or avail
@@ -2533,41 +2560,32 @@ local function LayoutHeader()
       overlay.goalDD:SetWidth(avail - gap - custom - profW)
     end
   else
-  local rightBound = leftW - 1
-  local frameW = overlay:GetWidth() or 0
-  if frameW > 0 and overlay.mainBtn then
-    local btnLeft = frameW - 8 - (overlay.mainBtn:GetWidth() or 130)
-    rightBound = math.min(rightBound, btnLeft - 8 - 3)
-  end
-  local columnBound = leftW - 4 - 3
-  if rightBound < columnBound then rightBound = columnBound end
-  -- Visible gap lands near 5px. The widget overlap sits in the texture's empty side padding,
-  -- short of the arrow and the route label.
-  local pickerGap = -14
-  local profLeft = goal and (x - 2) or x
+  -- Blizzard's dropdowns: their box is drawn inside the widget - about 7px in on the left, 12px on
+  -- the arrow side - so the widgets reach that far past the column, and the boxes line up with the
+  -- Craft button's left edge and the Route button's right edge above them.
+  local IN_L, IN_R = 7, 12
+  local pickerGap = gap - IN_L - IN_R            -- (the boxes, not the widgets, 6px apart)
   local customBlock = custom > 0 and (custom + gap + 4) or 0
-  local profW
+  local left = x - IN_L
+  local span = avail + IN_L + IN_R - customBlock   -- widget width, both pickers and the gap
   if goal then
-    local profRoom = rightBound - profLeft - pickerGap - customBlock
-    -- Goal keeps enough for "Journeyman (150)". Profession takes the rest: it also carries the icon.
-    local goalMin = custom > 0 and 96 or 124
-    local goalW = math.floor(profRoom * 0.40)
-    if goalW < goalMin then goalW = goalMin end
-    if profRoom - goalW < 150 then goalW = math.max(72, profRoom - 150) end
-    if goalW > profRoom - 80 then goalW = profRoom - 80 end
-    if goalW < 1 then goalW = math.floor(profRoom / 2) end
-    profW = profRoom - goalW
+    -- the profession picker fits its longest label (icon, "Leatherworking 300/300", the arrow) so
+    -- it's never cut short; the goal picker has what its longest choice needs
+    local profNeed, goalNeed = PickerNeeds()
+    local both = span - pickerGap
+    -- (the profession first; the goal its need, or what's left if the column is that narrow)
+    local profW = math.min(profNeed, both - 80)
+    if both - profW > goalNeed then profW = both - goalNeed end   -- (room to spare: the profession has it)
     overlay.profDD:ClearAllPoints()
-    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", profLeft, y)
+    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", left, y)
     overlay.profDD:SetWidth(profW)
     overlay.goalDD:ClearAllPoints()
     overlay.goalDD:SetPoint("LEFT", overlay.profDD, "RIGHT", pickerGap, 0)
-    overlay.goalDD:SetWidth(goalW)
+    overlay.goalDD:SetWidth(both - profW)
   else
-    profW = rightBound - profLeft - customBlock
     overlay.profDD:ClearAllPoints()
-    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", profLeft, y)
-    overlay.profDD:SetWidth(profW)
+    overlay.profDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", left, y)
+    overlay.profDD:SetWidth(span)
   end
   end
   local prev = goal and overlay.goalDD or overlay.profDD
@@ -2589,9 +2607,11 @@ local function LayoutHeader()
     overlay.destFilterClear:SetPoint("LEFT", overlay.destFilterDD, "RIGHT", 2, 0)
     listTop = listTop - 26
   elseif overlay.modeDD:IsShown() then
+    -- (Blizzard's: its box, like the ones above, from the Craft button's left edge to the Route's right)
+    local blz = overlay.pickerStyle == "blizzard"
     overlay.modeDD:ClearAllPoints()
-    overlay.modeDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y - 24)
-    overlay.modeDD:SetWidth(avail)
+    overlay.modeDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", blz and (x - 7) or x, y - 24)
+    overlay.modeDD:SetWidth(blz and (avail + 7 + 12) or avail)
     listTop = listTop - 24
   end
   -- (both views keep the bar under the left list - empty in the Craft view - so the columns line up)

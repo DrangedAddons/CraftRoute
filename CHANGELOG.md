@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.10
+
+- Blizzard-style dropdowns (with the WoW Forever / Blizzard Style / Classic WoW UI looks): the profession, goal and route-mode boxes line up with the Craft and Route buttons above them - left edge with Craft's, right edge with Route's, stacked ones too - and the profession box is wide enough for its longest label ("Leatherworking 300/300" with its icon), so it isn't cut short.
+
 ## 0.78.9
 
 - The profession window tab's Blizzard-style dropdowns (0.78.8) are used only with a Blizzard look - **WoW Forever, Blizzard Style or Classic WoW UI**. With any other look (CraftRoute default, EllesmereUI Style, or no EllesmereUI) the tab has CraftRoute's own dropdowns and their layout again, as in 0.78.7. Changing the look switches them straight away.
