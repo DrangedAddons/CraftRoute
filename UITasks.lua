@@ -260,6 +260,9 @@ function CR.CreateTaskScroll(parent, width)
   local sf = CreateFrame("ScrollFrame", nil, box)
   sf:SetPoint("TOPLEFT", 0, 0)
   sf:SetPoint("BOTTOMRIGHT", -12, 0)
+  -- (the card's buttons - Pin, the places, Mark as done - are frames: clipped to the box too, so
+  -- nothing runs past it; the rest is reached by scrolling)
+  if sf.SetClipsChildren then sf:SetClipsChildren(true) end
   local card = CR.CreateTaskCard(sf, width)
   card:SetPoint("TOPLEFT", 0, 0)
   sf:SetScrollChild(card)

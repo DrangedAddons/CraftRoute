@@ -4755,6 +4755,8 @@ local function BuildOverlay()
   -- from the label down to the Shopping List button (or the enchant target), with a slim bar on
   -- the right when they're taller than that. Its bottom is set in FillSchematic.
   local rscroll = CreateFrame("ScrollFrame", nil, schematic)
+  -- (its buttons - Buy, the Shopping List, Count alts - stay inside it too, like its text)
+  if rscroll.SetClipsChildren then rscroll:SetClipsChildren(true) end
   rscroll:SetPoint("TOPLEFT", frame.reagentsLabel, "BOTTOMLEFT", 0, -2)
   local rcontent = CreateFrame("Frame", nil, rscroll)
   rcontent:SetSize(240, 40)

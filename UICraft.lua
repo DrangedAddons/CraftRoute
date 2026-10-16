@@ -614,6 +614,7 @@ end
 -- and shows a slim scroll bar (mouse wheel or drag) when they don't all fit.
 local function ScrollArea(box, left, top, width)
   local sf = CreateFrame("ScrollFrame", nil, box)
+  if sf.SetClipsChildren then sf:SetClipsChildren(true) end   -- (its buttons stay inside it too)
   sf:SetPoint("TOPLEFT", left, top)
   sf:SetSize(width, 40)
   local content = CreateFrame("Frame", nil, sf)

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.12
+
+- Step details (to-do steps on the profession window tab and in the main window) stay inside their area: the Pin buttons, the places and Mark as done no longer run off the bottom of the page - they scroll with the rest. The reagents list (with its Shopping List button and Count alts tick) is kept to its area the same way.
+
 ## 0.78.11
 
 - **Settings** are a window of their own now - `/cr` and the minimap button open it (`/cr` again closes it), and it can stay open alongside the profession window (the game's Options window closed that). Move it by dragging, close it with its x or Escape. Options > AddOns > CraftRoute has a button that opens it.
