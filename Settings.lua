@@ -1,6 +1,6 @@
--- CraftRoute's settings: one page in the game's Options (Options > AddOns > CraftRoute), which /cr
--- and the minimap button open too. The windows (the CraftRoute window, now /cr window; the
--- Materials window), the global options (alts' materials, unlearned professions, the minimap button,
+-- CraftRoute's settings: a window of its own (/cr, the minimap button, or the button on its page in
+-- Options > AddOns > CraftRoute) - it leaves the profession window open. On it: the Materials
+-- window (the CraftRoute window is /cr window), the global options (alts' materials, unlearned professions, the minimap button,
 -- the look with EllesmereUI), the CraftRoute key (set right here), the addons that add to it, and
 -- the commands.
 -- The minimap button: left-click Settings, right-click the Materials window, drag it round the
@@ -13,9 +13,44 @@ local BIND = "CRAFTROUTE_PROFESSION_TAB"   -- (Bindings.xml)
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
+-- the settings: a window of its own (moved by its title, closed by its x or Escape) - it leaves the
+-- profession window alone, as the game's Options window doesn't
+local win = CreateFrame("Frame", "CraftRouteSettings", UIParent, "BackdropTemplate")
+win:SetSize(660, 640)
+win:SetPoint("CENTER", 0, 40)
+win:SetFrameStrata("DIALOG")
+win:SetClampedToScreen(true)
+win:SetMovable(true)
+win:EnableMouse(true)
+win:RegisterForDrag("LeftButton")
+win:SetScript("OnDragStart", win.StartMoving)
+win:SetScript("OnDragStop", win.StopMovingOrSizing)
+win:Hide()
+table.insert(UISpecialFrames, "CraftRouteSettings")   -- (Escape closes it)
+local winClose = CreateFrame("Button", nil, win, "UIPanelCloseButton")
+winClose:SetPoint("TOPRIGHT", -2, -2)
+
+-- Options > AddOns > CraftRoute: a button to the window
 local panel = CreateFrame("Frame")
 panel.name = "CraftRoute"
 panel:Hide()
+do
+  local t = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  t:SetPoint("TOPLEFT", 16, -16)
+  t:SetText("CraftRoute")
+  local d = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  d:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -10)
+  d:SetText("CraftRoute's settings are in a window of their own (also /cr, or the minimap button).")
+  local b = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+  b:SetSize(220, 26)
+  b:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -14)
+  b:SetText("Open CraftRoute Settings")
+  b:SetScript("OnClick", function()
+    if SettingsPanel and SettingsPanel:IsShown() then HideUIPanel(SettingsPanel) end
+    if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then HideUIPanel(InterfaceOptionsFrame) end
+    CR.OpenSettings(true)
+  end)
+end
 local category
 
 local built = false
@@ -26,22 +61,22 @@ local function Build()
   local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
   local version = getMeta and getMeta("CraftRoute", "Version")
 
-  local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  local title = win:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 16, -16)
   title:SetText("CraftRoute" .. (version and CR.ColorText("  v" .. version, "888888") or ""))
-  local sub = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  local sub = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
   sub:SetText("Profession leveling routes, materials and shopping lists.")
 
   local y = -70
   local function Heading(text)
-    local h = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local h = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     h:SetPoint("TOPLEFT", 16, y)
     h:SetText(text)
     y = y - 24
   end
   local function Button(text, w, x, fn, tip)
-    local b = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
     b:SetSize(w, 24)
     b:SetPoint("TOPLEFT", x, y)
     b:SetText(text)
@@ -58,7 +93,7 @@ local function Build()
     return b
   end
   local function Check(text, tip, get, set)
-    local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
+    local cb = CreateFrame("CheckButton", nil, win, "UICheckButtonTemplate")
     cb:SetSize(24, 24)
     cb:SetPoint("TOPLEFT", 16, y)
     cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -116,10 +151,10 @@ local function Build()
   -- the look (EllesmereUI's styles - only with it loaded)
   if CR.HasEllesmere and CR.HasEllesmere() and CR.LookOptions then
     y = y - 4
-    local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local label = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     label:SetPoint("TOPLEFT", 22, y - 4)
     label:SetText("Window look")
-    local dd = CR.CreateDropdown(panel, 200, CR.LookOptions, function() return CraftRouteDB.theme or "default" end,
+    local dd = CR.CreateDropdown(win, 200, CR.LookOptions, function() return CraftRouteDB.theme or "default" end,
       function(v) CR.SetLook(v) end)
     dd:SetPoint("LEFT", label, "RIGHT", 10, 0)
     table.insert(syncs, function() dd:Sync() end)
@@ -129,14 +164,14 @@ local function Build()
 
   Heading("Key binding")
   -- the CraftRoute key (the same binding as in Options > Keybindings > AddOns): click, then press it
-  local kbLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  local kbLabel = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   kbLabel:SetPoint("TOPLEFT", 22, y - 5)
   kbLabel:SetText("Profession tab")
-  local kb = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+  local kb = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
   kb:SetSize(180, 24)
   kb:SetPoint("LEFT", kbLabel, "RIGHT", 12, 0)
   kb:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  local hint = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  local hint = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   hint:SetPoint("LEFT", kb, "RIGHT", 10, 0)
   local capturing = false
   local function Show()
@@ -210,16 +245,16 @@ local function Build()
     { "TrainerSpells", "Live recipe data, and where trainers and vendors are, with map pins." },
     { "EllesmereUI", "The matching window looks, have/need counts on its loot feed, its movers and minimap." },
   }) do
-    local name = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local name = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     name:SetPoint("TOPLEFT", 22, y)
     name:SetWidth(NAME_W)
     name:SetJustifyH("LEFT")
     name:SetText(a[1])
-    local status = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local status = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     status:SetPoint("TOPLEFT", 22 + NAME_W, y)
     status:SetWidth(STATUS_W)
     status:SetJustifyH("LEFT")
-    local desc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local desc = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     desc:SetPoint("TOPLEFT", 22 + NAME_W + STATUS_W, y)
     desc:SetWidth(DESC_W)
     desc:SetJustifyH("LEFT")
@@ -237,7 +272,7 @@ local function Build()
   y = y - 16
 
   Heading("Commands")
-  local cmds = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  local cmds = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   cmds:SetPoint("TOPLEFT", 22, y)
   cmds:SetWidth(560)
   cmds:SetJustifyH("LEFT")
@@ -247,12 +282,22 @@ local function Build()
     .. CR.ColorText("/cr all", "ffd100") .. "  the Materials window\n"
     .. CR.ColorText("/cr recipes", "ffd100") .. "  the recipe picker\n"
     .. CR.ColorText("/cr help", "ffd100") .. "  every command")
+  -- (the window's height: down to the end of the commands)
+  win.contentH = -y + math.max(80, tonumber(cmds:GetStringHeight()) or 80) + 24
 end
 
 function CR.SettingsSync()
+  if win.contentH then win:SetHeight(win.contentH) end
   for _, fn in ipairs(syncs) do pcall(fn) end
 end
-panel:SetScript("OnShow", function() Build() CR.SettingsSync() end)
+win:SetScript("OnShow", function()
+  Build()
+  if CR.Backdrop and not win.crBackdrop then
+    CR.Backdrop(win, 0.05, 0.05, 0.07, 0.97)
+    win.crBackdrop = true
+  end
+  CR.SettingsSync()
+end)
 
 -- in the game's Options (Options > AddOns > CraftRoute)
 if Settings and Settings.RegisterCanvasLayoutCategory then
@@ -263,18 +308,11 @@ elseif InterfaceOptions_AddCategory then
 end
 
 -- /cr and the minimap button: straight to this page
-function CR.OpenSettings()
-  if InCombatLockdown() then CR.Print("Can't open the settings in combat.") return end
-  if Settings and Settings.OpenToCategory and category then
-    if SettingsPanel and SettingsPanel:IsShown() and panel:IsVisible() then
-      HideUIPanel(SettingsPanel)   -- (open on this page already: /cr again closes it)
-      return
-    end
-    Settings.OpenToCategory(category:GetID())
-  elseif InterfaceOptionsFrame_OpenToCategory then
-    InterfaceOptionsFrame_OpenToCategory(panel)
-    InterfaceOptionsFrame_OpenToCategory(panel)   -- (the old frame needs it twice)
-  end
+-- /cr, the minimap button, the Options page's button: the settings window (show: true opens it,
+-- else it toggles)
+function CR.OpenSettings(show)
+  if show == nil then show = not win:IsShown() end
+  win:SetShown(show)
 end
 
 ---------------------------------------------------------------------------

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.78.11
+
+- **Settings** are a window of their own now - `/cr` and the minimap button open it (`/cr` again closes it), and it can stay open alongside the profession window (the game's Options window closed that). Move it by dragging, close it with its x or Escape. Options > AddOns > CraftRoute has a button that opens it.
+
 ## 0.78.10
 
 - Blizzard-style dropdowns (with the WoW Forever / Blizzard Style / Classic WoW UI looks): the profession, goal and route-mode boxes line up with the Craft and Route buttons above them - left edge with Craft's, right edge with Route's, stacked ones too - and the profession box is wide enough for its longest label ("Leatherworking 300/300" with its icon), so it isn't cut short.
