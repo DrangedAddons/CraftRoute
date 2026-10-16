@@ -233,6 +233,15 @@ end
 -- the redrawn maps, so these percentages go straight to the pin.
 local vendorPlaces = {}
 
+-- Deployable camping vendors. Questie kept spots where a player put one down, so the
+-- nearest seller can be a bot that is not standing there. Field Repair Bot 74A is on
+-- some seller lists and has no spawns in this database.
+local CAMP_VENDOR = {
+  [14337] = true,  -- Field Repair Bot 74A
+  [242498] = true, -- Reagent Bot
+  [254695] = true, -- Repair Bot
+}
+
 local function CanPinMap(uiMap)
   if not (C_Map and C_Map.CanSetUserWaypointOnMap) then return true end
   local ok, can = pcall(C_Map.CanSetUserWaypointOnMap, uiMap)
@@ -284,7 +293,7 @@ local function VendorPlaces(itemID)
   local places = {}
   for i = 1, #ids do
     local npcID = ids[i]
-    if type(npcID) == "number" then
+    if type(npcID) == "number" and not CAMP_VENDOR[npcID] then
       local name = NpcDB.name(npcID)
       local faction = NpcDB.friendlyToFaction(npcID)
       -- Skip an id Questie doesn't name. A nil faction still counts as friendly, same as the
