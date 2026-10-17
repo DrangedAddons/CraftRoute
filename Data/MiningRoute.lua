@@ -14,12 +14,13 @@ local function Zones(key, label, from, to, zones)
   for _, z in ipairs(zones) do
     table.insert(c.options, { key = z[1], label = z[2], faction = z[4] })
     table.insert(steps, { kind = "guide", from = from, to = to, when = { [key] = z[1] }, faction = z[4],
-                          gather = true, text = z[3] })
+                          gather = true, title = "Mine in " .. z[2], text = z[3] })
   end
   table.insert(choices, c)
 end
 
 table.insert(steps, { kind = "guide", from = 1, to = 65, items = { { PICK, 1 } },
+  title = "Get a Mining Pick, mine Copper",
   text = "Buy a Mining Pick from the Mining Supply vendor by your trainer - it only has to be in your bags, "
     .. "not equipped. Then mine Copper Veins in a starting zone; they respawn quickly, so stay in one area "
     .. "rather than circling the whole zone." })
@@ -35,6 +36,7 @@ Zones("copper", "1-65: Copper - one starting zone", 1, 65, {
 })
 
 table.insert(steps, { kind = "guide", from = 65, to = 125,
+  title = "Tin and Silver; smelt Silver at 75",
   text = "Copper, Tin and Silver from here. Smelt Silver from 75 to help reach 125 - buy Silver Ore, smelt it "
     .. "and sell the bars; they sell for about what the ore costs." })
 Zones("tin", "65-125: Copper and Tin", 65, 125, {
@@ -48,6 +50,7 @@ Zones("tin", "65-125: Copper and Tin", 65, 125, {
 })
 
 table.insert(steps, { kind = "guide", from = 125, to = 175,
+  title = "Iron and Gold; smelt Gold at 155",
   text = "Iron, Tin and Gold from here. Smelt Gold from 155: about 30 Gold Ore smelted takes you to around "
     .. "175 - buy the ore and sell the bars." })
 Zones("iron", "125-175: Iron and Tin", 125, 175, {
@@ -57,6 +60,9 @@ Zones("iron", "125-175: Iron and Tin", 125, 175, {
   { "needles", "Thousand Needles", "Mine in Thousand Needles until 175." },
 })
 
+table.insert(steps, { kind = "guide", from = 175, to = 245,
+  title = "Mithril, then Truesilver at 230",
+  text = "Mithril from here, and Truesilver Deposits from 230." })
 Zones("mithril", "175-245: Mithril and Truesilver", 175, 245, {
   { "hinterlands", "The Hinterlands", "Mine Mithril in The Hinterlands until 245. Low levels: avoid the area "
     .. "with level 62 elites, and maybe the cave." },
@@ -64,7 +70,8 @@ Zones("mithril", "175-245: Mithril and Truesilver", 175, 245, {
 })
 
 table.insert(steps, { kind = "guide", from = 245, to = 275,
-  text = "Mithril, Truesilver and now Thorium." })
+  title = "Small Thorium Veins from 245",
+  text = "Mithril, Truesilver and now Small Thorium Veins." })
 Zones("thorium", "245-275: Mithril and Thorium", 245, 275, {
   { "ungoro", "Un'Goro Crater", "Mine in Un'Goro Crater until 275 - the caves hold 2-3 veins each." },
   { "blasted", "Blasted Lands", "Mine in the Blasted Lands until 275 (low levels: maybe skip the southern "
@@ -74,6 +81,7 @@ Zones("thorium", "245-275: Mithril and Thorium", 245, 275, {
 })
 
 table.insert(steps, { kind = "guide", from = 275, to = 300,
+  title = "Rich Thorium Veins from 275",
   text = "Thorium and Mithril - and from 275 you can mine Rich Thorium Veins too." })
 Zones("richthorium", "275-300: Thorium and Rich Thorium", 275, 300, {
   { "ungoro2", "Un'Goro Crater", "Mine in Un'Goro Crater until 300, Rich Thorium Veins included." },

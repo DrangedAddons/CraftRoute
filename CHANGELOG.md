@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.82.1
+
+- Mining guide: every step has a short title instead of a sentence lifted from its text.
+  - Each zone step is titled **Mine in <zone>**.
+  - Each band opens with a step like **Iron and Gold; smelt Gold at 155**.
+  - 175-245 gets an opening step too, **Mithril, then Truesilver at 230**.
+
 ## 0.82.0
 
 - In the Craft view's recipe panel, a reagent you're short of and can make yourself has a small **+** at the bottom right of its icon. Click the reagent to show how to make it underneath:
