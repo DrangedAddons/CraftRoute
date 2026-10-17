@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.83.1
+
+- Fix: the **Herbs to pick** and **Veins to mine** lists from 0.83.0 now show on the step's card. The route plan wasn't passing them through.
+
 ## 0.83.0
 
 - Mining and Herbalism: a zone step's card lists the herbs or veins that band is after, under **Herbs to pick** or **Veins to mine**, just above Mark as done. Each one shows the skill it needs, in green when you can gather it now and red when you can't yet. For example, Teldrassil lists Peacebloom 1, Silverleaf 1 and Earthroot 15.
