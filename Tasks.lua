@@ -655,6 +655,13 @@ function CR.StepTask(st, profName)
     end
     if st.learnStep then Cond(learned, skillName .. " learned") end
     if st.learns then Prep(learned, skillName .. " learned") end
+    -- a gathering step's target herbs / veins and the skill each needs (the card colours them)
+    if st.nodes then
+      t.nodes = { label = st.nodes.label, list = {} }
+      for _, n in ipairs(st.nodes.list) do
+        table.insert(t.nodes.list, { name = n.name, skill = n.skill, ok = (cur or 0) >= n.skill })
+      end
+    end
     if st.trainCap then
       trained = learned and maxRank >= st.trainCap
       local tier = RankTier(skillName, st.trainCap)

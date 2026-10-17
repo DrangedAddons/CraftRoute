@@ -108,6 +108,13 @@ function CR.CreateTaskCard(parent, width)
   card.cost = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   card.cost:SetJustifyH("LEFT")
 
+  -- a gathering step's herbs / veins: green = you can gather it now, red = not yet (its skill)
+  card.nodesLabel = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  CR.ThemeRegisterAccentText(card.nodesLabel)
+  card.nodes = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  card.nodes:SetJustifyH("LEFT")
+  card.nodes:SetSpacing(3)
+
   card.done = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
   card.done:SetSize(130, 22)
   card.done:SetText("Mark as done")
@@ -234,6 +241,28 @@ function CR.CreateTaskCard(parent, width)
       y = y - 22
     else
       self.cost:Hide()
+    end
+
+    if task.nodes and #task.nodes.list > 0 then
+      self.nodesLabel:ClearAllPoints()
+      self.nodesLabel:SetPoint("TOPLEFT", 0, y)
+      self.nodesLabel:SetText(task.nodes.label or "Gather")
+      self.nodesLabel:Show()
+      y = y - 20
+      local lines = {}
+      for _, n in ipairs(task.nodes.list) do
+        local col = n.ok and "40ff40" or "ff4040"
+        table.insert(lines, CR.ColorText(n.name, col) .. CR.ColorText("  " .. n.skill, n.ok and "aaaaaa" or "ff8080"))
+      end
+      self.nodes:ClearAllPoints()
+      self.nodes:SetPoint("TOPLEFT", 0, y)
+      self.nodes:SetWidth(w)
+      self.nodes:SetText(table.concat(lines, "\n"))
+      self.nodes:Show()
+      y = y - (self.nodes:GetStringHeight() or 14) - 10
+    else
+      self.nodesLabel:Hide()
+      self.nodes:Hide()
     end
 
     -- done by the game: nothing to click; ticked by hand: can be undone

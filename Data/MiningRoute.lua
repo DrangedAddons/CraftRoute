@@ -8,6 +8,28 @@ local _, CR = ...
 local PICK = 2901
 
 local choices, steps = {}, {}
+
+-- The veins each band is after, with the Mining skill each needs (Classic values) - the step's card
+-- lists them, green when you can mine them and red when you can't yet.
+local VEIN = {
+  ["Copper Vein"] = 1, ["Tin Vein"] = 65, ["Silver Vein"] = 75, ["Iron Deposit"] = 125, ["Gold Vein"] = 155,
+  ["Mithril Deposit"] = 175, ["Truesilver Deposit"] = 230, ["Small Thorium Vein"] = 245,
+  ["Rich Thorium Vein"] = 275,
+}
+local function Veins(...)
+  local out = {}
+  for _, name in ipairs({ ... }) do table.insert(out, { name = name, skill = VEIN[name] }) end
+  table.sort(out, function(a, b) return a.skill < b.skill end)
+  return { label = "Veins to mine", list = out }
+end
+local NODES = {
+  copper = Veins("Copper Vein"),
+  tin = Veins("Copper Vein", "Tin Vein", "Silver Vein"),
+  iron = Veins("Tin Vein", "Iron Deposit", "Gold Vein"),
+  mithril = Veins("Mithril Deposit", "Truesilver Deposit"),
+  thorium = Veins("Mithril Deposit", "Truesilver Deposit", "Small Thorium Vein"),
+  richthorium = Veins("Small Thorium Vein", "Rich Thorium Vein"),
+}
 -- One choice whose options are zones; each option becomes a gathering step over [from, to]. The
 -- band's advice (what else to mine or smelt there), if any, goes in every zone's step - not a
 -- step of its own, which would only be a line to read with nothing to do.
@@ -16,7 +38,7 @@ local function Zones(key, label, from, to, zones, advice)
   for _, z in ipairs(zones) do
     table.insert(c.options, { key = z[1], label = z[2], faction = z[4] })
     table.insert(steps, { kind = "guide", from = from, to = to, when = { [key] = z[1] }, faction = z[4],
-                          gather = true, title = "Mine in " .. z[2],
+                          gather = true, title = "Mine in " .. z[2], nodes = NODES[key],
                           text = advice and (z[3] .. " " .. advice) or z[3] })
   end
   table.insert(choices, c)

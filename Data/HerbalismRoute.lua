@@ -5,6 +5,30 @@
 local _, CR = ...
 
 local choices, steps = {}, {}
+
+-- The herbs each band is after, with the Herbalism skill each needs to pick (Classic values) - the
+-- step's card lists them, green when you can pick them and red when you can't yet.
+local HERB = {
+  ["Peacebloom"] = 1, ["Silverleaf"] = 1, ["Earthroot"] = 15, ["Mageroyal"] = 50, ["Briarthorn"] = 70,
+  ["Stranglekelp"] = 85, ["Bruiseweed"] = 100, ["Wild Steelbloom"] = 115, ["Kingsblood"] = 125,
+  ["Liferoot"] = 150, ["Fadeleaf"] = 160, ["Goldthorn"] = 170, ["Khadgar's Whisker"] = 185,
+  ["Firebloom"] = 205, ["Purple Lotus"] = 210, ["Sungrass"] = 230, ["Ghost Mushroom"] = 245,
+  ["Gromsblood"] = 250, ["Golden Sansam"] = 260, ["Dreamfoil"] = 270, ["Mountain Silversage"] = 280,
+  ["Plaguebloom"] = 285,
+}
+local function Herbs(...)
+  local out = {}
+  for _, name in ipairs({ ... }) do table.insert(out, { name = name, skill = HERB[name] }) end
+  table.sort(out, function(a, b) return a.skill < b.skill end)
+  return { label = "Herbs to pick", list = out }
+end
+local NODES = {
+  start = Herbs("Peacebloom", "Silverleaf", "Earthroot"),
+  mid = Herbs("Mageroyal", "Briarthorn", "Stranglekelp"),
+  expert = Herbs("Bruiseweed", "Wild Steelbloom", "Stranglekelp", "Kingsblood", "Liferoot"),
+  upper = Herbs("Kingsblood", "Liferoot", "Fadeleaf", "Goldthorn", "Khadgar's Whisker"),
+  artisan = Herbs("Firebloom", "Purple Lotus"),
+}
 -- One choice whose options are zones; each option becomes a gathering step over [from, to]. The
 -- band's advice (which herbs to look for), if any, goes in every zone's step - not a step of its
 -- own, which would only be a line to read with nothing to do.
@@ -13,7 +37,7 @@ local function Zones(key, label, from, to, zones, advice)
   for _, z in ipairs(zones) do
     table.insert(c.options, { key = z[1], label = z[2], faction = z[4] })
     table.insert(steps, { kind = "guide", from = from, to = to, when = { [key] = z[1] }, faction = z[4],
-                          gather = true, title = "Pick herbs in " .. z[2],
+                          gather = true, title = "Pick herbs in " .. z[2], nodes = NODES[key],
                           text = advice and (z[3] .. " " .. advice) or z[3] })
   end
   table.insert(choices, c)
@@ -55,11 +79,13 @@ Zones("artisan", "205-230: one of these", 205, 230, {
 
 table.insert(steps, { kind = "guide", from = 230, to = 270, gather = true,
   title = "Pick herbs in The Hinterlands",
+  nodes = Herbs("Sungrass", "Purple Lotus", "Ghost Mushroom", "Golden Sansam"),
   text = "Pick Sungrass, Purple Lotus, Ghost Mushroom and Golden Sansam in The Hinterlands until 270. Its cave "
     .. "is full of Ghost Mushrooms once you have 245." })
 
 table.insert(steps, { kind = "guide", from = 270, to = 300, gather = true,
   title = "Pick herbs in Felwood",
+  nodes = Herbs("Sungrass", "Gromsblood", "Golden Sansam", "Dreamfoil", "Mountain Silversage", "Plaguebloom"),
   text = "Pick Sungrass, Gromsblood, Golden Sansam, Dreamfoil, Mountain Silversage and Plaguebloom in Felwood "
     .. "until 300." })
 

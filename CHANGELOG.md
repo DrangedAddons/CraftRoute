@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.83.0
+
+- Mining and Herbalism: a zone step's card lists the herbs or veins that band is after, under **Herbs to pick** or **Veins to mine**, just above Mark as done. Each one shows the skill it needs, in green when you can gather it now and red when you can't yet. For example, Teldrassil lists Peacebloom 1, Silverleaf 1 and Earthroot 15.
+
 ## 0.82.3
 
 - Herbalism guide: the grey advice rows between bands are gone. Which herbs to look for in each band is now in every zone's step.
