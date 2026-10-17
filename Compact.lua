@@ -1138,24 +1138,10 @@ local function ApplyRow(row, item)
       end)
       row.crStar = star
     end
-    -- your list (right): the same expand marker the route's steps have, + to open, - when open.
-    -- The recipe list (left) has none: a click there adds / removes the recipe.
-    row.chevron:Show()
-    local atlas = item.selected and "Professions-recipe-header-collapse" or "Professions-recipe-header-expand"
-    local drew = TryAtlas(row.chevron.icon, atlas, true)
-    row.chevron.icon:SetShown(drew)
-    row.chevron.label:SetShown(not drew)
-    row.chevron.label:SetText(item.selected and "-" or "+")
-    if drew then row.chevron.icon:SetVertexColor(1, 1, 1) end
-    row.chevron:SetScript("OnClick", function() row:Click() end)
+    -- no expand marker (a click on the row opens it in place all the same): the star takes its spot
+    row.chevron:Hide()
     star:ClearAllPoints()
-    if item.pick then
-      -- the recipe layout: nothing opens in place, so no marker - the star takes its spot
-      row.chevron:Hide()
-      star:SetPoint("CENTER", row.chevron, "CENTER", 0, 0)
-    else
-      star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
-    end
+    star:SetPoint("CENTER", row.chevron, "CENTER", 0, 0)
     if fav then
       row.crQtyBtn:ClearAllPoints()
       row.crQtyBtn:SetPoint("RIGHT", star, "LEFT", -10, 0)

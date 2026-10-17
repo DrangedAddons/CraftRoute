@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.5
+
+- The Craft view's recipe rows no longer show the **+** / **-** marker. Clicking a row still opens it in place, and the star moves into the marker's spot.
+
 ## 0.81.4
 
 - The Route view's step, reagent and task tooltips now hang down beside the row too, like the Craft view's. If one would run off the bottom of the screen, it opens upward as before.
