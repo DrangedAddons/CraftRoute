@@ -428,9 +428,9 @@ local function BuildDestItems(name)
     end
     left = {}
     if #favRows > 0 then
-      table.insert(left, { kind = "note", gold = true, text = "Favorites" })
+      table.insert(left, { kind = "note", gold = true, text = "Favorites", h = 20 })
       for _, it in ipairs(favRows) do table.insert(left, it) end
-      if #rest > 0 then table.insert(left, { kind = "note", gold = true, text = "Recipes" }) end
+      if #rest > 0 then table.insert(left, { kind = "note", gold = true, text = "Recipes", h = 20 }) end
     end
     for _, it in ipairs(rest) do table.insert(left, it) end
     return left, favs, { profName = pn, dest = true, recipeView = true,
@@ -2129,11 +2129,23 @@ local function FillSchematic(info)
   if diff ~= "red" and room >= 40 then
     frame.rBand:SetWidth(math.min(90, room))
     frame.rBand:ClearAllPoints()
-    frame.rBand:SetPoint("LEFT", frame.rSub, "LEFT", textW + 8, 0)
+    if sub == "" then
+      -- (no line of text to follow - the Craft view: its own line under the name, flush left)
+      frame.rBand:SetPoint("TOPLEFT", frame.rName, "BOTTOMLEFT", 0, -5)
+    else
+      frame.rBand:SetPoint("LEFT", frame.rSub, "LEFT", textW + 8, 0)
+    end
     frame.rBand:Fill(recipe, cur)
     frame.rBand:Show()
   else
     frame.rBand:Hide()
+  end
+  -- the station line: under the band when the band has a line of its own, else under the text
+  frame.rStructure:ClearAllPoints()
+  if sub == "" and frame.rBand:IsShown() then
+    frame.rStructure:SetPoint("TOPLEFT", frame.rBand, "BOTTOMLEFT", 0, -5)
+  else
+    frame.rStructure:SetPoint("TOPLEFT", frame.rSub, "BOTTOMLEFT", 0, -1)
   end
   local structure = CR.StructureText(recipe)
   frame.rStructure:SetText(structure or "")
@@ -4478,7 +4490,8 @@ local function BuildOverlay()
     ui.keepScroll = false
     frame:Refresh()
   end)
-  frame.destSearch:SetScript("OnEditFocusGained", function(self) self.hint:Hide() end)
+  -- (clicking back in selects what's there, so typing replaces the old search)
+  frame.destSearch:SetScript("OnEditFocusGained", function(self) self.hint:Hide() self:HighlightText() end)
   frame.destSearch:SetScript("OnEditFocusLost", function(self) self.hint:SetShown(self:GetText() == "") end)
   frame.destSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   frame.destSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)

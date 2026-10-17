@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.81.7
+
+- In the Craft view's recipe layout, the skill colour bar has its own line under the recipe name, and the station line (such as Tanning Rack required) sits under the bar. Both line up with the name and no longer overlap.
+- Clicking back into **Search recipes** selects the text that's there, so typing replaces the old search.
+- The **Favorites** and **Recipes** headings in the recipe list take up less space.
+
 ## 0.81.6
 
 - In the Craft (List) view, the tooltips for your crafts now open to the right of the hovered row, hanging down from its top, like the recipe list's. Before, they covered the recipe list.
