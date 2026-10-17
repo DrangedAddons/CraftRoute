@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.82.2
+
+- Mining guide: the grey advice rows between bands, which couldn't be clicked, are gone. Their advice (Silver and Gold to smelt, and when Truesilver, Small Thorium and Rich Thorium open up) is now in each zone's step, so it shows in the step's details whichever zone you pick.
+
 ## 0.82.1
 
 - Mining guide: every step has a short title instead of a sentence lifted from its text.

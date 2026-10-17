@@ -8,13 +8,16 @@ local _, CR = ...
 local PICK = 2901
 
 local choices, steps = {}, {}
--- One choice whose options are zones; each option becomes a gathering step over [from, to].
-local function Zones(key, label, from, to, zones)
+-- One choice whose options are zones; each option becomes a gathering step over [from, to]. The
+-- band's advice (what else to mine or smelt there), if any, goes in every zone's step - not a
+-- step of its own, which would only be a line to read with nothing to do.
+local function Zones(key, label, from, to, zones, advice)
   local c = { key = key, label = label, options = {} }
   for _, z in ipairs(zones) do
     table.insert(c.options, { key = z[1], label = z[2], faction = z[4] })
     table.insert(steps, { kind = "guide", from = from, to = to, when = { [key] = z[1] }, faction = z[4],
-                          gather = true, title = "Mine in " .. z[2], text = z[3] })
+                          gather = true, title = "Mine in " .. z[2],
+                          text = advice and (z[3] .. " " .. advice) or z[3] })
   end
   table.insert(choices, c)
 end
@@ -35,10 +38,6 @@ Zones("copper", "1-65: Copper - one starting zone", 1, 65, {
     .. "start here.", "Alliance" },
 })
 
-table.insert(steps, { kind = "guide", from = 65, to = 125,
-  title = "Tin and Silver; smelt Silver at 75",
-  text = "Copper, Tin and Silver from here. Smelt Silver from 75 to help reach 125 - buy Silver Ore, smelt it "
-    .. "and sell the bars; they sell for about what the ore costs." })
 Zones("tin", "65-125: Copper and Tin", 65, 125, {
   { "hillsbrad", "Hillsbrad Foothills", "Mine in Hillsbrad Foothills until 125 (low levels: skip the caves)." },
   { "redridge", "Redridge Mountains", "Mine in Redridge Mountains until 125 - low levels keep to the east side.",
@@ -47,49 +46,38 @@ Zones("tin", "65-125: Copper and Tin", 65, 125, {
     .. "Veins." },
   { "barrens", "The Barrens", "Mine in The Barrens until 125 - the southern part has more Copper and Tin.",
     "Horde" },
-})
+}, "Silver Veins turn up here too. From 75, smelting Silver helps you reach 125: buy Silver Ore, smelt it and "
+  .. "sell the bars - they sell for about what the ore costs.")
 
-table.insert(steps, { kind = "guide", from = 125, to = 175,
-  title = "Iron and Gold; smelt Gold at 155",
-  text = "Iron, Tin and Gold from here. Smelt Gold from 155: about 30 Gold Ore smelted takes you to around "
-    .. "175 - buy the ore and sell the bars." })
 Zones("iron", "125-175: Iron and Tin", 125, 175, {
   { "arathi", "Arathi Highlands", "Mine in Arathi Highlands until 175. Go to the back of each cave - the veins "
     .. "aren't all in sight from the entrance (low levels: skip the caves)." },
   { "desolace", "Desolace", "Mine in Desolace until 175." },
   { "needles", "Thousand Needles", "Mine in Thousand Needles until 175." },
-})
+}, "Gold Veins turn up here too. From 155, smelting Gold helps: about 30 Gold Ore smelted takes you to around "
+  .. "175 - buy the ore and sell the bars.")
 
-table.insert(steps, { kind = "guide", from = 175, to = 245,
-  title = "Mithril, then Truesilver at 230",
-  text = "Mithril from here, and Truesilver Deposits from 230." })
 Zones("mithril", "175-245: Mithril and Truesilver", 175, 245, {
   { "hinterlands", "The Hinterlands", "Mine Mithril in The Hinterlands until 245. Low levels: avoid the area "
     .. "with level 62 elites, and maybe the cave." },
   { "tanaris", "Tanaris", "Mine Mithril in Tanaris until 245 (below level 60: skip the caves)." },
-})
+}, "Truesilver Deposits can be mined from 230.")
 
-table.insert(steps, { kind = "guide", from = 245, to = 275,
-  title = "Small Thorium Veins from 245",
-  text = "Mithril, Truesilver and now Small Thorium Veins." })
 Zones("thorium", "245-275: Mithril and Thorium", 245, 275, {
   { "ungoro", "Un'Goro Crater", "Mine in Un'Goro Crater until 275 - the caves hold 2-3 veins each." },
   { "blasted", "Blasted Lands", "Mine in the Blasted Lands until 275 (low levels: maybe skip the southern "
     .. "cave)." },
   { "felwood", "Felwood", "Mine in Felwood until 275. Its caves are full of mobs - for well-geared level 60s, "
     .. "or stealth. Alliance can't mine in the Garrison Armory." },
-})
+}, "Small Thorium Veins can be mined from 245.")
 
-table.insert(steps, { kind = "guide", from = 275, to = 300,
-  title = "Rich Thorium Veins from 275",
-  text = "Thorium and Mithril - and from 275 you can mine Rich Thorium Veins too." })
 Zones("richthorium", "275-300: Thorium and Rich Thorium", 275, 300, {
-  { "ungoro2", "Un'Goro Crater", "Mine in Un'Goro Crater until 300, Rich Thorium Veins included." },
+  { "ungoro2", "Un'Goro Crater", "Mine in Un'Goro Crater until 300." },
   { "epl", "Eastern Plaguelands", "Mine in the Eastern Plaguelands until 300 (low levels: its caves have "
     .. "level 50 mobs)." },
   { "winterspring", "Winterspring", "Mine in Winterspring until 300." },
   { "steppes", "Burning Steppes", "Mine in the Burning Steppes until 300 - mind the elite patrols." },
-})
+}, "From 275 you can mine Rich Thorium Veins too.")
 
 CR.RegisterRoute("Mining", {
   label = "Mining",
