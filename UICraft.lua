@@ -762,11 +762,12 @@ local function ScanMerchant()
   if not merchantOpen or not GetMerchantNumItems or not GetMerchantItemID then return end
   for i = 1, GetMerchantNumItems() do
     local id = GetMerchantItemID(i)
-    local price, _, _, extended = MerchantSlotInfo(i)
+    local price, _, avail, extended = MerchantSlotInfo(i)
     if id and price and price > 0 and not extended then
       merchantIndex[id] = i   -- gold only
-      -- remembered (all characters): "Vendor" on reagents you're short of, away from a vendor
-      if CraftRouteDB then
+      -- remembered (all characters): "Vendor" on reagents you're short of, away from a vendor -
+      -- only what's always in stock (a limited-stock seller is too niche to send you to)
+      if CraftRouteDB and not (avail and avail >= 0) then
         CraftRouteDB.vendorItems = CraftRouteDB.vendorItems or {}
         CraftRouteDB.vendorItems[id] = true
       end
@@ -776,8 +777,10 @@ end
 
 function CR.MerchantSells(itemID) return merchantOpen and merchantIndex[itemID] or nil end
 
--- Sold by vendors? (seen on a merchant, or Auctionator knows a vendor price for it)
+-- Sold by vendors? (seen on a merchant, or Auctionator knows a vendor price for it). Something this
+-- character can make itself isn't one: making it beats hunting down the odd vendor that has it.
 function CR.IsVendorItem(itemID)
+  if CR.ComponentMaker(nil, itemID) then return false end
   if CraftRouteDB and CraftRouteDB.vendorItems and CraftRouteDB.vendorItems[itemID] then return true end
   local _, src = CR.GetUnitPrice(itemID)
   return src == "vendor"

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.81.8
+
+- A reagent you can make yourself, with any profession you've learned, no longer gets a **Vendor** button. Crafting it beats tracking down the odd vendor that stocks it, and the vendor filters treat it the same way. A vendor that has it open still shows **Buy**.
+- Limited-stock vendors are no longer remembered as places that sell an item.
+
 ## 0.81.7
 
 - In the Craft view's recipe layout, the skill colour bar has its own line under the recipe name, and the station line (such as Tanning Rack required) sits under the bar. Both line up with the name and no longer overlap.
