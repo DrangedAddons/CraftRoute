@@ -61,11 +61,18 @@ function CR.StructureText(r)
 end
 
 -- Stations the Route tab can pin, and the Questie object names that satisfy them.
--- "Cooking Fire" is the requirement. Campfire, Bonfire, Cozy Fire, and Cooking Fire are the objects.
+-- "Cooking Fire" is the requirement; the objects are the fires and cooking stations whose names
+-- can only mean one. Generic names (Fire, Brazier, Cauldron, Stove, Mighty Blaze) are left out:
+-- most of those spawns are decoration. The player-made Basic Campfire is left out too.
 local PIN_OBJECTS = {
   ["Anvil"] = { "Anvil" },
   ["Forge"] = { "Forge" },
-  ["Cooking Fire"] = { "Campfire", "Bonfire", "Cozy Fire", "Cooking Fire" },
+  ["Cooking Fire"] = {
+    "Campfire", "Bonfire", "Cozy Fire", "Cooking Fire",
+    "Dwarven Brazier", "Crude Brazier", "Dwarven Fire", "Warm Fire",
+    "Raging Bonfire", "Roaring Bonfire", "Firepit", "Borstan's Firepit", "Cooking Brazier",
+    "Cooking Table", "Table Cooker", "Smoked Meat Rack", "Smoking Rack", "Meat Smoker",
+  },
 }
 local PIN_PHRASE = {
   ["Anvil"] = "an anvil",

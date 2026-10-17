@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.79.6
+
+- **Cooking Fire required** also pins more fires and cooking stations: Dwarven Brazier, Crude Brazier, Dwarven Fire, Warm Fire, Raging and Roaring Bonfires, Firepits, Cooking Brazier, Cooking Table, Table Cooker, and the meat racks and smokers. This covers Ironforge, Durotar, Loch Modan, and the Stormwind taverns. The player-made Basic Campfire is still not pinned.
+
 ## 0.79.5
 
 - **Anvil required**, **Forge required**, and **Cooking Fire required** on the Route tab pin the nearest one when you click the words. Questie provides the locations. The line stays red until you are standing at one, and a green line does not pin. Alchemy Lab and the other camp stations still show, and are not clickable.
