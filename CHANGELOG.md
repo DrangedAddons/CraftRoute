@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.1
+
+- The Craft view's **Recipe** / **List** button moved to the top left of the right column, level with Materials. The search box has its full width back.
+
 ## 0.81.0
 
 - The Craft view has a second layout. The **Recipe** button, left of the search box, switches to it, and **List** switches back. The choice is kept per character.

@@ -2749,13 +2749,13 @@ local function LayoutHeader()
   if dest and overlay.destSearch then
     -- search and filter, under the profession picker
     local fw, xw = 112, 22   -- Filter, and its clear X after it
-    local lw = 56            -- the List / Recipe layout toggle, before the search box
-    overlay.destLayoutBtn:ClearAllPoints()
-    overlay.destLayoutBtn:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y - 25)
-    overlay.destLayoutBtn:SetWidth(lw)
     overlay.destSearch:ClearAllPoints()
-    overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + lw + gap + 6, y - 26)
-    overlay.destSearch:SetWidth(avail - gap - fw - 6 - lw - gap)
+    overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + 6, y - 26)
+    overlay.destSearch:SetWidth(avail - gap - fw - 6)
+    -- the List / Recipe layout toggle: the right column's top left, level with Materials
+    overlay.destLayoutBtn:ClearAllPoints()
+    overlay.destLayoutBtn:SetPoint("TOP", overlay.mainBtn, "TOP", 0, 0)
+    overlay.destLayoutBtn:SetPoint("LEFT", overlay.divider, "RIGHT", 10, 0)
     overlay.destFilterDD:ClearAllPoints()
     overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 25)
     overlay.destFilterDD:SetWidth(fw - xw - 2)
@@ -4479,7 +4479,7 @@ local function BuildOverlay()
   -- Filter: tickboxes (none ticked = every recipe; each ticked one narrows the list)
   -- List / Recipe: how the Craft view lays out (the button names the one a click switches to)
   local layoutBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  layoutBtn:SetSize(56, 22)
+  layoutBtn:SetSize(70, 22)
   CR.ThemeRegisterButton(layoutBtn)
   layoutBtn.Sync = function(self) self:SetText(DestLayout() == "recipe" and "List" or "Recipe") end
   layoutBtn:Sync()
