@@ -65,8 +65,11 @@ end
 -- can only mean one. Generic names (Fire, Brazier, Cauldron, Stove, Mighty Blaze) are left out:
 -- most of those spawns are decoration. The player-made Basic Campfire is left out too.
 local PIN_OBJECTS = {
-  ["Anvil"] = { "Anvil" },
-  ["Forge"] = { "Forge" },
+  ["Anvil"] = { "Anvil", "Stone Anvil", "Foundry Anvil", "The Great Anvil", "Grimand's Anvil" },
+  ["Forge"] = { "Forge", "Heated Forge", "The Great Forge", "Thunder Bluff Forge", "Dredan's Forge" },
+  ["Black Anvil"] = { "The Black Anvil" },
+  ["Black Forge"] = { "The Black Forge" },
+  ["Icebellow Anvil"] = { "Icebellow Anvil" },
   ["Cooking Fire"] = {
     "Campfire", "Bonfire", "Cozy Fire", "Cooking Fire",
     "Dwarven Brazier", "Crude Brazier", "Dwarven Fire", "Warm Fire",
@@ -78,11 +81,23 @@ local PIN_PHRASE = {
   ["Anvil"] = "an anvil",
   ["Forge"] = "a forge",
   ["Cooking Fire"] = "a fire",
+  ["Black Anvil"] = "the Black Anvil",
+  ["Black Forge"] = "the Black Forge",
+  ["Icebellow Anvil"] = "the Icebellow Anvil",
 }
 
--- Object names still worth pinning, and a phrase for "No location for ...".
--- Nil when the Pin Nearest button should hide: this recipe has none of those stations,
--- or the player is already standing at each of them.
+-- Stations you build at a camp (Camping blueprints), so there's nothing in the world to pin.
+-- Anvil has a blueprint too, but the world is full of anvils, so it pins.
+local CAMP_STRUCTURES = {
+  ["Master Forge"] = true, ["Molten Foundry"] = true, ["Arcane Forge"] = true,
+  ["Alchemy Lab"] = true, ["Fermenter"] = true, ["Anarchist's Workbench"] = true,
+  ["Iron Oven"] = true, ["Tanning Rack"] = true, ["Sewing Machine"] = true,
+  ["Spinning Wheel"] = true, ["Loom"] = true,
+}
+
+-- Object names still worth pinning, a phrase for "No location for ...", and the camp structures
+-- still needed (a list, or nil). Names are nil when there's nothing to pin: this recipe has
+-- none of those stations, or the player is already standing at each of them.
 function CR.StructurePin(r)
   if not r then return nil end
   local list = CR.RequiredStructures(r)
@@ -90,8 +105,13 @@ function CR.StructurePin(r)
   local met = StructuresMet(r) or {}
   local names, seen, phrases = {}, {}, {}
   local any = false
+  local camp
   for _, name in ipairs(list) do
     local objs = PIN_OBJECTS[name]
+    if CAMP_STRUCTURES[name] and met[name] ~= true then
+      camp = camp or {}
+      camp[#camp + 1] = name
+    end
     if objs then
       any = true
       if met[name] ~= true then
@@ -106,10 +126,10 @@ function CR.StructurePin(r)
       end
     end
   end
-  if not any or #names == 0 then return nil end
+  if not any or #names == 0 then return nil, nil, camp end
   local phrase = phrases[1]
   if #phrases > 1 then phrase = table.concat(phrases, " or ") end
-  return names, phrase
+  return names, phrase, camp
 end
 
 function CR.RecipeTooltip(tt, r, crafts)

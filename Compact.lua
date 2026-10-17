@@ -1983,14 +1983,16 @@ local function ButtonRowTop()
 end
 
 -- The red "Anvil required" words are the pin. The hit is only as wide as the text, and it
--- goes away once the line is green or the station is one we do not pin.
+-- goes away once the line is green or the station is one we do not pin. A camp structure
+-- still needed keeps it too, for its tooltip (nothing to click).
 local function SyncStructurePin(frame, recipe)
   local btn = frame.rStructureHit
   if not btn then return end
-  local names, phrase
-  if recipe and CR.StructurePin then names, phrase = CR.StructurePin(recipe) end
-  if not names then btn:Hide() return end
-  btn.phrase = phrase
+  local names, phrase, camp
+  if recipe and CR.StructurePin then names, phrase, camp = CR.StructurePin(recipe) end
+  if not names and not camp then btn:Hide() return end
+  btn.phrase = names and phrase or nil
+  btn.camp = camp
   local fs = frame.rStructure
   local w = tonumber(fs:GetStringWidth()) or 0
   local h = tonumber(fs:GetStringHeight()) or 0
@@ -4828,13 +4830,21 @@ local function BuildOverlay()
   end)
   hit:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Pin nearest")
-    local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-    local phrase = self.phrase or "one"
-    if loaded and loaded("Questie") then
-      GameTooltip:AddLine("Click to pin the nearest " .. phrase .. ".", 1, 1, 1, true)
+    local phrase = rawget(self, "phrase")
+    local camp = rawget(self, "camp")
+    if phrase then
+      GameTooltip:SetText("Pin nearest")
+      local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+      if loaded and loaded("Questie") then
+        GameTooltip:AddLine("Click to pin the nearest " .. phrase .. ".", 1, 1, 1, true)
+      else
+        GameTooltip:AddLine("Click would pin the nearest " .. phrase .. ", but Questie is needed.", 1, 1, 1, true)
+      end
     else
-      GameTooltip:AddLine("Click would pin the nearest " .. phrase .. ", but Questie is needed.", 1, 1, 1, true)
+      GameTooltip:SetText("Camp structure")
+    end
+    for _, name in ipairs(camp or {}) do
+      GameTooltip:AddLine(name .. " is a camp structure. Craft this at a camp that has one.", 1, 1, 1, true)
     end
     GameTooltip:Show()
   end)

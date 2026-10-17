@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 0.80.0
+
+- **Anvil required** and **Forge required** pin more of them: The Great Forge and Great Anvil in Ironforge, the Thunder Bluff Forge, Heated Forges, Stone and Foundry Anvils, Grimand's Anvil, and Dredan's Forge.
+- **Black Anvil**, **Black Forge**, and **Icebellow Anvil required** can now be clicked to pin them.
+- A camp structure (Master Forge, Molten Foundry, Alchemy Lab, Tanning Rack, and the others built from Camping blueprints) is never pinned. Hovering its red words says it's a camp structure instead.
+
 ## 0.79.6
 
 - **Cooking Fire required** also pins more fires and cooking stations: Dwarven Brazier, Crude Brazier, Dwarven Fire, Warm Fire, Raging and Roaring Bonfires, Firepits, Cooking Brazier, Cooking Table, Table Cooker, and the meat racks and smokers. This covers Ironforge, Durotar, Loch Modan, and the Stormwind taverns. The player-made Basic Campfire is still not pinned.
