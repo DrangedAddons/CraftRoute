@@ -243,6 +243,13 @@ local function ViewFor(name)
   return (cur or 0) >= TRUE_MAX and "dest" or "route"
 end
 
+-- The Craft view's layout (kept per character): "list" - your crafts on the right, a recipe opening
+-- in place - or "recipe" - favorites at the top of the recipe list, the clicked recipe on the
+-- right as on the Route view.
+local function DestLayout()
+  return (CraftRouteCharDB and CraftRouteCharDB.craftLayout == "recipe") and "recipe" or "list"
+end
+
 -- What one craft's reagents cost to buy (vendor or AH price), and how many of them have no price
 -- yet (not seen on the AH) - 0 when all are priced.
 local function MakeCost(r)
@@ -411,6 +418,25 @@ local function BuildDestItems(name)
   end
   for _, f in ipairs(favs) do f.selected = ui.destSide == "right" and ui.destSelected == f.recipe.spell end
   local sel = ui.destSelected and p.recipes[ui.destSelected]
+  if DestLayout() == "recipe" then
+    -- favorites (in the list's order, searched and filtered like the rest) moved to the top
+    local favRows, rest = {}, {}
+    for _, it in ipairs(left) do
+      it.pick = true
+      it.selected = ui.destSelected == it.recipe.spell
+      table.insert(it.fav and favRows or rest, it)
+    end
+    left = {}
+    if #favRows > 0 then
+      table.insert(left, { kind = "note", gold = true, text = "Favorites" })
+      for _, it in ipairs(favRows) do table.insert(left, it) end
+      if #rest > 0 then table.insert(left, { kind = "note", gold = true, text = "Recipes" }) end
+    end
+    for _, it in ipairs(rest) do table.insert(left, it) end
+    return left, favs, { profName = pn, dest = true, recipeView = true,
+      selected = sel and { kind = "dest", recipe = sel, spell = sel.spell,
+                           crafts = math.max(1, ui.destQty[sel.spell] or 1) } or nil }
+  end
   return left, favs, { profName = pn, dest = true,
     selected = sel and { kind = "dest", recipe = sel, spell = sel.spell, crafts = 1 } or nil }
 end
@@ -946,7 +972,7 @@ local function ApplyRow(row, item)
     -- opened, or (your list) ticked for the shopping list: the blue selection box
     local ticked = item.kind == "destFav" and (DestCart(item.list)[r.spell] or {}).on
     row:ShowSelected((item.selected or ticked) and true or false)
-    if item.selected then row.selEdges[2]:Hide() end   -- open: joins its panel below
+    if item.selected and not item.pick then row.selEdges[2]:Hide() end   -- open: joins its panel below
     row.icon:SetTexture(CR.RecipeIcon(r))
     row.icon:Show()
     row.icon:ClearAllPoints()
@@ -1109,7 +1135,13 @@ local function ApplyRow(row, item)
     if drew then row.chevron.icon:SetVertexColor(1, 1, 1) end
     row.chevron:SetScript("OnClick", function() row:Click() end)
     star:ClearAllPoints()
-    star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+    if item.pick then
+      -- the recipe layout: nothing opens in place, so no marker - the star takes its spot
+      row.chevron:Hide()
+      star:SetPoint("CENTER", row.chevron, "CENTER", 0, 0)
+    else
+      star:SetPoint("RIGHT", row.chevron, "LEFT", -4, 0)
+    end
     if fav then
       row.crQtyBtn:ClearAllPoints()
       row.crQtyBtn:SetPoint("RIGHT", star, "LEFT", -10, 0)
@@ -1134,6 +1166,15 @@ local function ApplyRow(row, item)
       if IsModifiedClick("CHATLINK") and r.item and r.item > 0 then
         local _, link = CR.GetItemInfo(r.item)
         if link then ChatEdit_InsertLink(link) end
+        return
+      end
+      -- the recipe layout: show it on the right (it stays shown until another is clicked)
+      if item.pick then
+        if ui.destSelected ~= r.spell then
+          ui.destSelected, ui.destSide = r.spell, "left"
+          ui.keepScroll = true
+          if overlay then overlay:Refresh() end
+        end
         return
       end
       -- open it in place (one recipe open at a time, in either column); click again to close
@@ -2048,6 +2089,13 @@ local function FillSchematic(info)
       SyncEnchantSecure()
       return
     end
+    if info and info.dest then
+      -- (the Craft view's recipe layout, nothing clicked yet: FillDestDetail's words)
+      frame.detailEmpty:Show()
+      if frame.UpdateEnchant then frame:UpdateEnchant(nil) end
+      SyncEnchantSecure()
+      return
+    end
     frame.detailEmpty:SetText(info and info.entry and info.entry.cur >= info.entry.goal
       and ("Goal reached (" .. info.entry.goal .. "). Raise it in the route dropdown.")
       or "Nothing left to craft on this route.")
@@ -2073,6 +2121,8 @@ local function FillSchematic(info)
   -- the colour band follows the text; "too soon" (can't learn it yet) stays as a word too
   if diff == "red" then sub = sub .. "   " .. CR.ColorText(diffWord, CR.DIFF_COLORS[diff] or "ff4040") end
   if info.ahead then sub = sub .. CR.ColorText("   looking ahead", "aaaaaa") end
+  -- (a recipe, not a route step: no range or count, just "too soon" when it is)
+  if info.dest then sub = (diff == "red") and CR.ColorText(diffWord, CR.DIFF_COLORS[diff] or "ff4040") or "" end
   frame.rSub:SetText(sub)
   -- only for a recipe you can craft now (no point before you can learn it), and only in the room
   -- the line has left: narrower if needed, hidden if it wouldn't fit at all
@@ -2094,7 +2144,8 @@ local function FillSchematic(info)
   local reagents = recipe.reagents or {}
   -- Destinations: compact - the icon tucked into the corner, the learned / source lines under it,
   -- reagents straight after, slimmer rows. The route keeps Blizzard's positions.
-  local compact = info.dest and true or false
+  -- (the Craft view's recipe layout keeps the route's positions, the learned / source lines under the icon)
+  local compact = (info.dest and not info.recipeView) and true or false
   frame.icon:ClearAllPoints()
   frame.reagentsLabel:ClearAllPoints()
   if compact then
@@ -2109,7 +2160,12 @@ local function FillSchematic(info)
     frame.icon.texture:SetSize(46, 46)
     if frame.icon.ring and frame.icon.ring.crWanted then frame.icon.ring:Show() end
     frame.icon:SetPoint("TOPLEFT", 28, -28)
-    frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon
+    if info.recipeView then
+      frame.destInfo:Show()
+      frame.reagentsLabel:SetPoint("TOPLEFT", frame.destBottom or frame.destInfo, "BOTTOMLEFT", -2, -10)
+    else
+      frame.reagentsLabel:SetPoint("TOPLEFT", frame.schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon
+    end
   end
   local rowH = compact and 22 or 42
   -- All reagents, in the scroll area (see its creation): it ends above the enchant target when
@@ -2693,9 +2749,13 @@ local function LayoutHeader()
   if dest and overlay.destSearch then
     -- search and filter, under the profession picker
     local fw, xw = 112, 22   -- Filter, and its clear X after it
+    local lw = 56            -- the List / Recipe layout toggle, before the search box
+    overlay.destLayoutBtn:ClearAllPoints()
+    overlay.destLayoutBtn:SetPoint("TOPLEFT", overlay, "TOPLEFT", x, y - 25)
+    overlay.destLayoutBtn:SetWidth(lw)
     overlay.destSearch:ClearAllPoints()
-    overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + 6, y - 26)
-    overlay.destSearch:SetWidth(avail - gap - fw - 6)
+    overlay.destSearch:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + lw + gap + 6, y - 26)
+    overlay.destSearch:SetWidth(avail - gap - fw - 6 - lw - gap)
     overlay.destFilterDD:ClearAllPoints()
     overlay.destFilterDD:SetPoint("TOPLEFT", overlay, "TOPLEFT", x + avail - fw, y - 25)
     overlay.destFilterDD:SetWidth(fw - xw - 2)
@@ -2757,7 +2817,7 @@ end
 local function SetDestWidgets(on)
   local f = overlay
   if not f.viewRoute then return end
-  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.favHeader, f.favList, f.favAll, f.favCart }) do w:SetShown(on) end
+  for _, w in ipairs({ f.destSearch, f.destFilterDD, f.destFilterClear, f.destLayoutBtn, f.favHeader, f.favList, f.favAll, f.favCart }) do w:SetShown(on) end
   if not on and qtyEd and qtyEd:IsShown() then qtyEd:ClearFocus() end
   if not on and matPanel then matPanel:Hide() end
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
@@ -3165,7 +3225,7 @@ local function FillDestDetail(info)
   local st = info and info.selected
   if not st then
     f.destInfo:SetText("")
-    f.detailEmpty:SetText("Click a recipe on the left to see it here. Its star keeps it in your destinations, above.")
+    f.detailEmpty:SetText("Click a recipe on the left to see it here. Its star makes it a favorite, at the top of the list.")
     f.detailEmpty:Show()
     return
   end
@@ -3196,8 +3256,57 @@ local function FillDestDetail(info)
   f.destBottom = anchor
 end
 
+-- The Craft view, recipe layout: the recipe list on the left (favorites first), the clicked recipe
+-- on the right in the Route view's panel. Your crafts list and its shopping line are the list
+-- layout's.
+local function DestRecipeRefresh(name)
+  local f = overlay
+  SetDestWidgets(true)
+  for _, w in ipairs({ f.favHeader, f.favList, f.favAll, f.favCart, f.favEmpty }) do w:Hide() end
+  if qtyEd and qtyEd:IsShown() then qtyEd:ClearFocus() end
+  -- the enchant target slot: in the recipe panel, as on the route
+  if f.enchant and f.enchant:GetParent() ~= f.schematic then
+    f.enchant:SetParent(f.schematic)
+    f.enchant:ClearAllPoints()
+    f.enchant:SetPoint("BOTTOMLEFT", f.status, "TOPLEFT", 0, 4)
+    f.enchant:SetPoint("BOTTOMRIGHT", f.status, "TOPRIGHT", 0, 4)
+  end
+  f.schematic:SetPoint("TOPLEFT", f.divider, "TOPRIGHT", 12, 0)
+  f.schematic:Show()
+  local left, _, info = BuildDestItems(name)
+  f.info = info
+  f.empty:SetText("No recipes match.")
+  f.empty:SetShown(#left == 0)
+  list:SetShown(#left > 0)
+  list:SetData(left, ui.keepScroll)
+  ui.destAnchor = nil
+  ui.keepScroll = true
+  f.goalDD:Hide()
+  f.modeDD:Hide()
+  f.customBox:Hide()
+  LayoutHeader()
+  UpdateRankBar()
+  if f.profDD then f.profDD:Sync() end
+  if f.altsCB then f.altsCB:Sync() end
+  f.destFilterDD:Sync()
+  f.destLayoutBtn:Sync()
+  if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
+  f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
+  FillDestDetail(info)
+  FillSchematic(info)
+  -- the bar under the list stays (empty) so the columns line up with the Route view
+  f.costBar.cart:Hide()
+  if f.costBar.popout then f.costBar.popout:Hide() end
+  f.costBar.label:SetText("")
+  f.costBar.money:SetText("")
+  f.costBar.note:SetText("")
+  f.costBar:Show()
+  if CR.RefreshBuyPop then CR.RefreshBuyPop() end
+end
+
 local function DestRefresh(name)
   local f = overlay
+  if DestLayout() == "recipe" then return DestRecipeRefresh(name) end
   SetDestWidgets(true)
   local left, favs, info = BuildDestItems(name)
   f.info = info
@@ -3258,6 +3367,7 @@ local function DestRefresh(name)
   if f.profDD then f.profDD:Sync() end
   if f.altsCB then f.altsCB:Sync() end
   f.destFilterDD:Sync()
+  f.destLayoutBtn:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
   -- the cost bar: making each destination once (the route's cart isn't for this)
@@ -4367,6 +4477,39 @@ local function BuildOverlay()
   frame.destSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   frame.destSearch:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
   -- Filter: tickboxes (none ticked = every recipe; each ticked one narrows the list)
+  -- List / Recipe: how the Craft view lays out (the button names the one a click switches to)
+  local layoutBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  layoutBtn:SetSize(56, 22)
+  CR.ThemeRegisterButton(layoutBtn)
+  layoutBtn.Sync = function(self) self:SetText(DestLayout() == "recipe" and "List" or "Recipe") end
+  layoutBtn:Sync()
+  layoutBtn:SetScript("OnClick", function(self)
+    if not CraftRouteCharDB then return end
+    local toRecipe = DestLayout() ~= "recipe"
+    CraftRouteCharDB.craftLayout = toRecipe and "recipe" or nil
+    -- the recipe open in your crafts list stays the one shown
+    if ui.destSelected and toRecipe then ui.destSide = "left" end
+    ui.keepScroll = false
+    self:Sync()
+    frame:Refresh()
+  end)
+  layoutBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    if DestLayout() == "recipe" then
+      GameTooltip:SetText("List layout")
+      GameTooltip:AddLine("Your crafts on the right, with the shopping list and amounts. A recipe opens in place "
+        .. "under its row.", 1, 1, 1, true)
+    else
+      GameTooltip:SetText("Recipe layout")
+      GameTooltip:AddLine("Favorites at the top of the recipe list. A clicked recipe shows on the right, as on "
+        .. "the Route view.", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+  end)
+  layoutBtn:SetScript("OnLeave", GameTooltip_Hide)
+  layoutBtn:Hide()
+  frame.destLayoutBtn = layoutBtn
+
   frame.destFilterDD = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   frame.destFilterDD:SetSize(112, 22)
   frame.destFilterDD:SetText("Filter")

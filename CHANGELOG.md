@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 0.81.0
+
+- The Craft view has a second layout. The **Recipe** button, left of the search box, switches to it, and **List** switches back. The choice is kept per character.
+  - The recipe list stays on the left, with search, Filter and sorting.
+  - Starred recipes move to a **Favorites** heading at the top of the list.
+  - Clicking a recipe shows it in the right column, as on the Route view: its icon and name, whether you know it and where to learn it (with map pins), the station it needs, reagents with Buy and Vendor, cost and profit, Shopping List, Count alts, and the Create buttons.
+- The List layout is unchanged: your crafts on the right, with the shopping list and amounts.
+
 ## 0.80.0
 
 - **Anvil required** and **Forge required** pin more of them: The Great Forge and Great Anvil in Ironforge, the Thunder Bluff Forge, Heated Forges, Stone and Foundry Anvils, Grimand's Anvil, and Dredan's Forge.
