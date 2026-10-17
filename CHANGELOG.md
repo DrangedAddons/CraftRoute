@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.4
+
+- The Route view's step, reagent and task tooltips now hang down beside the row too, like the Craft view's. If one would run off the bottom of the screen, it opens upward as before.
+
 ## 0.81.3
 
 - The **Craft** button now switches the Craft view's layout, and the separate Recipe / List button is gone. From Route, Craft opens the layout you last used. Clicking Craft again while on it switches between **Craft** (the recipe layout) and **Craft (List)**. The button shows which layout you're on, and the choice is kept per character.

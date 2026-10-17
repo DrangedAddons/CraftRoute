@@ -584,11 +584,10 @@ local function ResetRow(row)
   row:SetScript("OnEnter", nil)
 end
 
--- The Craft view: a row's tooltip hangs down from the row's top corner (beside it) instead of
--- standing on it - unless it would run off the bottom of the screen, then it stays as it was.
+-- A row's tooltip (Craft and Route views) hangs down from the row's top corner (beside it) instead
+-- of standing on it - unless it would run off the bottom of the screen, then it stays as it was.
 local function DropTooltip(row)
   if not (GameTooltip:IsShown() and GameTooltip:GetOwner() == row) then return end
-  if ViewFor(PlanProfession()) ~= "dest" then return end
   local top, h = row:GetTop(), GameTooltip:GetHeight()
   if not (top and h) then return end
   local below = top * row:GetEffectiveScale() - h * GameTooltip:GetEffectiveScale()
