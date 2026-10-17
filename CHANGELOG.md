@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 0.82.0
+
+- In the Craft view's recipe panel, a reagent you're short of and can make yourself has a small **+** at the bottom right of its icon. Click the reagent to show how to make it underneath:
+  - First a line like **Make 3 with Leatherworking**, with its button (Make, Smelt, Open, Combine or Split).
+  - Then what that takes, with Buy and Vendor buttons where you're short. Each of those can open the same way.
+  - Click the reagent again to close it. The panel looks the same as before until you open one.
+
 ## 0.81.8
 
 - A reagent you can make yourself, with any profession you've learned, no longer gets a **Vendor** button. Crafting it beats tracking down the odd vendor that stocks it, and the vendor filters treat it the same way. A vendor that has it open still shows **Buy**.

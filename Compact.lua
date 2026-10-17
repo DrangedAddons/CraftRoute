@@ -53,6 +53,7 @@ local ui = {
   destSide = nil,     -- the open recipe is in "left" (all recipes) or "right" (your list)
   destQty = {},       -- [spell] = how many to make (the Craft view's quantity box)
   destAnchor = nil,   -- a recipe was just clicked: { spell, side, slot } - keep its row where it was
+  schemParts = {},    -- the Craft view's recipe panel: reagents opened to show how to make them
 }
 
 ---------------------------------------------------------------------------
@@ -2045,6 +2046,193 @@ local function SyncStructurePin(frame, recipe)
   btn:Show()
 end
 
+-- The recipe panel's reagents (Craft view): one you're short of and can make gets a small + on its
+-- icon; clicking it shows how to make it underneath - a line with the craft button, then what
+-- that takes (each of those can open the same way). Click it again to close.
+local function SetPartMark(row, toggle, open)
+  if not rawget(row, "mark") then
+    row.mark = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    row.mark:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 1, -1)
+    row.mark:SetTextColor(1, 0.82, 0)
+    if row.mark.SetShadowOffset then
+      row.mark:SetShadowColor(0, 0, 0, 1)
+      row.mark:SetShadowOffset(1, -1)
+    end
+  end
+  row.mark:SetText(open and "-" or "+")
+  row.mark:SetShown(toggle and true or false)
+end
+
+local SUB_H = 22
+local function SubRow(i)
+  local f = overlay
+  f.subRows = rawget(f, "subRows") or {}
+  local row = f.subRows[i]
+  if row then return row end
+  row = CreateFrame("Button", nil, f.rcontent)
+  row:SetHeight(SUB_H)
+  row.icon = row:CreateTexture(nil, "ARTWORK")
+  row.icon:SetSize(SUB_H - 2, SUB_H - 2)
+  row.icon:SetPoint("LEFT", 0, 0)
+  row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.text:SetJustifyH("LEFT")
+  row.text:SetWordWrap(false)
+  row.act = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.act:SetSize(64, 18)
+  row.act:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  row.act:Hide()
+  row.buy = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+  row.buy:SetSize(40, 18)
+  row.buy:SetText("Buy")
+  row.buy:Hide()
+  CR.ThemeRegisterButton(row.act)
+  CR.ThemeRegisterButton(row.buy)
+  -- Open (another profession) and Combine / Split need a secure click
+  row.actCover = AttachPlainCover and AttachPlainCover(row.act, function()
+      if row.actMacro and row.actMacro:find("^/cast") then ui.keepUntil = GetTime() + 2 end
+      return row.actMacro or ""
+    end,
+    function() return overlay and overlay:IsShown() and row:IsVisible() and row.act:IsShown() and row.actMacro ~= nil end)
+  row:SetScript("OnEnter", function(self)
+    if not self.itemID then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetItemByID(self.itemID)
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
+    CR.AddLocationLines(GameTooltip, self.itemID)
+    if rawget(self, "crToggle") then
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine(ui.schemParts[self.crToggle] and "Click to hide how to make it."
+        or "Click to see how to make it.", 0.2, 1, 0.2, true)
+    end
+    GameTooltip:Show()
+  end)
+  row:SetScript("OnLeave", GameTooltip_Hide)
+  row:SetScript("OnClick", function(self)
+    if IsModifiedClick("CHATLINK") and self.itemID then
+      local _, link = CR.GetItemInfo(self.itemID)
+      if link then ChatEdit_InsertLink(link) end
+    elseif rawget(self, "crToggle") then
+      ui.schemParts[self.crToggle] = not ui.schemParts[self.crToggle] or nil
+      ui.keepScroll = true
+      if overlay then overlay:Refresh() end
+    end
+  end)
+  f.subRows[i] = row
+  return row
+end
+
+-- how a component is made: "Make 3 with Leatherworking" and its button (as the route list's)
+local function FillMakeLine(row, cinfo)
+  row.itemID, row.crToggle, row.actMacro = nil, nil, nil
+  row.icon:Hide()
+  if rawget(row, "mark") then row.mark:Hide() end
+  row.buy:Hide()
+  local a = row.act
+  a:Show()
+  a:Disable()
+  a:SetScript("OnClick", nil)
+  local text
+  if cinfo.recipe then
+    local how = (cinfo.smelting and "Smelt " or "Make ") .. cinfo.toMake .. " with " .. cinfo.prof.name
+    if cinfo.learned == false then
+      a:SetText("Learn")
+      text = how .. CR.ColorText("  - not learned", "ff9966")
+    elseif not cinfo.skillOK then
+      a:SetText("Skill")
+      text = how .. CR.ColorText("  - needs " .. (cinfo.recipe.learn or 1), "ff6060")
+    elseif not cinfo.open then
+      a:SetText("Open")
+      a:SetEnabled(not InCombatLockdown())
+      row.actMacro = CR.OpenProfessionMacro(cinfo.prof.name)
+      text = how
+    else
+      local n = cinfo.count or 0
+      a:SetText((cinfo.smelting and "Smelt " or "Make ") .. n)
+      a:SetEnabled(n > 0 and not InCombatLockdown())
+      a:SetScript("OnClick", function() CR.CraftSpell(cinfo.recipe.spell, n, cinfo.prof.name) end)
+      text = how
+    end
+  else
+    a:SetText(cinfo.convert.uses > 1 and "Combine" or "Split")
+    a:SetEnabled(cinfo.available > 0 and not InCombatLockdown())
+    row.actMacro = cinfo.macro
+    text = cinfo.convert.uses > 1 and "Combine 3 lesser into 1 greater" or "Split 1 greater into 3 lesser"
+  end
+  row.text:ClearAllPoints()
+  row.text:SetPoint("LEFT", row, "LEFT", 0, 0)
+  row.text:SetPoint("RIGHT", a, "LEFT", -4, 0)
+  row.text:SetTextColor(0.6, 0.85, 1)
+  row.text:SetText(text)
+end
+
+-- a component's line: icon, have / need and name, Buy / Vendor when short, + when it can be made
+local function FillPartLine(row, id, per, mult, key, cinfo, open, short)
+  row.itemID = id
+  row.actMacro = nil
+  row.act:Hide()
+  row.icon:Show()
+  row.icon:SetTexture(CR.GetItemIcon(id) or "Interface\Icons\INV_Misc_QuestionMark")
+  local toggle = cinfo and (short or open)
+  row.crToggle = toggle and key or nil
+  SetPartMark(row, toggle, open)
+  row.text:SetTextColor(1, 1, 1)
+  row.text:SetText((HaveNeed(id, per, mult)))
+  local right
+  if short and CR.SetBuyButton then
+    local need = per * math.max(1, mult)
+    row.buy:ClearAllPoints()
+    row.buy:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    if CR.SetBuyButton(row.buy, id, function(self)
+      CR.OpenBuy(id, need - (CR.BagsAndElsewhere(id)), self, function(i)
+        return math.max(0, need - (CR.BagsAndElsewhere(i)))
+      end, overlay)
+    end) > 0 then right = row.buy end
+  else
+    row.buy:Hide()
+  end
+  row.text:ClearAllPoints()
+  row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+  row.text:SetPoint("RIGHT", right or row, right and "LEFT" or "RIGHT", -4, 0)
+end
+
+-- under an opened reagent: how it's made, then what that takes (opened ones nest further in)
+local function AddPartLines(cinfo, level, key, path, y, used, x0)
+  local rcontent = overlay.rcontent
+  local function Place(row, x)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", rcontent, "TOPLEFT", x, y)
+    row:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
+    row:Show()
+    y = y - SUB_H - 2
+  end
+  local x = x0 + (level - 2) * 16
+  used.n = used.n + 1
+  local line = SubRow(used.n)
+  FillMakeLine(line, cinfo)
+  Place(line, x)
+  local mult = math.max(1, cinfo.toMake or 1)
+  for _, rg in ipairs(cinfo.reagents or {}) do
+    local id = rg[1]
+    local need = rg[2] * mult
+    local sub = key .. ">" .. id
+    local info = (level < 8 and not path[id]) and CR.ComponentInfo(cinfo.prof, id, need) or nil
+    local short = CR.BagsAndElsewhere(id) < need
+    local open = info and ui.schemParts[sub] and true or false
+    used.n = used.n + 1
+    local row = SubRow(used.n)
+    FillPartLine(row, id, rg[2], mult, sub, info, open, short)
+    Place(row, x)
+    if info and open and (short or open) then
+      path[id] = true   -- never loop (essences convert both ways)
+      y = AddPartLines(info, level + 1, sub, path, y, used, x0)
+      path[id] = nil
+    end
+  end
+  return y
+end
+
 local function FillSchematic(info)
   local frame = overlay
   local st = info and info.selected
@@ -2189,6 +2377,8 @@ local function FillSchematic(info)
     rscroll:SetPoint("BOTTOMRIGHT", frame.status, "TOPRIGHT", -4, 18)
   end
   local y = -6
+  local used = { n = 0 }   -- the parts' lines drawn so far (the Craft view's opened reagents)
+  local partProf = CR.professions[profName]
   for i = 1, REAGENT_SLOTS do
     local row = frame.reagents[i]
     local rg = reagents[i]
@@ -2198,6 +2388,13 @@ local function FillSchematic(info)
       local text, bags, need = HaveNeed(rg[1], rg[2], st.crafts or 1)
       row.text:SetText(text)
       row.itemID = rg[1]
+      -- (Craft view) short and makeable: a + on the icon, a click shows how to make it below
+      local partKey = recipe.spell .. ">" .. rg[1]
+      local partInfo = info.dest and CR.ComponentInfo and CR.ComponentInfo(partProf, rg[1], need) or nil
+      local partOpen = partInfo and ui.schemParts[partKey] and true or false
+      local partToggle = partInfo and (bags < need or partOpen)
+      row.crToggle = partToggle and partKey or nil
+      SetPartMark(row, partToggle, partOpen)
       -- bags short: "Buy" while a vendor that sells it is open, "Vendor" when vendors do but none is
       local id, needAll = rg[1], need
       local buyW = 0
@@ -2218,10 +2415,15 @@ local function FillSchematic(info)
       row:SetHeight(rowH)
       row.icon:SetSize(rowH, rowH)
       y = y - rowH - 4
+      if partToggle and partOpen then
+        y = AddPartLines(partInfo, 2, partKey, { [rg[1]] = true }, y + 2, used, 20) - 2
+      end
     else
       row:Hide()
     end
   end
+  local subRows = rawget(frame, "subRows") or {}
+  for i = used.n + 1, #subRows do subRows[i]:Hide() end
   frame.cost:SetText(CostLines(recipe, st.crafts or 1))
   frame.cost:ClearAllPoints()
   frame.cost:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8)
@@ -5076,6 +5278,11 @@ local function BuildOverlay()
       GameTooltip:AddLine(" ")
       GameTooltip:AddLine("Where you have it:", 1, 0.82, 0)
       CR.AddLocationLines(GameTooltip, self.itemID)
+      if rawget(self, "crToggle") then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(ui.schemParts[self.crToggle] and "Click to hide how to make it."
+          or "Click to see how to make it.", 0.2, 1, 0.2, true)
+      end
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave", GameTooltip_Hide)
@@ -5083,7 +5290,12 @@ local function BuildOverlay()
       if IsModifiedClick("CHATLINK") and self.itemID then
         local _, link = CR.GetItemInfo(self.itemID)
         if link then ChatEdit_InsertLink(link) end
-      elseif self.itemID and ui.selectedKey then
+      elseif rawget(self, "crToggle") then
+        -- (Craft view) show / hide how to make it, under it
+        ui.schemParts[self.crToggle] = not ui.schemParts[self.crToggle] or nil
+        ui.keepScroll = true
+        if overlay then overlay:Refresh() end
+      elseif self.itemID and ui.selectedKey and not (overlay and overlay.info and overlay.info.dest) then
         -- open this reagent's chain in the route list
         ui.openSteps[ui.selectedKey] = true
         local key = ui.selectedKey .. ">" .. self.itemID
