@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.3
+
+- The **Craft** button now switches the Craft view's layout, and the separate Recipe / List button is gone. From Route, Craft opens the layout you last used. Clicking Craft again while on it switches between **Craft** (the recipe layout) and **Craft (List)**. The button shows which layout you're on, and the choice is kept per character.
+
 ## 0.81.2
 
 - In the Craft view, a recipe's tooltip now hangs down beside the row. Its top lines up with the row's top, instead of the tooltip sitting above the row. If it would run off the bottom of the screen, it goes back to opening upward.
