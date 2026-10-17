@@ -592,17 +592,15 @@ local function DropTooltip(row)
   if not (top and h) then return end
   local below = top * row:GetEffectiveScale() - h * GameTooltip:GetEffectiveScale()
   if below < 0 then return end
-  local inRight = overlay and overlay.favList and row:GetParent() == overlay.favList
   GameTooltip:ClearAllPoints()
-  GameTooltip:SetPoint(inRight and "TOPRIGHT" or "TOPLEFT", row, inRight and "TOPLEFT" or "TOPRIGHT")
+  GameTooltip:SetPoint("TOPLEFT", row, "TOPRIGHT")
 end
 
 local function ShowTooltip(row)
   local item = row.item
   if not item then return end
-  -- rows in the right-hand list open their tooltip to the left, so it stays over the window
-  local inRight = overlay and overlay.favList and row:GetParent() == overlay.favList
-  GameTooltip:SetOwner(row, inRight and "ANCHOR_LEFT" or "ANCHOR_RIGHT")
+  -- every row's tooltip opens to its right (your crafts list's too)
+  GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
   if item.kind == "reagent" then
     GameTooltip:SetItemByID(item.itemID)
     GameTooltip:AddLine(" ")

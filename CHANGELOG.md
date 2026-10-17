@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.6
+
+- In the Craft (List) view, the tooltips for your crafts now open to the right of the hovered row, hanging down from its top, like the recipe list's. Before, they covered the recipe list.
+
 ## 0.81.5
 
 - The Craft view's recipe rows no longer show the **+** / **-** marker. Clicking a row still opens it in place, and the star moves into the marker's spot.
