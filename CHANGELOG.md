@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.81.2
+
+- In the Craft view, a recipe's tooltip now hangs down beside the row. Its top lines up with the row's top, instead of the tooltip sitting above the row. If it would run off the bottom of the screen, it goes back to opening upward.
+
 ## 0.81.1
 
 - The Craft view's **Recipe** / **List** button moved to the top left of the right column, level with Materials. The search box has its full width back.

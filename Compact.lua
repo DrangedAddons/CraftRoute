@@ -584,6 +584,20 @@ local function ResetRow(row)
   row:SetScript("OnEnter", nil)
 end
 
+-- The Craft view: a row's tooltip hangs down from the row's top corner (beside it) instead of
+-- standing on it - unless it would run off the bottom of the screen, then it stays as it was.
+local function DropTooltip(row)
+  if not (GameTooltip:IsShown() and GameTooltip:GetOwner() == row) then return end
+  if ViewFor(PlanProfession()) ~= "dest" then return end
+  local top, h = row:GetTop(), GameTooltip:GetHeight()
+  if not (top and h) then return end
+  local below = top * row:GetEffectiveScale() - h * GameTooltip:GetEffectiveScale()
+  if below < 0 then return end
+  local inRight = overlay and overlay.favList and row:GetParent() == overlay.favList
+  GameTooltip:ClearAllPoints()
+  GameTooltip:SetPoint(inRight and "TOPRIGHT" or "TOPLEFT", row, inRight and "TOPLEFT" or "TOPRIGHT")
+end
+
 local function ShowTooltip(row)
   local item = row.item
   if not item then return end
@@ -678,6 +692,7 @@ local function ApplyRow(row, item)
   row:SetScript("OnEnter", function(self)
     self.hover:Show()
     ShowTooltip(self)
+    DropTooltip(self)
   end)
   row:SetScript("OnLeave", function(self)
     self.hover:Hide()
