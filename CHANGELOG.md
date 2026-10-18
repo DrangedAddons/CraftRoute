@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.83.3
+
+- Loot feed: a material you have enough of now reads **complete** instead of enough, such as **142/98 - complete**.
+
 ## 0.83.2
 
 - Loot feed: once you have enough of a material, its line shows your real count in green with **enough**, such as **142/98 - enough**. Before, it was capped at the amount needed (98/98), which looked like you'd only just reached it.

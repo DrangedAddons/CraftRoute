@@ -43,7 +43,7 @@ local function ProgressText(byId, itemID)
   local have = (m.have or 0) + (m.crafted or 0)
   if have < 0 then have = 0 end
   if have >= m.need then
-    return CR.ColorText(string.format("%d/%d - enough", have, m.need), "40ff40")
+    return CR.ColorText(string.format("%d/%d - complete", have, m.need), "40ff40")
   end
   return string.format("%d/%d", have, m.need)
 end
