@@ -35,13 +35,16 @@ local function ItemID(link)
 end
 
 -- Owned (bags, bank, mail, and alts when that option is on) plus mats the plan
--- crafts on the way, capped the same way the item tooltip caps it.
+-- crafts on the way. Short: "have/need". Enough: the real count (not capped at the need, so 98/98
+-- never hides that you've 140), in green - you can stop gathering it.
 local function ProgressText(byId, itemID)
   local m = byId and itemID and byId[itemID]
   if not m or not m.need or m.need <= 0 then return nil end
   local have = (m.have or 0) + (m.crafted or 0)
   if have < 0 then have = 0 end
-  if have > m.need then have = m.need end
+  if have >= m.need then
+    return CR.ColorText(string.format("%d/%d - enough", have, m.need), "40ff40")
+  end
   return string.format("%d/%d", have, m.need)
 end
 

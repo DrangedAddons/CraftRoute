@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.83.2
+
+- Loot feed: once you have enough of a material, its line shows your real count in green with **enough**, such as **142/98 - enough**. Before, it was capped at the amount needed (98/98), which looked like you'd only just reached it.
+
 ## 0.83.1
 
 - Fix: the **Herbs to pick** and **Veins to mine** lists from 0.83.0 now show on the step's card. The route plan wasn't passing them through.
