@@ -13,6 +13,12 @@ local _, CR = ...
 
 BINDING_HEADER_CRAFTROUTE = "CraftRoute"
 BINDING_NAME_CRAFTROUTE_PROFESSION_TAB = "CraftRoute Profession Tab"
+BINDING_NAME_CRAFTROUTE_MATERIALS = "CraftRoute Materials Window"
+
+-- The Materials key: opens the Materials window, or closes it when it's up.
+function CraftRoute_MaterialsKeyPressed()
+  if CR.ToggleAllMaterials then CR.SafeCall(CR.ToggleAllMaterials) end
+end
 
 local function SkillLine(name)
   local s = name and not CR.NO_WINDOW[name] and CR.skill[name]

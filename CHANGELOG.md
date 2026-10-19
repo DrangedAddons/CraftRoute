@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.84.0
+
+- New key binding: **Materials window** opens and closes the Materials window. Set it in Settings > Key bindings, under the Profession tab key: click the button, then press a key, or right-click to clear it. It's also under Options > Keybindings > AddOns > CraftRoute. It has no default key.
+
 ## 0.83.3
 
 - Loot feed: a material you have enough of now reads **complete** instead of enough, such as **142/98 - complete**.

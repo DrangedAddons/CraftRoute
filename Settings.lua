@@ -168,74 +168,83 @@ local function Build()
   end
   y = y - 12
 
-  Heading("Key binding")
-  -- the CraftRoute key (the same binding as in Options > Keybindings > AddOns): click, then press it
-  local kbLabel = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  kbLabel:SetPoint("TOPLEFT", 22, y - 5)
-  kbLabel:SetText("Profession tab")
-  local kb = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
-  kb:SetSize(180, 24)
-  kb:SetPoint("LEFT", kbLabel, "RIGHT", 12, 0)
-  kb:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  local hint = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  hint:SetPoint("LEFT", kb, "RIGHT", 10, 0)
-  local capturing = false
-  local function Show()
-    local key = GetBindingKey and GetBindingKey(BIND)
-    if capturing then
-      kb:SetText(CR.ColorText("Press a key...", "ffd100"))
-      hint:SetText("Escape cancels")
-    else
-      kb:SetText(key and (GetBindingText and GetBindingText(key) or key) or CR.ColorText("Not bound", "888888"))
-      hint:SetText("Click to set, right-click to clear")
+  Heading("Key bindings")
+  -- a CraftRoute key (the same bindings as in Options > Keybindings > AddOns): click, then press it
+  local function KeyRow(labelText, bind)
+    local kbLabel = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    kbLabel:SetPoint("TOPLEFT", 22, y - 5)
+    kbLabel:SetWidth(120)
+    kbLabel:SetJustifyH("LEFT")
+    kbLabel:SetText(labelText)
+    local kb = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    kb:SetSize(180, 24)
+    kb:SetPoint("LEFT", kbLabel, "RIGHT", 12, 0)
+    kb:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    local hint = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hint:SetPoint("LEFT", kb, "RIGHT", 10, 0)
+    local capturing = false
+    local function Show()
+      local key = GetBindingKey and GetBindingKey(bind)
+      if capturing then
+        kb:SetText(CR.ColorText("Press a key...", "ffd100"))
+        hint:SetText("Escape cancels")
+      else
+        kb:SetText(key and (GetBindingText and GetBindingText(key) or key) or CR.ColorText("Not bound", "888888"))
+        hint:SetText("Click to set, right-click to clear")
+      end
     end
-  end
-  -- (keys only while it's waiting for one - otherwise every key, Escape too, goes on as usual)
-  local function Listen(on)
-    kb:EnableKeyboard(on)
-    if not InCombatLockdown() and kb.SetPropagateKeyboardInput then pcall(kb.SetPropagateKeyboardInput, kb, not on) end
-  end
-  local function Stop()
-    capturing = false
-    Listen(false)
-    Show()
-  end
-  local function Save()
-    if SaveBindings and GetCurrentBindingSet then SaveBindings(GetCurrentBindingSet()) end
-  end
-  kb:SetScript("OnClick", function(_, mouse)
-    if InCombatLockdown() then CR.Print("Can't change key bindings in combat.") return end
-    if mouse == "RightButton" then
-      -- cleared: every key it had
-      for _, k in ipairs({ GetBindingKey(BIND) }) do SetBinding(k) end
+    -- (keys only while it's waiting for one - otherwise every key, Escape too, goes on as usual)
+    local function Listen(on)
+      kb:EnableKeyboard(on)
+      if not InCombatLockdown() and kb.SetPropagateKeyboardInput then pcall(kb.SetPropagateKeyboardInput, kb, not on) end
+    end
+    local function Stop()
+      capturing = false
+      Listen(false)
+      Show()
+    end
+    local function Save()
+      if SaveBindings and GetCurrentBindingSet then SaveBindings(GetCurrentBindingSet()) end
+    end
+    kb:SetScript("OnClick", function(_, mouse)
+      if InCombatLockdown() then CR.Print("Can't change key bindings in combat.") return end
+      if mouse == "RightButton" then
+        -- cleared: every key it had
+        for _, k in ipairs({ GetBindingKey(bind) }) do SetBinding(k) end
+        Save()
+        Stop()
+        return
+      end
+      capturing = not capturing
+      Listen(capturing)
+      Show()
+    end)
+    kb:SetScript("OnKeyDown", function(self, key)
+      if not capturing then
+        if not InCombatLockdown() then pcall(self.SetPropagateKeyboardInput, self, true) end
+        return
+      end
+      if key == "ESCAPE" then Stop() return end
+      -- a modifier on its own isn't the key - wait for the rest
+      if key:match("^[LR]?SHIFT$") or key:match("^[LR]?CTRL$") or key:match("^[LR]?ALT$") or key:match("^[LR]?META$") then return end
+      local combo = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
+        .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
+      -- the old key goes; the new one is this binding's (taken from whatever had it)
+      for _, k in ipairs({ GetBindingKey(bind) }) do SetBinding(k) end
+      SetBinding(combo, bind)
       Save()
+      -- (the other rows show the change if this key was theirs)
+      for _, f in ipairs(syncs) do f() end
       Stop()
-      return
-    end
-    capturing = not capturing
-    Listen(capturing)
-    Show()
-  end)
-  kb:SetScript("OnKeyDown", function(self, key)
-    if not capturing then
-      if not InCombatLockdown() then pcall(self.SetPropagateKeyboardInput, self, true) end
-      return
-    end
-    if key == "ESCAPE" then Stop() return end
-    -- a modifier on its own isn't the key - wait for the rest
-    if key:match("^[LR]?SHIFT$") or key:match("^[LR]?CTRL$") or key:match("^[LR]?ALT$") or key:match("^[LR]?META$") then return end
-    local combo = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
-      .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
-    -- the old key goes; the new one is this binding's (taken from whatever had it)
-    for _, k in ipairs({ GetBindingKey(BIND) }) do SetBinding(k) end
-    SetBinding(combo, BIND)
-    Save()
-    Stop()
-  end)
-  kb:SetScript("OnHide", Stop)
-  Listen(false)
-  table.insert(syncs, Show)
-  y = y - 40
+    end)
+    kb:SetScript("OnHide", Stop)
+    Listen(false)
+    table.insert(syncs, Show)
+    y = y - 32
+  end
+  KeyRow("Profession tab", BIND)
+  KeyRow("Materials window", "CRAFTROUTE_MATERIALS")   -- (Bindings.xml)
+  y = y - 8
 
   -- what else to install for everything CraftRoute can do (each shown installed or not)
   Heading("Recommended addons")
