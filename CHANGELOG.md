@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.84.1
+
+- Fix: the "Binding header CRAFTROUTE was attempted to be loaded more than once" error on login or reload. The new Materials window binding declared the CraftRoute key binding header a second time.
+
 ## 0.84.0
 
 - New key binding: **Materials window** opens and closes the Materials window. Set it in Settings > Key bindings, under the Profession tab key: click the button, then press a key, or right-click to clear it. It's also under Options > Keybindings > AddOns > CraftRoute. It has no default key.
