@@ -46,8 +46,9 @@ Type `/cr` to open CraftRoute. Press **Shift+K** to open your profession straigh
 Optional companions:
 - [Auctionator](https://www.curseforge.com/wow/addons/auctionator) for prices and shopping lists.
 - [Syndicator](https://www.curseforge.com/wow/addons/syndicator) for bank, mail and alt counts.
-- TrainerSpells for trainer and recipe vendor locations (map pins on task steps).
-- EllesmereUI for the matching themes.
+- [TrainerSpells](https://www.curseforge.com/wow/addons/TrainerSpells) for trainer and recipe vendor locations (map pins on task steps).
+- [EllesmereUI](https://www.ellesmereui.com) For theming and loot feed.
+- [Questie](https://www.curseforge.com/wow/addons/questie) for NPC vendor locations.
 
 ## Notes
 
