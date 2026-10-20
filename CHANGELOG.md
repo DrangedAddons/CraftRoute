@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.84.2
+
+- README updated. The EfficiencyChanges.md notes file is removed. No changes in game.
+
 ## 0.84.1
 
 - Fix: the "Binding header CRAFTROUTE was attempted to be loaded more than once" error on login or reload. The new Materials window binding declared the CraftRoute key binding header a second time.
