@@ -1,13 +1,15 @@
 -- Keybind (default Shift+K, set in Bindings.xml): open the profession window on CraftRoute's tab -
 -- with the profession CraftRoute's tab was last on this session (else your first profession); with
 -- the window up, on any tab, it closes the window.
--- Always the tab. With no crafting profession to open (nothing learned, or only gathering) it
--- opens the main window's Professions tab instead: pick a profession, pin its nearest trainer. It opens the profession picked in
+-- Always the tab once a profession is learned. With nothing learned there is no skill line for
+-- OpenTradeSkill, so it opens the game's own professions frame (CraftRoute's trainer pins already
+-- sit on its unlearned sections). Only gathering (a profession, but no crafting window) still
+-- opens the main window's Professions tab. It opens the profession picked in
 -- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
 -- nearest one that has (Cooking for Fishing, else your first crafting profession). Like other
 -- addons' profession openers (EllesmereUI's data bar) it calls C_TradeSkillUI.OpenTradeSkill from
 -- the key press itself - a real key press may - rather than casting the profession. With the
--- window already open it shows CraftRoute's tab, or closes the window when that's showing.
+-- window already open it closes the window.
 -- (While dead the game won't switch to a crafting page at all - a known client issue.)
 local _, CR = ...
 
@@ -23,6 +25,38 @@ end
 local function SkillLine(name)
   local s = name and not CR.NO_WINDOW[name] and CR.skill[name]
   return s and s.skillLine
+end
+
+-- The game's professions frame, loaded on demand. Nothing learned means no skill line, so
+-- OpenTradeSkill cannot open it. Shown as Blizzard leaves it: CraftRoute's tab is not selected.
+-- That tab is only brought up when a profession is opened (CR.KeybindWillOpen).
+local function EnsureProfessionsFrame()
+  if ProfessionsFrame then return true end
+  if type(ProfessionsFrame_LoadUI) == "function" then pcall(ProfessionsFrame_LoadUI) end
+  if not ProfessionsFrame and C_AddOns and C_AddOns.LoadAddOn then
+    pcall(C_AddOns.LoadAddOn, "Blizzard_Professions")
+  end
+  if not ProfessionsFrame and type(UIParentLoadAddOn) == "function" then
+    pcall(UIParentLoadAddOn, "Blizzard_Professions")
+  end
+  if not ProfessionsFrame and type(LoadAddOn) == "function" then
+    pcall(LoadAddOn, "Blizzard_Professions")
+  end
+  return ProfessionsFrame ~= nil
+end
+
+local function OpenEmptyProfessionsFrame()
+  if not EnsureProfessionsFrame() or InCombatLockdown() then return false end
+  if not ProfessionsFrame:IsShown() then
+    if ShowUIPanel then pcall(ShowUIPanel, ProfessionsFrame) end
+    if not ProfessionsFrame:IsShown() and type(ToggleProfessionsBook) == "function" then
+      pcall(ToggleProfessionsBook)
+    end
+    if not ProfessionsFrame:IsShown() and ProfessionMicroButton and ProfessionMicroButton.Click then
+      pcall(ProfessionMicroButton.Click, ProfessionMicroButton)
+    end
+  end
+  return ProfessionsFrame:IsShown()
 end
 
 -- The profession to open: the picked one, else the nearest that has a crafting window.
@@ -46,6 +80,12 @@ function CraftRoute_KeybindPressed()
   if ProfessionsFrame and ProfessionsFrame:IsShown() then
     -- up but empty (no profession loaded, e.g. after a reload): load one, on CraftRoute's tab
     if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then return end
+    -- nothing learned: the frame was opened with no trade skill. CloseTradeSkill does not
+    -- dismiss that. A character who has a profession still closes with CloseTradeSkill below.
+    if CR.HasAnyProfession and not CR.HasAnyProfession() then
+      if HideUIPanel then HideUIPanel(ProfessionsFrame) else ProfessionsFrame:Hide() end
+      return
+    end
     if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() else HideUIPanel(ProfessionsFrame) end
     return
   end
@@ -59,8 +99,11 @@ function CraftRoute_KeybindPressed()
   end
   local prof = Target()
   if not prof then
-    -- no crafting profession window to open: the Professions tab (pick one, find its trainer);
-    -- pressing it again while that's showing closes it
+    -- no profession at all: the game's professions frame, not CraftRoute's tab. If that frame
+    -- cannot be opened, the main window's Professions tab (the same place gathering-only lands).
+    if CR.HasAnyProfession and not CR.HasAnyProfession() and OpenEmptyProfessionsFrame() then return end
+    -- professions, but none with a crafting window (Herbalism, Skinning, Fishing):
+    -- the Professions tab. Pressing it again while that's showing closes it.
     if CR.IsWindowShown() and CR.CurrentTab and CR.CurrentTab() == "start" then
       CR.ToggleWindow()
     else
