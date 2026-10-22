@@ -69,7 +69,10 @@ end
 -- t.race: only for that race (its name, or the game's race file name - e.g. "Skyborne")
 local function RaceOK(race)
   if not race then return true end
-  local name, file = UnitRace and UnitRace("player")
+  if not UnitRace then return false end
+  -- (not "UnitRace and UnitRace()": the and keeps only the first value, the name - e.g. "High
+  -- Order Skyborne" - and drops the race file name, "Skyborne")
+  local name, file = UnitRace("player")
   race = race:lower()
   return (name and name:lower() == race) or (file and file:lower() == race) or false
 end

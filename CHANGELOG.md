@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.2
+
+- Fix: Skyborne characters now see **Learn Mining from Harvesting Windstones**. The race check only read the race's display name ("High Order Skyborne"), not its race id ("Skyborne"), so it never matched.
+
 ## 0.85.1
 
 - Mining for Skyborne: the first step is now **Learn Mining from Harvesting Windstones**. Take the quest in Thendal Village and pick Mining for Dummies as your reward. The step names the island's trainers (Halavuul Cragwind in Valanaar, Messana Crestwind in Shen'dar Village) and ticks off once Mining is learned. Other races keep the usual Learn Apprentice Mining step.
