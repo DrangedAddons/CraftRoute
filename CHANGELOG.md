@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.84.3
+
+- CraftRoute keybind: with nothing learned, it opens Blizzard's professions frame. With a profession learned, including only Herbalism, Skinning, or Fishing, it opens CraftRoute's tab on that profession's guide. It no longer opens the `/cr` window. Press it again to close.
+
 ## 0.84.2
 
 - README updated. The EfficiencyChanges.md notes file is removed. No changes in game.
