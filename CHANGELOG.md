@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.8
+
+- The in-game icon is now 64x64 and sharpened, upscaled from the 32x32 original, so it's less blurry on the CraftRoute tab.
+
 ## 0.85.7
 
 - New CraftRoute icon, a purple repair hammer. It replaces 0.85.6's book everywhere: the profession window's CraftRoute tab, the minimap button, the in-game AddOns list, and the DrangedAddons manager.
