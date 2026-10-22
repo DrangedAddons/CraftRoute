@@ -10,7 +10,8 @@
 -- learned on this character, the nearest one that has (Cooking for Fishing, else your first
 -- crafting profession). Like other addons' profession openers (EllesmereUI's data bar) it calls
 -- C_TradeSkillUI.OpenTradeSkill from the key press itself - a real key press may - rather than
--- casting the profession. With the window already open it closes the window.
+-- casting the profession. With the window already open it closes the window - first press,
+-- whatever tab or page is showing.
 -- (While dead the game won't switch to a crafting page at all - a known client issue.)
 local _, CR = ...
 
@@ -97,23 +98,12 @@ function CraftRoute_KeybindPressed()
   -- the window's up (whatever profession, whatever tab): it closes - the key opens and closes the
   -- whole window
   if ProfessionsFrame and ProfessionsFrame:IsShown() then
-    -- up but empty (no profession loaded, e.g. after a reload): load one, on CraftRoute's tab
-    if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then return end
-    -- no trade skill loaded: nothing learned, or only gathering. CloseTradeSkill does not
-    -- dismiss that frame. Gathering with CraftRoute's tab not up yet puts the tab up;
-    -- the tab already up, or nothing learned, closes the frame.
-    local empty = (CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded())
-      or (CR.HasAnyProfession and not CR.HasAnyProfession())
-    if empty then
-      local name = CR.HasAnyProfession and CR.HasAnyProfession() and GatheringTarget()
-      local compactUp = CR.compactFrame and CR.compactFrame:IsShown()
-      if name and not compactUp and CR.KeybindShowGathering and CR.KeybindShowGathering(name) then
-        return
-      end
-      HideProfessionsFrame()
-      return
-    end
-    if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() else HideProfessionsFrame() end
+    -- Up, on any tab or page (the Professions summary included, which has no profession loaded):
+    -- the key closes the whole window on the first press. Nothing is loaded or switched first.
+    -- The next press reopens what was last loaded (CR.KeybindReopen).
+    local loaded = not (CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded())
+    if loaded and C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() end
+    if ProfessionsFrame:IsShown() then HideProfessionsFrame() end
     return
   end
   -- closed: open it on CraftRoute's tab, where it was when last closed this session (else your

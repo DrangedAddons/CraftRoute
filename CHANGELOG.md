@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.84.4
+
+- Fix: with the profession window open, the CraftRoute key now closes it on the first press, whatever tab or page is showing. On the Professions summary page it used to load a profession first and switch to CraftRoute's tab, so it took three presses to close. The next press reopens the profession and view you were last on.
+
 ## 0.84.3
 
 - CraftRoute keybind: with nothing learned, it opens Blizzard's professions frame. With a profession learned, including only Herbalism, Skinning, or Fishing, it opens CraftRoute's tab on that profession's guide. It no longer opens the `/cr` window. Press it again to close.
