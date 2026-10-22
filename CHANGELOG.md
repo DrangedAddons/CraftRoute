@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.6
+
+- New CraftRoute icon, a profession book with a blue gem. It shows on the profession window's CraftRoute tab, the minimap button, the in-game AddOns list, and the DrangedAddons manager. The addon ships it as icon.tga, so it doesn't depend on the client having that game icon.
+
 ## 0.85.5
 
 - Mining: the **mine, or smelt bought ore** choice is now shown like the crafting professions' choices, as **Choose one** with a row per option. **Smelt bought ore** shows the ore it needs and what it costs. Picked, its smelting steps are normal route craft steps, opening the craft panel. The zone choices stay dropdowns.

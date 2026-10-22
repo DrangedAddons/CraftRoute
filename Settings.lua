@@ -7,7 +7,7 @@
 -- minimap. A named button on the minimap, so EllesmereUI's minimap gathers it like any other.
 local _, CR = ...
 
-local ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"   -- (the profession window tab's)
+local ICON = "Interface\\AddOns\\CraftRoute\\icon"   -- (icon.tga - the profession window tab's too)
 local BIND = "CRAFTROUTE_PROFESSION_TAB"   -- (Bindings.xml)
 
 ---------------------------------------------------------------------------

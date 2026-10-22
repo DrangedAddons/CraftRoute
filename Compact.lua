@@ -12,7 +12,7 @@ local _, CR = ...
 
 -- 32 leaves a dark gap around the 26px category bar so the planks stay separate.
 local ROW_H = 32
-local TAB_ICON = "Interface\\Icons\\Ability_Druid_ChallangingRoar"
+local TAB_ICON = "Interface\\AddOns\\CraftRoute\\icon"   -- (icon.tga, the same image as icon.ico)
 local BOOK = "Interface\\Icons\\INV_Misc_Book_09"
 local REAGENT_SLOTS = 12
 -- Skill bar sits under the native title. Dropdowns, then the list, follow it.
