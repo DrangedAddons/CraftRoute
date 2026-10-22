@@ -66,8 +66,15 @@ function CR.Route(profOrName)
   return (mode and prof.routes[mode]) or prof.routes[prof.routeOrder[1]]
 end
 
+-- t.race: only for that race (its name, or the game's race file name - e.g. "Skyborne")
+local function RaceOK(race)
+  if not race then return true end
+  local name, file = UnitRace and UnitRace("player")
+  race = race:lower()
+  return (name and name:lower() == race) or (file and file:lower() == race) or false
+end
 local function FactionOK(t)
-  return not t.faction or t.faction == UnitFactionGroup("player")
+  return (not t.faction or t.faction == UnitFactionGroup("player")) and RaceOK(t.race)
 end
 CR.FactionOK = FactionOK
 
@@ -589,7 +596,13 @@ function CR.BuildPlan(profName, cur, goal)
 
   -- Trainer milestones (routes followed in order spell these out as their own steps)
   local tiers = route.sequential and {} or (route.tiers or {})
-  if not detected and not route.sequential then
+  -- (not when the route has its own way to learn it for this character - Skyborne learn Mining
+  -- from a quest)
+  local ownLearn = false
+  for _, st in ipairs(route.steps or {}) do
+    if st.learnStep and FactionOK(st) and (st.skill or profName) == profName then ownLearn = true end
+  end
+  if not detected and not route.sequential and not ownLearn then
     table.insert(events, { kind = "train", from = 0, sort = -1, text = "Learn Apprentice " .. profName, ok = true,
                            apprentice = true, rankIndex = 1 })
   end

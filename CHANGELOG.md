@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.85.1
+
+- Mining for Skyborne: the first step is now **Learn Mining from Harvesting Windstones**. Take the quest in Thendal Village and pick Mining for Dummies as your reward. The step names the island's trainers (Halavuul Cragwind in Valanaar, Messana Crestwind in Shen'dar Village) and ticks off once Mining is learned. Other races keep the usual Learn Apprentice Mining step.
+- Guide steps can now be limited to one race, the same way they can be limited to a faction.
+
 ## 0.85.0
 
 - Mining now follows wow-professions.com's new **Forever** Mining guide, replacing the Classic stand-in.

@@ -64,6 +64,13 @@ table.insert(choices, { key = "method", label = "1-120: mine, or smelt bought or
   { key = "smelt", label = "Smelt bought ore" },
 } })
 
+-- Skyborne start in Thendal Village on Zephras Isle, with no trainer: a quest reward teaches it.
+table.insert(steps, { kind = "guide", from = 1, to = 65, learnStep = true, race = "Skyborne",
+  title = "Learn Mining from Harvesting Windstones",
+  text = "Take Harvesting Windstones, one of the first quests in Thendal Village, and pick Mining for Dummies "
+    .. "as your reward - it teaches you Mining. Thendal Village has no trainer; the island's are Halavuul "
+    .. "Cragwind in Valanaar and Messana Crestwind in Shen'dar Village." })
+
 table.insert(steps, { kind = "guide", from = 1, to = 65, items = { { PICK, 1 } },
   title = "Get a Mining Pick",
   text = "Buy a Mining Pick from the Mining Supplier near your trainer, or from the trainer. It only has to "
@@ -95,8 +102,7 @@ Zones("copper", "1-65: Copper - one starting zone", 1, 65, {
     .. "stay inside. Teldrassil has no forge: the nearest is at the Warrior's Terrace in Darnassus.",
     "Alliance" },
   { "zephras", "Zephras Isle", "Mine Copper on Zephras Isle until 65 - the veins around Thendal Village "
-    .. "respawn very fast. Skyborne learn Mining from the Harvesting Windstones quest there (pick Mining for "
-    .. "Dummies). Shen'dar Village has a forge for smelting the ore after a lap." },
+    .. "respawn very fast. Shen'dar Village has a forge for smelting the ore after a lap." },
 }, nil, { method = "mine" })
 
 Zones("tin", "65-125: Copper, Tin and Silver", 65, 125, {
