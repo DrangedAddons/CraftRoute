@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.7
+
+- New CraftRoute icon, a purple repair hammer. It replaces 0.85.6's book everywhere: the profession window's CraftRoute tab, the minimap button, the in-game AddOns list, and the DrangedAddons manager.
+
 ## 0.85.6
 
 - New CraftRoute icon, a profession book with a blue gem. It shows on the profession window's CraftRoute tab, the minimap button, the in-game AddOns list, and the DrangedAddons manager. The addon ships it as icon.tga, so it doesn't depend on the client having that game icon.
