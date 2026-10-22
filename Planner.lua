@@ -441,6 +441,24 @@ local function CollectSteps(route, rprof, profName, cur, goal)
   return out
 end
 
+-- A step's conditions other than `key` all match your picks (a choice inside another: Mining's
+-- 1-65 zones only count while "mine" is picked).
+local function OthersMatch(route, st, key)
+  for k, opt in pairs(st.when) do
+    if k ~= key then
+      local picked = RouteChoice(route, k)
+      if type(opt) == "table" then
+        local hit = false
+        for _, o in ipairs(opt) do if o == picked then hit = true end end
+        if not hit then return false end
+      elseif picked ~= opt then
+        return false
+      end
+    end
+  end
+  return true
+end
+
 local function OptionMatches(w, key)
   if type(w) == "table" then
     for _, k in ipairs(w) do if k == key then return true end end
@@ -460,11 +478,11 @@ local function ForkEvents(route, rprof, profName, cur, goal)
       clipped[i] = ClipStep(route, rprof, st, i, profName, cur, goal) or false
     end
   end
-  for _, c in ipairs(route.choices or {}) do
+  for ci, c in ipairs(route.choices or {}) do
     -- The fork shows while any of its steps is still ahead.
     local lo, hi, firstIndex, skillName
     for i, st in ipairs(route.steps) do
-      if st.when and st.when[c.key] and FactionOK(st) then
+      if st.when and st.when[c.key] and FactionOK(st) and OthersMatch(route, st, c.key) then
         local e = clipped[i]
         if e then
           lo, hi = min(lo or e.from, e.from), max(hi or e.to, e.to)
@@ -481,7 +499,8 @@ local function ForkEvents(route, rprof, profName, cur, goal)
         if FactionOK(o) then
           local parts = {}
           for i, st in ipairs(route.steps) do
-            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) and clipped[i] then
+            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) and clipped[i]
+              and OthersMatch(route, st, c.key) then
               table.insert(parts, st.spell and ("s" .. st.spell) or ("g" .. tostring(st.text)))
             end
           end
@@ -493,7 +512,9 @@ local function ForkEvents(route, rprof, profName, cur, goal)
     end
     if lo then
       local picked = RouteChoice(route, c.key)
-      local base = route.sequential and (firstIndex - 0.5) or (lo - 0.6)
+      -- (forks starting at the same skill keep the route's choice order, each with its options
+      -- right under it: options step 0.001, choices 0.02 apart)
+      local base = route.sequential and (firstIndex - 0.5) or (lo - 0.6 + (ci - 1) * 0.02)
       table.insert(out, { kind = "fork", from = lo, to = hi, sort = base, text = CR.FactionText(c.label),
                           skill = skillName })
       local n = 0
@@ -505,7 +526,8 @@ local function ForkEvents(route, rprof, profName, cur, goal)
           local net, cost, unpriced, catch, crafts = {}, 0, false, {}, {}
           local unpricedN = 0
           for i, st in ipairs(route.steps) do
-            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st) then
+            if st.when and OptionMatches(st.when[c.key], o.key) and FactionOK(st)
+              and OthersMatch(route, st, c.key) then
               local e = clipped[i]
               if e and e.kind == "craft" then
                 local r = rprof.recipes[e.spell]
@@ -528,7 +550,7 @@ local function ForkEvents(route, rprof, profName, cur, goal)
             end
           end
           table.sort(mats, function(a, b) return a.n > b.n end)
-          table.insert(out, { kind = "option", from = lo, to = hi, sort = base + n * 0.01, skill = skillName,
+          table.insert(out, { kind = "option", from = lo, to = hi, sort = base + n * 0.001, skill = skillName,
             choice = c.key, option = o.key, label = CR.FactionText(o.label), letter = string.char(64 + n),
             routeID = route.id, selected = picked == o.key, mats = mats, cost = cost, unpriced = unpriced,
             unpricedN = unpricedN,

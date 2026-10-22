@@ -12,6 +12,6 @@ fishing-and-cooking  https://www.wow-professions.com/forever/fishing-and-cooking
 cooking              https://www.wow-professions.com/forever/cooking-leveling-guide              CookingRoute.lua
 fishing              https://www.wow-professions.com/forever/fishing-leveling-guide              FishingRoute.lua
 # Gathering: no Forever guides yet - the Classic ones stand in (swap the URL when a Forever one appears)
-mining               https://www.wow-professions.com/classic/mining-leveling-guide-classic-wow    MiningRoute.lua
+mining               https://www.wow-professions.com/forever/mining-leveling-guide               MiningRoute.lua
 herbalism            https://www.wow-professions.com/classic/herbalism-leveling-guide-classic-wow HerbalismRoute.lua
 skinning             https://www.wow-professions.com/classic/skinning-leveling-guide-classic-wow  SkinningRoute.lua

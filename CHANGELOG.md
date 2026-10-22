@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 0.85.0
+
+- Mining now follows wow-professions.com's new **Forever** Mining guide, replacing the Classic stand-in.
+  - **1-120: Mine, or Smelt bought ore.** A new choice at the top. Mine (the default) keeps the zone choices. Smelt bought ore plans Smelt Copper x130, Smelt Tin x70, Smelt Bronze x70 and Smelt Silver x40 to reach 120, with the ore in the route's materials. After smelting, the 65-125 zone pick starts at 120.
+  - **New zones:** Teldrassil and Zephras Isle for 1-65. Wetlands, Silverpine Forest, Westfall and Stonetalon Mountains join 65-125.
+  - **Zone steps:** each carries the Forever guide's notes (fast cave respawns, where the nearest forge is, which caves to skip at low level) and the veins to mine with their skill.
+  - From 125, the guide follows the Classic routes until its author revises them.
+- Route choices that depend on another choice now only show when they apply. Mining's 1-65 zones hide when you pick Smelt.
+
 ## 0.84.4
 
 - Fix: with the profession window open, the CraftRoute key now closes it on the first press, whatever tab or page is showing. On the Professions summary page it used to load a profession first and switch to CraftRoute's tab, so it took three presses to close. The next press reopens the profession and view you were last on.
