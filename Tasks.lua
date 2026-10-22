@@ -277,6 +277,19 @@ local function AddSpawns(places, zone, name, faction, spawns)
   return true
 end
 
+-- One NPC's spawns from Questie (a guide's quest giver), as place records. {} without Questie.
+local function NpcPlaces(npcID, fallbackName)
+  if not (npcID and LibQuestieDB and NpcDB and type(NpcDB.spawns) == "function") then return {} end
+  local zone = QuestieZoneDB()
+  if not zone then return {} end
+  local name = type(NpcDB.name) == "function" and NpcDB.name(npcID) or nil
+  local faction = type(NpcDB.friendlyToFaction) == "function" and NpcDB.friendlyToFaction(npcID) or nil
+  local places = {}
+  pcall(AddSpawns, places, zone, (type(name) == "string" and name ~= "") and name or fallbackName, faction,
+    NpcDB.spawns(npcID))
+  return places
+end
+
 -- nil, "down" when ZoneDB is not ready. Otherwise the place list.
 local function VendorPlaces(itemID)
   local cached = vendorPlaces[itemID]
@@ -609,13 +622,29 @@ function CR.StepTask(st, profName)
     if st.apprentice or not st.cap then
       t.kind, t.title, t.icon = "train", "Learn " .. skillName, "Interface\\Icons\\INV_Misc_Book_09"
       t.text = "Find a " .. skillName .. " trainer and learn " .. skillName .. "."
-      -- other ways to learn it, for the characters they're for (Skyborne: a quest on Zephras Isle)
+      -- other ways to learn it, for the characters they're for (Skyborne: a quest on Zephras Isle).
+      -- Its quest is an optional tick (a trainer teaches it as well); its quest giver gets a pin.
       local lroute = CR.Route(skillName)
-      for _, alt in ipairs(lroute and lroute.learnAlso or {}) do
-        if CR.FactionOK(alt) then t.text = t.text .. "\n\n" .. CR.FactionText(alt.text) end
-      end
+      local altPlaces = {}
       Cond(learned, skillName .. " learned")
-      t.places = Nearest(Trainers(skillName, 1))
+      for _, alt in ipairs(lroute and lroute.learnAlso or {}) do
+        if CR.FactionOK(alt) then
+          t.text = t.text .. "\n\n" .. CR.FactionText(alt.text)
+          if alt.quest then
+            local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
+              and C_QuestLog.IsQuestFlaggedCompleted(alt.quest) or false
+            table.insert(t.checks, Check(done, "Optional: quest '" .. (alt.questName or alt.quest) .. "' done"))
+          end
+          if alt.npc then
+            for _, p in ipairs(Nearest(NpcPlaces(alt.npc, alt.npcName), 1)) do table.insert(altPlaces, p) end
+          end
+        end
+      end
+      -- the nearest trainers, with room kept for the quest giver (the card shows 3)
+      -- (a copy: Nearest's list is cached and shared)
+      t.places = {}
+      for _, p in ipairs(Nearest(Trainers(skillName, 1), 3 - #altPlaces)) do table.insert(t.places, p) end
+      for _, p in ipairs(altPlaces) do table.insert(t.places, p) end
     else
       t.kind = st.book and "book" or (st.quest and "quest" or "train")
       t.title = (st.tierName or RANK_NAMES[rank] or "Next rank") .. " " .. skillName

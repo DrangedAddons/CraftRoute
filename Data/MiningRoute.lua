@@ -159,9 +159,11 @@ CR.RegisterRoute("Mining", {
 
   -- Learn Mining: besides any trainer, Skyborne can take it as a quest reward where they start
   learnAlso = {
-    { race = "Skyborne", text = "Or on Zephras Isle: take Harvesting Windstones, one of the first quests in "
-      .. "Thendal Village, and pick Mining for Dummies as your reward. Thendal Village has no trainer; the "
-      .. "island's are Halavuul Cragwind in Valanaar and Messana Crestwind in Shen'dar Village." },
+    { race = "Skyborne", quest = 93552, questName = "Harvesting Windstones", npc = 251363,
+      npcName = "Dalia the Collector",
+      text = "Or on Zephras Isle: take Harvesting Windstones from Dalia the Collector in Thendal Village, and "
+        .. "pick Mining for Dummies as your reward. Thendal Village has no trainer; the island's are Halavuul "
+        .. "Cragwind in Valanaar and Messana Crestwind in Shen'dar Village." },
   },
 
   tiers = {

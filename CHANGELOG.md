@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.85.4
+
+- Mining for Skyborne: the **Learn Mining** step names the quest giver, **Dalia the Collector** in Thendal Village, and lists her under Where with a map pin (from Questie). The two nearest trainers stay listed with her.
+- It also gets an optional tick, **Optional: quest Harvesting Windstones done**. It ticks once you've finished the quest. The step itself still only needs Mining learned, so learning from a trainer completes it too.
+
 ## 0.85.3
 
 - Mining for Skyborne: the usual **Learn Mining** step is back, with the nearest trainers to pin. It also offers the Harvesting Windstones quest on Zephras Isle as another way to learn it. Since 0.85.1 the quest had replaced the trainer step, but any Mining trainer teaches it too.
