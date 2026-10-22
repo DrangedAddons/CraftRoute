@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.5
+
+- Mining: the **mine, or smelt bought ore** choice is now shown like the crafting professions' choices, as **Choose one** with a row per option. **Smelt bought ore** shows the ore it needs and what it costs. Picked, its smelting steps are normal route craft steps, opening the craft panel. The zone choices stay dropdowns.
+
 ## 0.85.4
 
 - Mining for Skyborne: the **Learn Mining** step names the quest giver, **Dalia the Collector** in Thendal Village, and lists her under Where with a map pin (from Questie). The two nearest trainers stay listed with her.

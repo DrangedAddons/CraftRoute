@@ -1787,16 +1787,29 @@ local function BuildItems()
   local route = CR.Route(name)
   local choiceDD = GATHERING[name] and not (route and route.mode == "combo")
 
+  -- A choice where an option crafts (Mining's "smelt bought ore") keeps the "Choose one" rows, so
+  -- each option shows what it costs; its crafts are route steps like any other.
   local items = {}
+  local forkDD = false   -- the fork the option rows below belong to is a dropdown
   for i, st in ipairs(plan.steps) do
-    if st.kind == "fork" and choiceDD then
+    if st.kind == "fork" then
+      local opts = {}
+      for j = i + 1, #plan.steps do
+        if plan.steps[j].kind ~= "option" then break end
+        table.insert(opts, plan.steps[j])
+      end
+      local crafts = false
+      for _, o in ipairs(opts) do if o.crafts and #o.crafts > 0 then crafts = true end end
+      forkDD = choiceDD and not crafts
+    end
+    if st.kind == "fork" and forkDD then
       local opts = {}
       for j = i + 1, #plan.steps do
         if plan.steps[j].kind ~= "option" then break end
         table.insert(opts, plan.steps[j])
       end
       if #opts > 0 then table.insert(items, { kind = "choice", fork = st, opts = opts }) end
-    elseif st.kind == "option" and choiceDD then
+    elseif st.kind == "option" and forkDD then
       -- (in the dropdown)
     elseif st.kind == "fork" then
       table.insert(items, { kind = "note", gold = true, text = "Choose one", tip = st.text or "Choose one" })
