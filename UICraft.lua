@@ -34,18 +34,7 @@ function CR.NoTradeSkillLoaded()
   return not (name and name ~= "")
 end
 
--- What to load into an empty window: your first primary profession that has a crafting window
--- (Mining's is smelting), else the second, else a secondary one (Cooking, then First Aid).
-function CR.FallbackProfession()
-  if not (GetProfessions and GetProfessionInfo) then return nil end
-  local p1, p2, _, _, cook, firstAid = GetProfessions()
-  for _, index in ipairs({ p1 or false, p2 or false, cook or false, firstAid or false }) do
-    if index then
-      local name, _, _, _, _, _, skillLine = GetProfessionInfo(index)
-      if name and skillLine and not CR.NO_WINDOW[name] then return skillLine, name end
-    end
-  end
-end
+-- CR.FallbackProfession is in Core.lua. It reads the profession list ScanSkills cached.
 
 -- From a real click / key press only (the game allows the open then): an empty window gets the
 -- fallback profession loaded, CraftRoute's tab staying up. True if it did.

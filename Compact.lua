@@ -32,6 +32,7 @@ local COST_BAR_H = 22     -- the route cost bar under the list
 local overlay, entry, list
 local AttachPlainCover -- secure cover for Split / Combine buttons; defined with the enchant covers
 local UpdateFavCart    -- the shopping line under your list; defined with the right column
+local PublishPlan      -- rebuilds the route once, then tells the other windows; defined with the list
 local qtyEd            -- the one amount editor (your crafts' amount buttons open it)
 local matPanel, MatSettings, ToggleMatPanel   -- the materials side panel; defined with the right column
 local installed = false
@@ -118,9 +119,7 @@ local function SelectProfession(name)
   ui.keepScroll = false
   -- (the window itself is opened by the secure cover on the dropdown entry - addon code can't)
   ui.keepUntil = GetTime() + 2   -- and this view comes back once the new profession has loaded
-  CR.InvalidatePlan()
-  if overlay and overlay:IsShown() then overlay:Refresh() end
-  CR.NotifyChanged()
+  PublishPlan()
 end
 
 -- Adopt the profession the frame is showing, when that profession has a route.
@@ -144,7 +143,8 @@ local function SyncOpenProfession()
     wipe(ui.openParts)
     ui.keepScroll = false
     CR.InvalidatePlan()
-    CR.NotifyChanged()
+    -- This refresh is already running and will build the new plan.
+    CR.NotifyChanged({ keepPlan = true, keepLive = true, keepLocations = true, skipCompact = true })
   end
 end
 
@@ -482,11 +482,17 @@ local function HaveNeed(itemID, per, crafts)
   return CR.ColorText(tostring(have), color) .. "/" .. need .. "  " .. CR.ItemName(itemID), bags, need
 end
 
-local function Changed()
-  ui.keepScroll = false
+-- The tab already rebuilt the plan. Trackers hear about it on the throttled
+-- notify, and that notify leaves the plan, the recipe scan and the bag cache.
+function PublishPlan()
   CR.InvalidatePlan()
   if overlay and overlay:IsShown() then overlay:Refresh() end
-  CR.NotifyChanged()
+  CR.NotifyChanged({ keepPlan = true, keepLive = true, keepLocations = true, skipCompact = true })
+end
+
+local function Changed()
+  ui.keepScroll = false
+  PublishPlan()
 end
 
 ---------------------------------------------------------------------------
@@ -785,10 +791,8 @@ local function ApplyRow(row, item)
     b:SetScript("OnClick", function()
       local t = CR.ProfTable("targets", item.prof)
       t[item.recipe.spell] = (t[item.recipe.spell] == nil) and 1 or nil
-      CR.InvalidatePlan()
       ui.keepScroll = true
-      if overlay then overlay:Refresh() end
-      CR.NotifyChanged()
+      PublishPlan()
     end)
     b:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -1228,9 +1232,7 @@ local function ApplyRow(row, item)
         CR.ProfTable("choices", o.routeID)[o.choice] = o.option
         ui.selectedKey = nil
         ui.keepScroll = true
-        CR.InvalidatePlan()
-        if overlay and overlay:IsShown() then overlay:Refresh() end
-        CR.NotifyChanged()
+        PublishPlan()
       end)
       row.crChoice = dd
     end
@@ -1277,9 +1279,7 @@ local function ApplyRow(row, item)
       CR.ProfTable("choices", st.routeID)[st.choice] = st.option
       ui.selectedKey = nil
       ui.keepScroll = true
-      CR.InvalidatePlan()
-      if overlay and overlay:IsShown() then overlay:Refresh() end
-      CR.NotifyChanged()
+      PublishPlan()
     end)
     return
   end
@@ -3836,6 +3836,7 @@ end
 -- opening (a skin fading Blizzard's art does it a moment later - its alpha is copied), and
 -- nothing that reaches outside this tab is copied at all.
 local mirrored, mirrorLog = {}, {}
+local mirrorProf, mirrorCount
 local NINE_SLICE_KEYS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner",
                           "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "Center" }
 local function MirrorBlizzardBackground()
@@ -3892,6 +3893,7 @@ local function MirrorBlizzardBackground()
           c:ClearAllPoints()
           c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
           c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
+          c.crSource = r
           c:Show()
           table.insert(mirrorLog, string.format("%s %s  %dx%d  alpha %.2f  (%s)", layer, tostring(atlas or file),
             w, h, r:GetAlpha(), tostring(r.GetDebugName and r:GetDebugName() or depth)))
@@ -3914,18 +3916,55 @@ local function MirrorBlizzardBackground()
   -- Blizzard's page has no column line - its recipe list's inset border and the recipe panel's
   -- own art part the columns - so with that art copied, ours steps aside too (still the anchor)
   if overlay.divider then overlay.divider:SetAlpha(n == 0 and 1 or 0) end
+  -- kept so the next open of this profession can put the same copies back without
+  -- walking the page again. A later pass (0.5s, 2s) still walks, for a skin's fade.
+  if n > 0 then
+    mirrorProf, mirrorCount = OpenProfessionName(), n
+  else
+    mirrorProf, mirrorCount = nil, 0
+  end
   return n
+end
+
+-- The copies from the last walk of this profession, still pointing at Blizzard's
+-- textures. False when this profession has not been copied yet, or a texture is gone.
+local function ReapplyMirror()
+  local prof = OpenProfessionName()
+  if not prof or prof == "" or prof ~= mirrorProf or not mirrorCount or mirrorCount < 1 then return false end
+  for i = 1, mirrorCount do
+    local c = mirrored[i]
+    local r = c and c.crSource
+    if not (r and r.IsShown and r:IsShown() and r.GetAlpha) then return false end
+  end
+  for i = 1, mirrorCount do
+    local c = mirrored[i]
+    local r = c.crSource
+    c:SetAlpha(r:GetAlpha())
+    c:ClearAllPoints()
+    c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
+    c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
+    c:Show()
+  end
+  for i = mirrorCount + 1, #mirrored do if mirrored[i] then mirrored[i]:Hide() end end
+  if overlay.headerBand then
+    overlay.headerBand:SetShown(false)
+    overlay.headerLine:SetShown(false)
+  end
+  if overlay.divider then overlay.divider:SetAlpha(0) end
+  return true
 end
 -- Blizzard's crafting buttons (Create All, the amount box and its arrows, Create): where they sit
 -- on its page and how big, read while its page is laid out and kept (CraftRouteDB.blizButtons, as
 -- offsets from the window's bottom-left) - this tab's own buttons are put in the very same spots.
 local BLIZ_BUTTONS = { createAll = "CreateAllButton", create = "CreateButton", countBox = "CreateMultipleInputBox" }
-local function AlignToBlizzardButtons()
+local function AlignToBlizzardButtons(measure)
   local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
   local ol, ob = overlay and overlay:GetLeft(), overlay and overlay:GetBottom()
   CraftRouteDB.blizButtons = CraftRouteDB.blizButtons or {}
   local saved = CraftRouteDB.blizButtons
-  if page and ol and ob then
+  -- measure == false: put the buttons where the last open saved them. The
+  -- confirming passes still measure once the page has settled.
+  if measure ~= false and page and ol and ob then
     local os = overlay:GetEffectiveScale()
     local function Rect(b)
       local l, bt, w, h = b and b:GetLeft(), b and b:GetBottom(), b and b:GetWidth(), b and b:GetHeight()
@@ -3988,14 +4027,18 @@ local function OpenCompact()
   local ts = _G.TrainerSpellsProfessionFrame
   if ts and ts:IsShown() then ts:Hide() end
   ClearOtherChecks()
-  pcall(MirrorBlizzardBackground)   -- (before its page is hidden: its art's still laid out)
-  -- again once things have settled: a skin's fade, art that was still out of place
+  -- A profession already copied this session: put those copies back and use the
+  -- saved button spots, so the tab can show without walking Blizzard's page.
+  -- The first open of a profession still copies before the page is hidden.
+  -- The 0.5s and 2s passes walk again either way (a skin fades the art in late).
+  local warmed = ReapplyMirror()
+  if not warmed then pcall(MirrorBlizzardBackground) end
   for _, delay in ipairs({ 0.5, 2 }) do
     C_Timer.After(delay, function()
       if overlay and overlay:IsShown() then pcall(MirrorBlizzardBackground) pcall(AlignToBlizzardButtons) end
     end)
   end
-  pcall(AlignToBlizzardButtons)
+  if warmed then pcall(AlignToBlizzardButtons, false) else pcall(AlignToBlizzardButtons) end
   pcall(HidePages)
   pcall(ApplyPickerStyle)   -- (the look may have changed - EllesmereUI's, followed)
   ui.openProf = nil
@@ -4035,6 +4078,17 @@ end
 -- window when this view is what's showing.
 function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
 
+-- The keybind calls this before it closes the window. By OnHide the game may
+-- already have cleared the profession name, so the next press would forget it.
+function CR.NoteCompactSession()
+  if not (overlay and overlay:IsShown()) then return end
+  local loaded = OpenProfessionName()
+  if loaded and loaded ~= "" then
+    session.window = loaded
+    session.view = ui.pinned
+  end
+end
+
 -- Gathering only (Herbalism, Skinning, Fishing): no skill line, so the keybind opens the
 -- professions frame empty and this tab on that guide. The saved profession is switched when
 -- it isn't one this character has learned. The frame's OnShow opens the tab; if the frame is
@@ -4061,10 +4115,13 @@ end
 -- The CraftRoute key, the window closed: what to open - what it was on when last closed this
 -- session (and this tab's own profession then, if it was showing another), else your first
 -- profession with a window (CR.FallbackProfession). Returns the skill line to open.
--- the skill line the game opens a profession by (its profession list's), for one of yours
+-- the skill line the game opens a profession by (its profession list's), for one of yours.
+-- ScanSkills already stored it. The profession list is only read again if that scan has not run.
 local function SkillLineOf(name)
-  if not (name and GetProfessions and GetProfessionInfo) then return nil end
   if name == "Smelting" then name = "Mining" end
+  local s = name and CR.skill and CR.skill[name]
+  if s and s.skillLine then return s.skillLine end
+  if not (name and GetProfessions and GetProfessionInfo) then return nil end
   for _, index in pairs({ GetProfessions() }) do
     local pname, _, _, _, _, _, line = GetProfessionInfo(index)
     if pname == name and line then return line end
@@ -4100,21 +4157,22 @@ local function KeepNow()
   pcall(HidePages)
   if overlay and not overlay:IsShown() then OpenCompact() end
 end
+local REOPEN_DELAYS = { 0, 0.1, 0.3, 0.6, 1, 1.5 }
 local function ReopenSoon()
   if not Keeping() then return end
-  for _, delay in ipairs({ 0, 0.1, 0.3, 0.6, 1, 1.5 }) do
-    C_Timer.After(delay, function()
-      if not Keeping() or InCombatLockdown() or not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
-      if overlay and overlay:IsShown() then
-        pcall(HidePages)
-        -- (Blizzard ticks the profession's own tab once it has loaded: only this tab is lit)
-        pcall(ClearOtherChecks)
-        SetEntryChecked(true)
-      else
-        OpenCompact()
-      end
-    end)
-  end
+  -- One ladder per open. OnShow and TRADE_SKILL_SHOW both call this; the second
+  -- replaces the first instead of stacking another six timers.
+  CR.ScheduleUnique("compact-reopen", REOPEN_DELAYS, function()
+    if not Keeping() or InCombatLockdown() or not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
+    if overlay and overlay:IsShown() then
+      pcall(HidePages)
+      -- (Blizzard ticks the profession's own tab once it has loaded: only this tab is lit)
+      pcall(ClearOtherChecks)
+      SetEntryChecked(true)
+    else
+      OpenCompact()
+    end
+  end)
 end
 
 -- Only a click on one of Blizzard's tabs means "show Blizzard's page". The window also brings
@@ -5795,21 +5853,20 @@ local function BuildOverlay()
   -- The batch bar, the Blizzard-page check, and the enchant covers used to run every frame.
   -- GetLeft/GetBottom inside the cover sync forces a layout. 0.1s is enough for the bar.
   -- The label, structure text, and profession sync stay on the slower tick.
+  -- The open profession is sampled on this tick too. The keybind snapshots it again
+  -- before CloseTradeSkill, which is when the window lets go of the name.
   local watch, slow = 0, 0
   frame:SetScript("OnUpdate", function(_, elapsed)
     elapsed = elapsed or 0
-    -- what this tab is on, kept every frame (by closing time the window may have let go of it): the
-    -- window's profession, and a profession picked in this tab's own dropdown - only that is "this
-    -- tab's own" (a tab click changes the window's profession; this tab follows it)
+    watch = watch + elapsed
+    slow = slow + elapsed
+    if watch < 0.1 then return end
+    watch = 0
     local loaded = OpenProfessionName()
     if loaded and loaded ~= "" then
       session.window = loaded
       session.view = ui.pinned
     end
-    watch = watch + elapsed
-    slow = slow + elapsed
-    if watch < 0.1 then return end
-    watch = 0
     local bs = CR.CraftBatchState and CR.CraftBatchState()
     if bs and frame.icon:IsShown() then
       frame.batchBar:Show()
@@ -5843,7 +5900,11 @@ local function BuildOverlay()
       end
       pcall(HidePages)   -- not your choice (a craft finished, the list refreshed): stay here
     end
-    SyncEnchantSecure()
+    local coverBusy = false
+    for _, b in ipairs(enchantSecure) do
+      if (b.IsShown and b:IsShown()) or (b.wanted and b.wanted()) then coverBusy = true break end
+    end
+    if coverBusy then SyncEnchantSecure() end
     if slow < 0.4 then return end
     slow = 0
     -- "Anvil required" turns green as you walk up to one. Pin Nearest hides with it.
@@ -5994,9 +6055,35 @@ local function Install()
   WatchTrainerSpells()
   CR.OnChange(function()
     if overlay and overlay:IsShown() then
+      local o = CR._notifyOpts
+      if o and o.skipCompact then return end
       overlay:Refresh()
     end
   end)
+end
+
+-- The first Shift+K used to build this whole frame inside the profession show
+-- event. Build it once the client is idle after login, hidden, so the key
+-- only has to open the window and show the tab.
+local function LoadProfessionsUI()
+  if ProfessionsFrame then return true end
+  if type(ProfessionsFrame_LoadUI) == "function" then pcall(ProfessionsFrame_LoadUI) end
+  if not ProfessionsFrame and C_AddOns and C_AddOns.LoadAddOn then
+    pcall(C_AddOns.LoadAddOn, "Blizzard_Professions")
+  end
+  if not ProfessionsFrame and type(UIParentLoadAddOn) == "function" then
+    pcall(UIParentLoadAddOn, "Blizzard_Professions")
+  end
+  if not ProfessionsFrame and type(LoadAddOn) == "function" then
+    pcall(LoadAddOn, "Blizzard_Professions")
+  end
+  return ProfessionsFrame ~= nil
+end
+local function PrebuildCompact()
+  if installed or installFailed or InCombatLockdown() then return end
+  if not DB() then return end
+  if not LoadProfessionsUI() then return end
+  Install()
 end
 
 -- /cr view: what the profession-window view and Blizzard's window are showing right now
@@ -6087,10 +6174,19 @@ for _, e in ipairs({ "TRADE_SKILL_SHOW", "PLAYER_LOGIN" }) do
     pcall(trade.RegisterEvent, trade, e)
   end
 end
-trade:SetScript("OnEvent", function()
+trade:SetScript("OnEvent", function(_, event)
   Install()
   WatchTrainerSpells()
   PositionEntry()
   ReopenSoon()
+  if event == "PLAYER_LOGIN" and C_Timer and C_Timer.After then
+    C_Timer.After(2, function()
+      if InCombatLockdown() then
+        C_Timer.After(4, function() pcall(PrebuildCompact) end)
+      else
+        pcall(PrebuildCompact)
+      end
+    end)
+  end
 end)
 if ProfessionsFrame then Install() end

@@ -271,15 +271,27 @@ CR.skill = {}   -- [profName] = { rank, maxRank }
 function CR.ScanSkills()
   local found = {}
   if GetProfessions and GetProfessionInfo then
-    -- Retail-style API (WoW Forever)
-    for _, index in pairs({ GetProfessions() }) do
-      local name, icon, rank, maxRank, _, _, skillLine = GetProfessionInfo(index)
-      if name and CR.professions[name] then
-        -- skillLine opens the profession window (C_TradeSkillUI.OpenTradeSkill) for the Craft tab
-        found[name] = { rank = rank, maxRank = maxRank, skillLine = skillLine, icon = icon }
+    -- Retail-style API (WoW Forever). Slots stay in GetProfessions order
+    -- (primary, primary, archaeology, fishing, cooking, first aid) so the
+    -- keybind can reopen from this scan instead of walking the list again.
+    local p1, p2, arch, fish, cook, firstAid = GetProfessions()
+    local indices = { p1, p2, arch, fish, cook, firstAid }
+    local slots = {}
+    for i = 1, 6 do
+      local index = indices[i]
+      if index then
+        local name, icon, rank, maxRank, _, _, skillLine = GetProfessionInfo(index)
+        if name then
+          slots[i] = { name = name, skillLine = skillLine, rank = rank, maxRank = maxRank }
+          if CR.professions[name] then
+            found[name] = { rank = rank, maxRank = maxRank, skillLine = skillLine, icon = icon }
+          end
+        end
       end
     end
+    CR.professionSlots = slots
   elseif C_SkillInfo and C_SkillInfo.GetNumSkillLines then
+    CR.professionSlots = nil
     for i = 1, C_SkillInfo.GetNumSkillLines() do
       local d = C_SkillInfo.GetSkillLineInfo(i)
       if d and d.name and CR.professions[d.name] then
@@ -287,6 +299,7 @@ function CR.ScanSkills()
       end
     end
   elseif GetNumSkillLines and GetSkillLineInfo then
+    CR.professionSlots = nil
     for i = 1, GetNumSkillLines() do
       local name, isHeader, _, rank, _, _, maxRank = GetSkillLineInfo(i)
       if name and not isHeader and CR.professions[name] then
@@ -295,6 +308,42 @@ function CR.ScanSkills()
     end
   end
   CR.skill = found
+end
+
+-- "Leatherworking:75:150|Mining:10:75", compared after a profession window opens
+-- so an unchanged skill does not throw the route plan away.
+function CR.SkillStamp()
+  local parts = {}
+  for name, s in pairs(CR.skill or {}) do
+    parts[#parts + 1] = name .. ":" .. tostring(s.rank) .. ":" .. tostring(s.maxRank)
+  end
+  table.sort(parts)
+  return table.concat(parts, "|")
+end
+
+-- What to load into an empty window: first primary with a crafting window
+-- (Mining's is smelting), else the second, else Cooking, then First Aid.
+-- Uses the list ScanSkills just stored. The live API is only the fallback
+-- for a call that arrives before the first scan.
+function CR.FallbackProfession()
+  local slots = CR.professionSlots
+  if slots then
+    for _, i in ipairs({ 1, 2, 5, 6 }) do
+      local s = slots[i]
+      if s and s.skillLine and s.name and not (CR.NO_WINDOW and CR.NO_WINDOW[s.name]) then
+        return s.skillLine, s.name
+      end
+    end
+    return nil
+  end
+  if not (GetProfessions and GetProfessionInfo) then return nil end
+  local p1, p2, _, _, cook, firstAid = GetProfessions()
+  for _, index in ipairs({ p1 or false, p2 or false, cook or false, firstAid or false }) do
+    if index then
+      local name, _, _, _, _, _, skillLine = GetProfessionInfo(index)
+      if name and skillLine and not (CR.NO_WINDOW and CR.NO_WINDOW[name]) then return skillLine, name end
+    end
+  end
 end
 
 -- Returns current skill, tier max rank, and whether it was detected from the client.
@@ -362,32 +411,118 @@ function CR.CraftsReady(profName, recipe)
   return n
 end
 
-function CR.ScanTradeSkill()
+local function OpenProfessionFromUI()
+  if C_TradeSkillUI and C_TradeSkillUI.GetBaseProfessionInfo then
+    local info = C_TradeSkillUI.GetBaseProfessionInfo()
+    local name = info and (info.professionName or info.parentProfessionName)
+    if name == "Smelting" then return "Mining" end
+    return name
+  end
+  if GetTradeSkillLine then
+    local name = GetTradeSkillLine()
+    if name == "Smelting" then return "Mining" end
+    return name ~= "" and name or nil
+  end
+end
+
+-- One walk of the open profession window. Fills the live map (learned and how
+-- many you can make) and the saved known list. Returns the profession and
+-- whether a recipe was newly marked known. nil when nothing is open yet.
+function CR.ReadOpenRecipes()
   if C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs and C_TradeSkillUI.GetRecipeInfo then
-    local profName
-    if C_TradeSkillUI.GetBaseProfessionInfo then
-      local info = C_TradeSkillUI.GetBaseProfessionInfo()
-      profName = info and (info.professionName or info.parentProfessionName)
-    end
-    if not profName or not CR.professions[profName] then return end
+    local profName = OpenProfessionFromUI()
+    if not profName or profName == "" or not CR.professions[profName] then return nil, false end
+    if CR.TradeSkillOpenFor and not CR.TradeSkillOpenFor(profName) then return nil, false end
     local prof = CR.professions[profName]
     local known = CR.ProfTable("known", profName)
+    local map = {}
+    local learnedChanged = false
     for _, recipeID in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or {}) do
-      local info = C_TradeSkillUI.GetRecipeInfo(recipeID)
-      if info and info.learned and prof.recipes[recipeID] then known[recipeID] = true end
+      local ok, info = pcall(C_TradeSkillUI.GetRecipeInfo, recipeID)
+      if ok and info then
+        map[recipeID] = info
+        if info.learned and prof.recipes[recipeID] and not known[recipeID] then
+          known[recipeID] = true
+          learnedChanged = true
+        end
+      end
     end
-  elseif GetTradeSkillLine and GetNumTradeSkills then
-    local profName = GetTradeSkillLine()
-    if not profName or not CR.professions[profName] then return end
+    liveRecipes.prof, liveRecipes.token, liveRecipes.map = profName, liveToken, map
+    return profName, learnedChanged
+  end
+  if GetTradeSkillLine and GetNumTradeSkills then
+    local profName = OpenProfessionFromUI()
+    if not profName or not CR.professions[profName] then return nil, false end
     local known = CR.ProfTable("known", profName)
+    local learnedChanged = false
     for i = 1, GetNumTradeSkills() do
       local _, kind = GetTradeSkillInfo(i)
       if kind ~= "header" and GetTradeSkillRecipeLink then
         local link = GetTradeSkillRecipeLink(i)
         local spellID = link and tonumber(link:match("enchant:(%d+)"))
-        if spellID then known[spellID] = true end
+        if spellID and not known[spellID] then
+          known[spellID] = true
+          learnedChanged = true
+        end
       end
     end
+    return profName, learnedChanged
+  end
+  return nil, false
+end
+
+function CR.ScanTradeSkill()
+  CR.ReadOpenRecipes()
+end
+
+-- The profession window's show event used to walk every recipe before the
+-- CraftRoute tab could paint, then NotifyChanged walked them again. This
+-- waits a frame, walks once, and rebuilds the route only when skill or the
+-- known list actually changed.
+local recipeScanQueued = false
+local recipeScanTries = 0
+function CR.QueueOpenRecipeScan()
+  if recipeScanQueued then return end
+  recipeScanQueued = true
+  recipeScanTries = 0
+  local function run()
+    recipeScanQueued = false
+    local prof, learnedChanged = CR.ReadOpenRecipes()
+    if not prof then
+      recipeScanTries = recipeScanTries + 1
+      if recipeScanTries < 4 and C_Timer and C_Timer.After then
+        recipeScanQueued = true
+        C_Timer.After(0.1, function() CR.SafeCall(run) end)
+      end
+      return
+    end
+    local stamp = CR.SkillStamp()
+    local stampChanged = stamp ~= CR.skillStamp
+    CR.skillStamp = stamp
+    if learnedChanged or stampChanged then
+      CR.NotifyChanged({ keepLive = true })
+    elseif CR.RefreshCompact then
+      CR.SafeCall(CR.RefreshCompact)
+    end
+  end
+  if C_Timer and C_Timer.After then
+    C_Timer.After(0, function() CR.SafeCall(run) end)
+  else
+    run()
+  end
+end
+
+-- One generation of timers. A second call for the same key drops the first
+-- set, so the profession tab's reopen ladder does not stack on itself.
+CR._schedGen = {}
+function CR.ScheduleUnique(key, delays, fn)
+  local gen = (CR._schedGen[key] or 0) + 1
+  CR._schedGen[key] = gen
+  for _, delay in ipairs(delays) do
+    C_Timer.After(delay, function()
+      if CR._schedGen[key] ~= gen then return end
+      fn()
+    end)
   end
 end
 
@@ -396,16 +531,38 @@ end
 ---------------------------------------------------------------------------
 function CR.OnChange(fn) table.insert(CR.callbacks, fn) end
 
+-- opts.keepLive / keepPlan / keepLocations: this notify must not throw away a
+-- scan or a plan the caller just built. opts.skipCompact: the profession tab
+-- already redrew. A second caller that needs a fresh plan clears those flags.
 local pending = false
-function CR.NotifyChanged()
+local pendingOpts
+function CR.NotifyChanged(opts)
+  opts = opts or {}
+  if not pendingOpts then
+    pendingOpts = {
+      keepLive = opts.keepLive and true or false,
+      keepPlan = opts.keepPlan and true or false,
+      keepLocations = opts.keepLocations and true or false,
+      skipCompact = opts.skipCompact and true or false,
+    }
+  else
+    if not opts.keepLive then pendingOpts.keepLive = false end
+    if not opts.keepPlan then pendingOpts.keepPlan = false end
+    if not opts.keepLocations then pendingOpts.keepLocations = false end
+    if not opts.skipCompact then pendingOpts.skipCompact = false end
+  end
   if pending then return end
   pending = true
   C_Timer.After(0.25, function()
+    local o = pendingOpts or {}
     pending = false
-    CR.BumpLiveRecipes()
-    CR.InvalidatePlan()
-    CR.InvalidateLocations()
+    pendingOpts = nil
+    CR._notifyOpts = o
+    if not o.keepLive then CR.BumpLiveRecipes() end
+    if not o.keepPlan then CR.InvalidatePlan() end
+    if not o.keepLocations and CR.InvalidateLocations then CR.InvalidateLocations() end
     for _, fn in ipairs(CR.callbacks) do CR.SafeCall(fn) end
+    CR._notifyOpts = nil
   end)
 end
 
@@ -457,6 +614,8 @@ local function OnEvent(event, ...)
   if not CraftRouteCharDB then return end
   if event == "PLAYER_LOGIN" or event == "SKILL_LINES_CHANGED" then
     CR.ScanSkills()
+    -- The stamp is what a later profession-window open compares against.
+    CR.skillStamp = CR.SkillStamp()
     -- Until the player picks one, show a profession this character actually has.
     local db = CraftRouteCharDB
     if not db.profPicked and not CR.skill[db.profession] then
@@ -466,8 +625,10 @@ local function OnEvent(event, ...)
     end
   elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE"
       or event == "TRADE_SKILL_LIST_UPDATE" or event == "NEW_RECIPE_LEARNED" then
-    CR.ScanTradeSkill()
     CR.ScanSkills()
+    -- Next frame: one recipe walk. A plain open does not rebuild the route.
+    CR.QueueOpenRecipeScan()
+    return
   end
   CR.NotifyChanged()
 end

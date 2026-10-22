@@ -93,19 +93,22 @@ end
 
 function CraftRoute_KeybindPressed()
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
-  -- read the professions fresh: the list from login can be empty or out of date
-  if CR.ScanSkills then pcall(CR.ScanSkills) end
   -- the window's up (whatever profession, whatever tab): it closes - the key opens and closes the
   -- whole window
   if ProfessionsFrame and ProfessionsFrame:IsShown() then
     -- Up, on any tab or page (the Professions summary included, which has no profession loaded):
     -- the key closes the whole window on the first press. Nothing is loaded or switched first.
-    -- The next press reopens what was last loaded (CR.KeybindReopen).
+    -- Snapshot the profession before CloseTradeSkill lets go of it. The next press reopens
+    -- what was last loaded (CR.KeybindReopen).
+    if CR.NoteCompactSession then CR.NoteCompactSession() end
     local loaded = not (CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded())
     if loaded and C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() end
     if ProfessionsFrame:IsShown() then HideProfessionsFrame() end
     return
   end
+  -- read the professions fresh: the list from login can be empty or out of date.
+  -- The close path above does not need it.
+  if CR.ScanSkills then pcall(CR.ScanSkills) end
   -- closed: open it on CraftRoute's tab, where it was when last closed this session (else your
   -- first profession)
   local line = CR.KeybindReopen and CR.KeybindReopen()

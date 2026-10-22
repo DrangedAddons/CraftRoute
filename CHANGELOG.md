@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.10
+
+- The CraftRoute key opens the profession tab with less in the way. The recipe list is read once, after the tab is up, and opening a profession no longer rebuilds the route when your skill and known recipes have not changed. The tab still matches Blizzard's frame: the same background and buttons, and the same retries while the profession loads.
+
 ## 0.85.9
 
 - Sharper icon: rebuilt from a 56x56 copy of the repair hammer icon, not the 32x32 one. The in-game texture is 64x64, and the manager's icon.ico now holds 64, 48, 32 and 16 px sizes.
