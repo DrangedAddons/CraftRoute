@@ -4022,6 +4022,29 @@ end
 -- window when this view is what's showing.
 function CR.KeybindWillOpen() ui.keepUntil = GetTime() + 2 end
 
+-- Gathering only (Herbalism, Skinning, Fishing): no skill line, so the keybind opens the
+-- professions frame empty and this tab on that guide. The saved profession is switched when
+-- it isn't one this character has learned. The frame's OnShow opens the tab; if the frame is
+-- already up, open it now. True when the tab is up or will come up with the frame.
+function CR.KeybindShowGathering(name)
+  if name and CR.professions[name] and CR.professions[name].routes then
+    ui.restoreView, ui.restoreWindow = nil, nil
+    ui.pinned = name
+    local db = DB()
+    if db and db.profession ~= name then
+      db.profession = name
+      db.profPicked = true
+      if CR.InvalidatePlan then CR.InvalidatePlan() end
+      if CR.NotifyChanged then CR.NotifyChanged() end
+    end
+  end
+  ui.keepUntil = GetTime() + 2
+  if not (ProfessionsFrame and ProfessionsFrame:IsShown()) then return true end
+  if InCombatLockdown() or not overlay then return false end
+  if not overlay:IsShown() then OpenCompact() end
+  return overlay:IsShown() and true or false
+end
+
 -- The CraftRoute key, the window closed: what to open - what it was on when last closed this
 -- session (and this tab's own profession then, if it was showing another), else your first
 -- profession with a window (CR.FallbackProfession). Returns the skill line to open.

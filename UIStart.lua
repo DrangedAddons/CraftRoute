@@ -1,5 +1,5 @@
--- The Professions tab of the main window: every profession, primary and secondary. Where the
--- window (and the keybind) lands when this character has no crafting profession yet. Pick one and it shows the nearest trainers who teach it (map pins, from
+-- The Professions tab of the main window: every profession, primary and secondary. /cr window
+-- can still open it. The CraftRoute keybind does not. Pick one and it shows the nearest trainers who teach it (map pins, from
 -- TrainerSpells' trainer data), and - for the ones CraftRoute has a route for - a button to the
 -- leveling route.
 local _, CR = ...

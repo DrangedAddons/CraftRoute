@@ -101,8 +101,8 @@ function CR.GetProfession(name) return CR.professions[name] end
 -- Professions with a route, primary crafting professions first.
 local ORDER = { Herbalism = 40, Mining = 41, Skinning = 42, Cooking = 50, Fishing = 51, ["First Aid"] = 52 }
 
--- Professions with no crafting window to open (their route is in the main window only), and the
--- icon their gathering steps show
+-- Professions with no crafting window to open. The keybind shows their guide on CraftRoute's
+-- tab. The icon their gathering steps show:
 CR.NO_WINDOW = { Fishing = true, Herbalism = true, Skinning = true }
 CR.GATHER_ICON = {
   Fishing = "Interface\\Icons\\Trade_Fishing", Mining = "Interface\\Icons\\Trade_Mining",

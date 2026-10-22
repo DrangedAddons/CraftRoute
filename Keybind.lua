@@ -3,13 +3,14 @@
 -- the window up, on any tab, it closes the window.
 -- Always the tab once a profession is learned. With nothing learned there is no skill line for
 -- OpenTradeSkill, so it opens the game's own professions frame (CraftRoute's trainer pins already
--- sit on its unlearned sections). Only gathering (a profession, but no crafting window) still
--- opens the main window's Professions tab. It opens the profession picked in
--- CraftRoute; if that one has no window (Fishing) or isn't learned on this character, the
--- nearest one that has (Cooking for Fishing, else your first crafting profession). Like other
--- addons' profession openers (EllesmereUI's data bar) it calls C_TradeSkillUI.OpenTradeSkill from
--- the key press itself - a real key press may - rather than casting the profession. With the
--- window already open it closes the window.
+-- sit on its unlearned sections) and does not select CraftRoute's tab. A gathering profession
+-- has no crafting window either (Herbalism, Skinning, Fishing): the same frame opens, with
+-- CraftRoute's tab on that profession's guide. It never opens the /cr window.
+-- It opens the profession picked in CraftRoute; if that one has no window (Fishing) or isn't
+-- learned on this character, the nearest one that has (Cooking for Fishing, else your first
+-- crafting profession). Like other addons' profession openers (EllesmereUI's data bar) it calls
+-- C_TradeSkillUI.OpenTradeSkill from the key press itself - a real key press may - rather than
+-- casting the profession. With the window already open it closes the window.
 -- (While dead the game won't switch to a crafting page at all - a known client issue.)
 local _, CR = ...
 
@@ -29,7 +30,7 @@ end
 
 -- The game's professions frame, loaded on demand. Nothing learned means no skill line, so
 -- OpenTradeSkill cannot open it. Shown as Blizzard leaves it: CraftRoute's tab is not selected.
--- That tab is only brought up when a profession is opened (CR.KeybindWillOpen).
+-- That tab comes up when CR.KeybindWillOpen is set: a profession opening, or gathering-only.
 local function EnsureProfessionsFrame()
   if ProfessionsFrame then return true end
   if type(ProfessionsFrame_LoadUI) == "function" then pcall(ProfessionsFrame_LoadUI) end
@@ -71,6 +72,24 @@ local function Target()
   end
 end
 
+-- No crafting window (Herbalism, Skinning, Fishing). The saved profession if this character
+-- has it, else the first learned one with a route - the same order login uses.
+local function GatheringTarget()
+  local saved = CraftRouteCharDB and CraftRouteCharDB.profession
+  if saved and CR.skill[saved] and CR.professions[saved] and CR.professions[saved].routes then
+    return saved
+  end
+  for _, name in ipairs(CR.SupportedProfessions()) do
+    if CR.skill[name] then return name end
+  end
+end
+
+-- Hide a professions frame that has no trade skill loaded. CloseTradeSkill leaves it up.
+local function HideProfessionsFrame()
+  if not ProfessionsFrame then return end
+  if HideUIPanel then HideUIPanel(ProfessionsFrame) else ProfessionsFrame:Hide() end
+end
+
 function CraftRoute_KeybindPressed()
   if InCombatLockdown() then CR.Print("Can't open professions in combat.") return end
   -- read the professions fresh: the list from login can be empty or out of date
@@ -80,13 +99,21 @@ function CraftRoute_KeybindPressed()
   if ProfessionsFrame and ProfessionsFrame:IsShown() then
     -- up but empty (no profession loaded, e.g. after a reload): load one, on CraftRoute's tab
     if CR.OpenFallbackProfession and CR.OpenFallbackProfession() then return end
-    -- nothing learned: the frame was opened with no trade skill. CloseTradeSkill does not
-    -- dismiss that. A character who has a profession still closes with CloseTradeSkill below.
-    if CR.HasAnyProfession and not CR.HasAnyProfession() then
-      if HideUIPanel then HideUIPanel(ProfessionsFrame) else ProfessionsFrame:Hide() end
+    -- no trade skill loaded: nothing learned, or only gathering. CloseTradeSkill does not
+    -- dismiss that frame. Gathering with CraftRoute's tab not up yet puts the tab up;
+    -- the tab already up, or nothing learned, closes the frame.
+    local empty = (CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded())
+      or (CR.HasAnyProfession and not CR.HasAnyProfession())
+    if empty then
+      local name = CR.HasAnyProfession and CR.HasAnyProfession() and GatheringTarget()
+      local compactUp = CR.compactFrame and CR.compactFrame:IsShown()
+      if name and not compactUp and CR.KeybindShowGathering and CR.KeybindShowGathering(name) then
+        return
+      end
+      HideProfessionsFrame()
       return
     end
-    if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() else HideUIPanel(ProfessionsFrame) end
+    if C_TradeSkillUI and C_TradeSkillUI.CloseTradeSkill then C_TradeSkillUI.CloseTradeSkill() else HideProfessionsFrame() end
     return
   end
   -- closed: open it on CraftRoute's tab, where it was when last closed this session (else your
@@ -99,16 +126,14 @@ function CraftRoute_KeybindPressed()
   end
   local prof = Target()
   if not prof then
-    -- no profession at all: the game's professions frame, not CraftRoute's tab. If that frame
-    -- cannot be opened, the main window's Professions tab (the same place gathering-only lands).
-    if CR.HasAnyProfession and not CR.HasAnyProfession() and OpenEmptyProfessionsFrame() then return end
-    -- professions, but none with a crafting window (Herbalism, Skinning, Fishing):
-    -- the Professions tab. Pressing it again while that's showing closes it.
-    if CR.IsWindowShown() and CR.CurrentTab and CR.CurrentTab() == "start" then
-      CR.ToggleWindow()
-    else
-      CR.SafeCall(CR.ShowWindow, "start")
+    -- no crafting window. Nothing learned: Blizzard's frame, CraftRoute's tab stays off.
+    -- A gathering profession: the same frame, with CraftRoute's tab on that guide.
+    if CR.HasAnyProfession and CR.HasAnyProfession() then
+      local name = GatheringTarget()
+      if name and CR.KeybindShowGathering then CR.KeybindShowGathering(name) end
+      if CR.KeybindWillOpen then CR.KeybindWillOpen() end
     end
+    OpenEmptyProfessionsFrame()
     return
   end
   if CR.KeybindWillOpen then CR.KeybindWillOpen() end
