@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.9
+
+- Sharper icon: rebuilt from a 56x56 copy of the repair hammer icon, not the 32x32 one. The in-game texture is 64x64, and the manager's icon.ico now holds 64, 48, 32 and 16 px sizes.
+
 ## 0.85.8
 
 - The in-game icon is now 64x64 and sharpened, upscaled from the 32x32 original, so it's less blurry on the CraftRoute tab.
