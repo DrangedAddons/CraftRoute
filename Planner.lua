@@ -599,13 +599,7 @@ function CR.BuildPlan(profName, cur, goal)
 
   -- Trainer milestones (routes followed in order spell these out as their own steps)
   local tiers = route.sequential and {} or (route.tiers or {})
-  -- (not when the route has its own way to learn it for this character - Skyborne learn Mining
-  -- from a quest)
-  local ownLearn = false
-  for _, st in ipairs(route.steps or {}) do
-    if st.learnStep and FactionOK(st) and (st.skill or profName) == profName then ownLearn = true end
-  end
-  if not detected and not route.sequential and not ownLearn then
+  if not detected and not route.sequential then
     table.insert(events, { kind = "train", from = 0, sort = -1, text = "Learn Apprentice " .. profName, ok = true,
                            apprentice = true, rankIndex = 1 })
   end

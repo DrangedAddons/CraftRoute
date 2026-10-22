@@ -64,13 +64,6 @@ table.insert(choices, { key = "method", label = "1-120: mine, or smelt bought or
   { key = "smelt", label = "Smelt bought ore" },
 } })
 
--- Skyborne start in Thendal Village on Zephras Isle, with no trainer: a quest reward teaches it.
-table.insert(steps, { kind = "guide", from = 1, to = 65, learnStep = true, race = "Skyborne",
-  title = "Learn Mining from Harvesting Windstones",
-  text = "Take Harvesting Windstones, one of the first quests in Thendal Village, and pick Mining for Dummies "
-    .. "as your reward - it teaches you Mining. Thendal Village has no trainer; the island's are Halavuul "
-    .. "Cragwind in Valanaar and Messana Crestwind in Shen'dar Village." })
-
 table.insert(steps, { kind = "guide", from = 1, to = 65, items = { { PICK, 1 } },
   title = "Get a Mining Pick",
   text = "Buy a Mining Pick from the Mining Supplier near your trainer, or from the trainer. It only has to "
@@ -163,6 +156,13 @@ CR.RegisterRoute("Mining", {
   routeEnd = 300,
   maxSkill = 300,
   noAutoFill = true,
+
+  -- Learn Mining: besides any trainer, Skyborne can take it as a quest reward where they start
+  learnAlso = {
+    { race = "Skyborne", text = "Or on Zephras Isle: take Harvesting Windstones, one of the first quests in "
+      .. "Thendal Village, and pick Mining for Dummies as your reward. Thendal Village has no trainer; the "
+      .. "island's are Halavuul Cragwind in Valanaar and Messana Crestwind in Shen'dar Village." },
+  },
 
   tiers = {
     { name = "Apprentice", cap = 75, skill = 0, level = 0 },

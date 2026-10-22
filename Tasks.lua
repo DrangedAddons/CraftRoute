@@ -609,6 +609,11 @@ function CR.StepTask(st, profName)
     if st.apprentice or not st.cap then
       t.kind, t.title, t.icon = "train", "Learn " .. skillName, "Interface\\Icons\\INV_Misc_Book_09"
       t.text = "Find a " .. skillName .. " trainer and learn " .. skillName .. "."
+      -- other ways to learn it, for the characters they're for (Skyborne: a quest on Zephras Isle)
+      local lroute = CR.Route(skillName)
+      for _, alt in ipairs(lroute and lroute.learnAlso or {}) do
+        if CR.FactionOK(alt) then t.text = t.text .. "\n\n" .. CR.FactionText(alt.text) end
+      end
       Cond(learned, skillName .. " learned")
       t.places = Nearest(Trainers(skillName, 1))
     else

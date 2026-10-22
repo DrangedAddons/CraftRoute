@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.3
+
+- Mining for Skyborne: the usual **Learn Mining** step is back, with the nearest trainers to pin. It also offers the Harvesting Windstones quest on Zephras Isle as another way to learn it. Since 0.85.1 the quest had replaced the trainer step, but any Mining trainer teaches it too.
+
 ## 0.85.2
 
 - Fix: Skyborne characters now see **Learn Mining from Harvesting Windstones**. The race check only read the race's display name ("High Order Skyborne"), not its race id ("Skyborne"), so it never matched.
