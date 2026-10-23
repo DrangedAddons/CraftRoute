@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 0.85.13
+
+- Professions page: an empty **Select a profession** slot shows a book drawn in dull brown, like an empty mold, instead of the red question mark. It matches the window, and turns into the profession's own icon once you pick one.
+- Fix: a reagent's sub-component lines (Craft view recipe panel) showed a blank icon for items whose icon hadn't loaded yet. They now show the question mark.
+
 ## 0.85.12
 
 - icon.ico is back (the DrangedAddons manager's icon: the repair hammer, 64, 48, 32 and 16 px). No changes in game.

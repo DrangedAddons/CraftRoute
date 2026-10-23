@@ -2186,7 +2186,7 @@ local function FillPartLine(row, id, per, mult, key, cinfo, open, short)
   row.actMacro = nil
   row.act:Hide()
   row.icon:Show()
-  row.icon:SetTexture(CR.GetItemIcon(id) or "Interface\Icons\INV_Misc_QuestionMark")
+  row.icon:SetTexture(CR.GetItemIcon(id) or "Interface\\Icons\\INV_Misc_QuestionMark")
   local toggle = cinfo and (short or open)
   row.crToggle = toggle and key or nil
   SetPartMark(row, toggle, open)

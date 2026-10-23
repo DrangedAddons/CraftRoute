@@ -5,7 +5,7 @@
 -- Blizzard's own again.
 local _, CR = ...
 
-local EMPTY_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"   -- "pick one" placeholder
+local EMPTY_ICON = "Interface\\Icons\\INV_Misc_Book_09"   -- "pick one" placeholder (drawn dull brown in Refresh)
 
 local built, hidden, ours = {}, {}, {}   -- per section frame (kept here, not on Blizzard's frames); our overlays
 local picker   -- the shared icon grid
@@ -194,7 +194,9 @@ local function BuildPrimary(f, slot)
     if prof and Learned()[prof] then prof = nil end   -- learned it in the other section
     local spec = prof and Info(prof)
     self.icon.tex:SetTexture(spec and spec[2] or EMPTY_ICON)
-    self.icon.tex:SetDesaturated(false)
+    -- nothing picked: the book drawn grey and tinted the window's brown, like an empty mold
+    self.icon.tex:SetDesaturated(spec == nil)
+    if spec then self.icon.tex:SetVertexColor(1, 1, 1, 1) else self.icon.tex:SetVertexColor(0.62, 0.47, 0.30, 0.9) end
     self.name:SetText(spec and spec[1] or "Select a profession")
     self.sub:SetText(spec and spec[3] or "Click the icon to pick one.")
     self.head:SetShown(spec ~= nil)
