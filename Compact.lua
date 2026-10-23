@@ -3839,14 +3839,44 @@ local mirrored, mirrorLog = {}, {}
 local mirrorProf, mirrorCount
 local NINE_SLICE_KEYS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner",
                           "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "Center" }
+-- The overlay is inset from the profession window by these amounts (see BuildOverlay).
+-- While the tab is still hidden it has no screen rect of its own, and the background
+-- copy used to find nothing and wait for the 0.5s pass. The window is already on screen.
+local OVERLAY_INSET_L, OVERLAY_INSET_T, OVERLAY_INSET_R, OVERLAY_INSET_B = 4, 22, 4, 4
+local function TabScreenRect()
+  if not overlay then return end
+  local ol, ot, orr, ob = overlay:GetLeft(), overlay:GetTop(), overlay:GetRight(), overlay:GetBottom()
+  if ol and ot and orr and ob then
+    return ol, ot, orr, ob, overlay:GetEffectiveScale()
+  end
+  local p = ProfessionsFrame
+  if not (p and p.GetLeft and p:GetLeft() and p:GetTop() and p:GetRight() and p:GetBottom()) then return end
+  return p:GetLeft() + OVERLAY_INSET_L, p:GetTop() - OVERLAY_INSET_T,
+         p:GetRight() - OVERLAY_INSET_R, p:GetBottom() + OVERLAY_INSET_B, p:GetEffectiveScale()
+end
+-- A skin can fade Blizzard's art in from nothing. Copying that 0 would blank a
+-- background we already have; the 0.5s and 2s passes still pick up the settled alpha.
+-- A copy that has never been seen still takes the 0, so a fade can start from nothing.
+local function CopyAlpha(c, r)
+  local a = r.GetAlpha and r:GetAlpha()
+  if type(a) == "number" and a >= 0.02 then
+    c:SetAlpha(a)
+    c.crAlpha = a
+  elseif c.crAlpha then
+    c:SetAlpha(c.crAlpha)
+  elseif type(a) == "number" then
+    c:SetAlpha(a)
+  end
+end
 local function MirrorBlizzardBackground()
+  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
+  local ol, ot, orr, ob, os = TabScreenRect()
+  -- No rect yet: leave whatever is already copied. Hiding it here is the flash.
+  if not (page and ol and ot and orr and ob and os) then return 0 end
+  local wasShown = {}
+  for i, t in ipairs(mirrored) do wasShown[i] = t:IsShown() end
   for _, t in ipairs(mirrored) do t:Hide() end
   wipe(mirrorLog)
-  local page = ProfessionsFrame and ProfessionsFrame.CraftingPage
-  local ol, ot = overlay and overlay:GetLeft(), overlay and overlay:GetTop()
-  local orr, ob = overlay and overlay:GetRight(), overlay and overlay:GetBottom()
-  if not (page and ol and ot and orr and ob) then return 0 end
-  local os = overlay:GetEffectiveScale()
   -- this tab's edges on screen (a texture reaching past them isn't the page's settled art)
   local L, R, T, B = ol * os - 2, orr * os + 2, ot * os + 2, ob * os - 2
   local n = 0
@@ -3889,7 +3919,7 @@ local function MirrorBlizzardBackground()
             c:SetDesaturated(r:IsDesaturated())
             if r.GetHorizTile then c:SetHorizTile(r:GetHorizTile()) c:SetVertTile(r:GetVertTile()) end
           end)
-          c:SetAlpha(r:GetAlpha())
+          CopyAlpha(c, r)
           c:ClearAllPoints()
           c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
           c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
@@ -3908,21 +3938,25 @@ local function MirrorBlizzardBackground()
     end
   end
   pcall(Visit, page, 0)
+  -- Nothing ready to copy (the page's art is still fading in). Put the last copies
+  -- back so the tab does not open blank and fill in half a second later.
+  if n == 0 then
+    for i, t in ipairs(mirrored) do if wasShown[i] then t:Show() end end
+    return 0
+  end
   -- with Blizzard's own header art copied, this tab's stand-in band steps aside
   if overlay.headerBand then
-    overlay.headerBand:SetShown(n == 0)
-    overlay.headerLine:SetShown(n == 0)
+    overlay.headerBand:Hide()
+    overlay.headerLine:Hide()
   end
   -- Blizzard's page has no column line - its recipe list's inset border and the recipe panel's
   -- own art part the columns - so with that art copied, ours steps aside too (still the anchor)
-  if overlay.divider then overlay.divider:SetAlpha(n == 0 and 1 or 0) end
+  if overlay.divider then overlay.divider:SetAlpha(0) end
   -- kept so the next open of this profession can put the same copies back without
   -- walking the page again. A later pass (0.5s, 2s) still walks, for a skin's fade.
-  if n > 0 then
-    mirrorProf, mirrorCount = OpenProfessionName(), n
-  else
-    mirrorProf, mirrorCount = nil, 0
-  end
+  local name = OpenProfessionName()
+  if name and name ~= "" then mirrorProf = name end
+  mirrorCount = n
   return n
 end
 
@@ -3930,21 +3964,27 @@ end
 -- textures. False when this profession has not been copied yet, or a texture is gone.
 local function ReapplyMirror()
   local prof = OpenProfessionName()
-  if not prof or prof == "" or prof ~= mirrorProf or not mirrorCount or mirrorCount < 1 then return false end
+  -- The same profession as the copies we already have. The source textures may be
+  -- hidden with Blizzard's page; they still hold the place the copies follow.
+  if prof and prof ~= "" and mirrorProf and prof ~= mirrorProf then return false end
+  if not mirrorCount or mirrorCount < 1 then return false end
   for i = 1, mirrorCount do
     local c = mirrored[i]
     local r = c and c.crSource
-    if not (r and r.IsShown and r:IsShown() and r.GetAlpha) then return false end
+    if not (r and r.GetAlpha) then return false end
   end
-  for i = 1, mirrorCount do
-    local c = mirrored[i]
-    local r = c.crSource
-    c:SetAlpha(r:GetAlpha())
-    c:ClearAllPoints()
-    c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
-    c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
-    c:Show()
-  end
+  local ok = pcall(function()
+    for i = 1, mirrorCount do
+      local c = mirrored[i]
+      local r = c.crSource
+      CopyAlpha(c, r)
+      c:ClearAllPoints()
+      c:SetPoint("TOPLEFT", r, "TOPLEFT", 0, 0)
+      c:SetPoint("BOTTOMRIGHT", r, "BOTTOMRIGHT", 0, 0)
+      c:Show()
+    end
+  end)
+  if not ok then return false end
   for i = mirrorCount + 1, #mirrored do if mirrored[i] then mirrored[i]:Hide() end end
   if overlay.headerBand then
     overlay.headerBand:SetShown(false)

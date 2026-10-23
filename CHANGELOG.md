@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.11
+
+- The profession tab's background is on the frame when it opens. It was being copied a moment later, so the page art popped in a fraction of a second after the tab. A profession already open this session puts the same art back without walking Blizzard's page again.
+
 ## 0.85.10
 
 - The CraftRoute key opens the profession tab with less in the way. The recipe list is read once, after the tab is up, and opening a profession no longer rebuilds the route when your skill and known recipes have not changed. The tab still matches Blizzard's frame: the same background and buttons, and the same retries while the profession loads.
