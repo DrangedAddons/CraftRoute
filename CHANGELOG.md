@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 0.85.12
+
+- icon.ico is back (the DrangedAddons manager's icon: the repair hammer, 64, 48, 32 and 16 px). No changes in game.
+
 ## 0.85.11
 
 - The profession tab's background is on the frame when it opens. It was being copied a moment later, so the page art popped in a fraction of a second after the tab. A profession already open this session puts the same art back without walking Blizzard's page again.
