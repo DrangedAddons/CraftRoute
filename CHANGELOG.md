@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.0.0
+
+- First live release for WoW Forever. The addon is now listed for Forever only (the Classic beta has ended). No changes in game.
+
 ## 0.85.13
 
 - Professions page: an empty **Select a profession** slot shows a book drawn in dull brown, like an empty mold, instead of the red question mark. It matches the window, and turns into the profession's own icon once you pick one.
