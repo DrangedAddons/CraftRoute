@@ -29,7 +29,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir -p build/CraftRoute
-          rsync -a --exclude='.git*' --exclude='.github' --exclude='tools' --exclude='build' ./ build/CraftRoute/
+          rsync -a --exclude='.git*' --exclude='.github' --exclude='tools' --exclude='build' --exclude='screenshots' ./ build/CraftRoute/
           cd build && zip -qr "../CraftRoute-${GITHUB_REF_NAME}.zip" CraftRoute
 
       # Every CHANGELOG section since the previous release, so versions that were never tagged on
