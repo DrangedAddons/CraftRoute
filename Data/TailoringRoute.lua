@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Tailoring guide
--- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 8 Oct 2026).
+-- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 30 Oct 2026).
 -- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
 -- Bolts are Tailoring recipes, so any bolts you're short of are added as extra crafts.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -32,12 +32,12 @@ CR.RegisterRoute("Tailoring", {
 
   choices = {
     { key = "j100", label = "100-125", options = {
-      { key = "silk", label = "Bolts of Silk, then shoulders" },
-      { key = "shoulders", label = "Shoulders only (stopping at 150)" },
+      { key = "silk", label = "Bolts of Silk" },
+      { key = "shoulders", label = "Shoulders (stopping at 150)" },
     }},
     { key = "e140", label = "140-150", options = {
       { key = "mageweave", label = "Bolts of Mageweave" },
-      { key = "gloves", label = "Gloves of Meditation (no Mageweave)" },
+      { key = "shirt", label = "Red Swashbuckler's Shirt (no Mageweave)" },
     }},
   },
 
@@ -45,21 +45,21 @@ CR.RegisterRoute("Tailoring", {
     { from = 1,   to = 30,  spell = 2963,  crafts = 30, note = "Keep the bolts for the belts" },
     { from = 30,  to = 55,  spell = 8776,  crafts = 28 },
     { from = 55,  to = 80,  spell = 2964,  crafts = 45,
-      note = "Learn Journeyman first - you can pass 75. Make all 45, you need them" },
+      note = "Learn Journeyman first - no skill points above 75 until you do. Keep the bolts - you need 153 by 140" },
     { from = 80,  to = 95,  spell = 2402,  crafts = 22,
       note = "If the bolts already took you past 80, make capes until 95" },
     { from = 95,  to = 100, spell = 3848,  crafts = 5 },
-    { from = 100, to = 120, spell = 3839,  crafts = 40, when = { j100 = "silk" },
-      note = "Keep the bolts - you need 176 by 190" },
-    { from = 120, to = 125, spell = 3848,  crafts = 8,  when = { j100 = "silk" } },
-    { from = 100, to = 125, spell = 3848,  crafts = 29, when = { j100 = "shoulders" } },
-    { from = 125, to = 140, spell = 3852,  crafts = 20,
+    { from = 100, to = 120, spell = 3839,  crafts = 54, when = { j100 = "silk" },
+      note = "Keep the bolts - you need 184 by 190" },
+    { from = 100, to = 120, spell = 3848,  crafts = 23, when = { j100 = "shoulders" } },
+    { from = 120, to = 125, spell = 3852,  crafts = 5,
       note = "Elixir of Wisdom from the AH or an Alchemist" },
-    { from = 140, to = 150, spell = 3865,  crafts = 17, when = { e140 = "mageweave" },
+    { from = 125, to = 140, spell = 3852,  crafts = 24, note = "Yellow the whole way - you might need a few more" },
+    { from = 140, to = 150, spell = 3865,  crafts = 23, when = { e140 = "mageweave" },
       note = "Keep the bolts - you need 180 by 225" },
-    { from = 140, to = 150, spell = 3852,  crafts = 31, when = { e140 = "gloves" }, note = "Green from 140" },
+    { from = 140, to = 150, spell = 8489,  crafts = 10, when = { e140 = "shirt" } },
     { from = 150, to = 170, spell = 8791,  crafts = 20 },
-    { from = 170, to = 190, spell = 8799,  crafts = 24, note = "Yellow from 180" },
+    { from = 170, to = 190, spell = 8799,  crafts = 26, note = "Yellow from 180 - you might need a few more" },
     { from = 190, to = 215, spell = 12053, crafts = 38, note = "Yellow from 195, green from 210" },
     { from = 215, to = 225, spell = 12065, crafts = 26 },
   },

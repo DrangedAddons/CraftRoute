@@ -1,5 +1,16 @@
 # CraftRoute changelog
 
+## 1.1.1
+
+- Blacksmithing and Tailoring follow the latest Forever guides.
+  - Blacksmithing 175-185 is Golden Scale Bracers for everyone; the Solid Grinding Stones step is gone. With Mining 165 you can smelt the Steel Bars yourself.
+  - Blacksmithing 185-215 is a choice: Mithril Plate Pants, or Steel Breastplate (185-200) then Steel Plate Helm (200-215) if Mithril Bars are dear.
+  - Blacksmithing 215-225 is Heavy Mithril Breastplate, or Mithril Spurs if you have the plans.
+  - Blacksmithing notes updated: the Coarse Grinding Stones go to 95 and 112, the Heavy Grinding Stones to the bracers at 175, Green Dye from Tamar or Bombus Finespindle.
+  - Tailoring 100-120 makes 54 Bolts of Silk Cloth (or 23 shoulders if you stop at 150), then 120-125 is 5 Gloves of Meditation on either path. 125-140 is 24 gloves.
+  - Tailoring 140-150 makes 23 Bolts of Mageweave, or 10 Red Swashbuckler's Shirts instead of the Gloves of Meditation. 170-190 is 26 Crimson Silk Pantaloons.
+  - A saved pick that no longer exists (Steel Plate Helm at 215, gloves at 140) falls back to the first option.
+
 ## 1.1.0
 
 - Herbalism now follows wow-professions.com's new **Forever** Herbalism guide, replacing the Classic stand-in.

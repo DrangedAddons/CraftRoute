@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Blacksmithing guide
--- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 8 Oct 2026).
+-- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 30 Oct 2026).
 -- Reagents per craft come from the recipe database; only skill ranges + craft counts live here.
 -- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -42,12 +42,12 @@ CR.RegisterRoute("Blacksmithing", {
       { key = "belt", label = "Runed Copper Belt" },
       { key = "rod", label = "Silver Rod (if Silver Bars are cheap)" },
     }},
-    { key = "e175", label = "175-185", options = {
-      { key = "stones", label = "Solid Grinding Stones" },
-      { key = "bracers", label = "Golden Scale Bracers (stopping at 215)" },
+    { key = "e185", label = "185-215", options = {
+      { key = "pants", label = "Mithril Plate Pants" },
+      { key = "steel", label = "Steel Breastplate + Steel Plate Helm (if Mithril Bars are dear)" },
     }},
     { key = "e215", label = "215-225", options = {
-      { key = "helm", label = "Steel Plate Helm" },
+      { key = "breastplate", label = "Heavy Mithril Breastplate" },
       { key = "spurs", label = "Mithril Spurs (world drop plans)" },
     }},
   },
@@ -66,7 +66,7 @@ CR.RegisterRoute("Blacksmithing", {
         .. "Zephras Isle Halavuul Cragwind in Valanaar or Aedi Thriceforged in Shen'dar Village}." },
     { from = 1,   to = 25,  spell = 2660, crafts = 30 },
     { from = 25,  to = 50,  spell = 3320, crafts = 30, note = "Keep 26 - for the gauntlets and Silver Rods" },
-    { from = 50,  to = 67,  spell = 3326, crafts = 36, note = "Make all 36 - for the bracers at 95" },
+    { from = 50,  to = 67,  spell = 3326, crafts = 36, note = "Make all 36 - for the bracers at 95 and 112" },
     { from = 67,  to = 75,  spell = 3323, crafts = 8 },
 
     -- Journeyman
@@ -74,8 +74,8 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 75,  to = 80,  spell = 7818, crafts = 5, when = { j75 = "rod" },
       note = "If 1 Silver Bar costs less than 10 Copper Bars" },
     { from = 80,  to = 95,  spell = 2668, crafts = 15 },
-    { from = 95,  to = 100, spell = 2672, crafts = 5, note = "Use the Coarse Grinding Stones from 50" },
-    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep them, you might need them later" },
+    { from = 95,  to = 100, spell = 2672, crafts = 5, note = "Use 10 of the Coarse Grinding Stones from 50 - keep the other 26 for 112" },
+    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep all 20 - for the Golden Scale Bracers at 175" },
     { from = 112, to = 125, spell = 2672, crafts = 13 },
     { from = 125, to = 140, spell = 2742, crafts = 24,
       note = "Weak Flux (and Strong Flux for the Bronze Warhammers, 140-165) from the Blacksmithing Supply "
@@ -85,17 +85,17 @@ CR.RegisterRoute("Blacksmithing", {
     -- Expert
     { from = 150, to = 165, spell = 9985, crafts = 19 },
     { from = 165, to = 175, spell = 3501, crafts = 15,
-      note = "Green Dye from {H:Tamar (Orgrimmar), Millie Gregorian (Undercity) or Mahu (Thunder Bluff)}"
-        .. "{A:Jillian Tanner (Stormwind) or Bombus Finespindle (Ironforge)}" },
-    { from = 175, to = 185, spell = 9920, crafts = 40, when = { e175 = "stones" },
-      note = "Make all 40 - 21 are for the helms at 215" },
-    { from = 175, to = 185, spell = 7223, crafts = 10, when = { e175 = "bracers" },
-      note = "Only if you stop at 215 and Solid Stone is expensive - uses the Heavy Grinding Stones from 100" },
-    { from = 185, to = 215, spell = 9931, crafts = 36 },
-    { from = 215, to = 225, spell = 9935, crafts = 21, when = { e215 = "helm" },
-      note = "Green from 220 - you might need a few more" },
+      note = "Green Dye from {H:Tamar (Orgrimmar)}{A:Bombus Finespindle (Ironforge)}" },
+    { from = 175, to = 185, spell = 7223, crafts = 10,
+      note = "Uses the Heavy Grinding Stones from 100. With Mining 165 you can smelt the Steel Bars from Iron "
+        .. "Bar and Coal - Coal is sold by the Blacksmithing Supply vendor in any capital" },
+    { from = 185, to = 215, spell = 9931, crafts = 36, when = { e185 = "pants" } },
+    { from = 185, to = 200, spell = 9916, crafts = 15, when = { e185 = "steel" },
+      note = "If 432 Mithril Bars cost more than about 478 Steel Bars, 135 Heavy Stone and 68 Solid Stone" },
+    { from = 200, to = 215, spell = 9935, crafts = 17, when = { e185 = "steel" } },
+    { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" } },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },
-      note = "Plans: Mithril Spurs is a world drop - check the AH. Uses 30 of the Solid Grinding Stones from 175" },
+      note = "Plans: Mithril Spurs is a world drop - check the AH" },
   },
 })
 
