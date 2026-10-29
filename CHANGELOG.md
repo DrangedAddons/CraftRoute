@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.1.0
+
+- Herbalism now follows wow-professions.com's new **Forever** Herbalism guide, replacing the Classic stand-in.
+  - 1-70 adds Zephras Isle. 70-115 is Silverpine Forest (Horde), Loch Modan or Darkshore (Alliance). 115-170 is Hillsbrad Foothills or Stonetalon Mountains. The Barrens and the Wetlands are gone.
+  - Zone steps carry the Forever guide's notes: fast respawns, which loop to run, the Stonetalon areas by mob level, and +5 Herbalism letting you pick Kingsblood from 120.
+  - Journeyman notes that the starting-area Junior trainers only teach up to 75. Artisan reminds you to train before Tanaris or the Searing Gorge, which have no trainer.
+  - Skyborne: Learn Herbalism also offers the Harvesting Windstones quest (pick Wild Harvest), with Dalia the Collector pinned and an optional quest tick.
+  - From 170 the guide still follows the Classic routes until its author revises them.
+
 ## 1.0.0
 
 - First live release for WoW Forever. The addon is now listed for Forever only (the Classic beta has ended). No changes in game.
