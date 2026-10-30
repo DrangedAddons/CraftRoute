@@ -1,5 +1,16 @@
 # CraftRoute changelog
 
+## 1.2.0
+
+- Skinning now follows wow-professions.com's new **Forever** Skinning guide, replacing the Classic stand-in.
+  - 1-75: the starting area (Mottled Boars in the Valley of Trials, or the wolves in Northshire Valley). In Forever those mobs give points all the way to 75.
+  - 75-150: the raptor camp west of Northwatch Hold in The Barrens (Horde); Loch Modan to 125, then Whelgar's Excavation Site in the Wetlands (Alliance).
+  - 150-225 is a choice for both factions: the Foothill Caverns yetis in Hillsbrad, or Roland's Doom and the Rotting Orchard in Duskwood.
+  - 225-280: the Feral Scar Vale yeti cave in Feralas. 280-300: the dinosaurs in western Un'Goro Crater.
+  - Each zone's card lists the mobs to skin with the Skinning they need, green when you can skin them.
+  - Training is listed at any Skinning trainer. Journeyman notes that the starting-area Junior trainers only teach up to 75.
+  - Skyborne: Learn Skinning also offers the Harvesting Windstones quest (pick Pelt Collecting for Beginners), with Dalia the Collector pinned and an optional quest tick.
+
 ## 1.1.1
 
 - Blacksmithing and Tailoring follow the latest Forever guides.

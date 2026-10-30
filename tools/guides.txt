@@ -11,7 +11,7 @@ first-aid            https://www.wow-professions.com/forever/first-aid-leveling-
 fishing-and-cooking  https://www.wow-professions.com/forever/fishing-and-cooking-leveling-guide  FishingCookingRoute.lua
 cooking              https://www.wow-professions.com/forever/cooking-leveling-guide              CookingRoute.lua
 fishing              https://www.wow-professions.com/forever/fishing-leveling-guide              FishingRoute.lua
-# Gathering: Mining and Herbalism have Forever guides; Skinning still uses the Classic one (swap the URL when a Forever one appears)
+# Gathering
 mining               https://www.wow-professions.com/forever/mining-leveling-guide               MiningRoute.lua
-herbalism            https://www.wow-professions.com/forever/herbalism-leveling-guide             HerbalismRoute.lua
-skinning             https://www.wow-professions.com/classic/skinning-leveling-guide-classic-wow  SkinningRoute.lua
+herbalism            https://www.wow-professions.com/forever/herbalism-leveling-guide            HerbalismRoute.lua
+skinning             https://www.wow-professions.com/forever/skinning-leveling-guide              SkinningRoute.lua
