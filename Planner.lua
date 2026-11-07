@@ -158,13 +158,30 @@ local function ScaleCrafts(r, guideCrafts, from, to, lo, hi)
   return math.max(1, ceil(guideCrafts * CraftWeight(r, lo, hi) / full - 0.01))
 end
 
--- Crafts made of a guide step's recipe while you're in its range (any window), or nil before the
--- first one. [route id:step index] = count. (The first craft starts it from where your skill
--- says you are in the step - CraftBatch.lua.)
-local function StepCrafted(route, index, profName)
-  local t = CraftRouteCharDB and CraftRouteCharDB.stepCrafts and CraftRouteCharDB.stepCrafts[profName]
-  return t and t[(route.id or "?") .. ":" .. index]
+-- A guide step's key for its craft count: the route, recipe and range - not its place in the
+-- route, which moves whenever a guide adds or drops a step (old "route:index" counts landed on
+-- other steps and are ignored).
+local function StepKey(route, st)
+  return string.format("%s:%s:%d-%d", route.id or "?", tostring(st.spell), st.from or 0, st.to or 0)
 end
+
+-- Crafts made of a guide step's recipe while you're in its range (any window), or nil before the
+-- first one: stepCrafts[prof][key] = count, stepCraftAt[prof][key] = your skill at the last one.
+-- (The first craft starts it from where your skill says you are in the step - CraftBatch.lua.)
+-- A count your skill rules out - you're outside the step, or below the skill it was counted at
+-- (data from another life of the character, e.g. the beta) - is dropped.
+local function StepCrafted(profName, key, cur, from, to)
+  local db = CraftRouteCharDB
+  local t = db and db.stepCrafts and db.stepCrafts[profName]
+  local n = t and t[key]
+  if not n then return nil end
+  local at = db.stepCraftAt and db.stepCraftAt[profName] and db.stepCraftAt[profName][key]
+  if at and cur >= at and cur >= from and cur < to then return n end
+  t[key] = nil
+  if at then db.stepCraftAt[profName][key] = nil end
+  return nil
+end
+CR.StepKey = StepKey
 
 -- Selected targets that aren't owned yet: { {recipe, qty, owned} }
 function CR.ActiveTargets(profName)
@@ -396,8 +413,8 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
       -- point or not, so the reagents for the rest stay matched. All made but the skill isn't
       -- there yet: repeat the step - an estimate of the crafts (and materials) still needed.
       out.guideCrafts = st.crafts
-      out.routeKey = (route.id or "?") .. ":" .. index
-      local made = StepCrafted(route, index, profName)
+      out.routeKey = StepKey(route, st)
+      local made = StepCrafted(profName, out.routeKey, c, st.from, st.to)
       if made and hi == st.to then
         if made < st.crafts then
           out.crafts = st.crafts - made

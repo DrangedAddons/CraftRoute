@@ -149,10 +149,18 @@ function CR.CountStepCraft(spellID)
       if cur >= (st.stepFrom or st.from or 0) and cur < (st.stepTo or st.to or 0) then
         db.stepCrafts = db.stepCrafts or {}
         db.stepCrafts[prof] = db.stepCrafts[prof] or {}
+        db.stepCraftAt = db.stepCraftAt or {}
+        db.stepCraftAt[prof] = db.stepCraftAt[prof] or {}
+        -- counts with no skill recorded are from the old "route:index" keys - never read, so drop them
+        for k in pairs(db.stepCrafts[prof]) do
+          if not db.stepCraftAt[prof][k] then db.stepCrafts[prof][k] = nil end
+        end
         -- the first craft counted: start from where your skill says you are in the step
         local base = db.stepCrafts[prof][st.routeKey]
           or math.max(0, (st.guideCrafts or 0) - (st.crafts or 0))
         db.stepCrafts[prof][st.routeKey] = base + 1
+        -- the skill it was counted at: a count your skill later contradicts is dropped (Planner.lua)
+        db.stepCraftAt[prof][st.routeKey] = cur
       end
       return
     end

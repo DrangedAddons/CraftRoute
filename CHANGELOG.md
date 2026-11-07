@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.2.3
+
+- Fix: route steps could show far fewer crafts than the guide (First Aid at 80: Wool Bandage 7x instead of 50x, Heavy Silk Bandage 4x, Mageweave Bandage 1x). Each step's "crafted so far" count was saved by the step's position in the route. Counts from older versions of a route, or from leveling on the beta, landed on other steps, including steps you hadn't reached. Counts are now saved by the step's recipe and skill range along with the skill you had. A count your skill rules out is ignored. Old counts are dropped, so a step you're partway through starts again from your skill's estimate.
+
 ## 1.2.2
 
 - Fix: in the Fishing + Cooking guide, the fish you catch on the Dustwallow Marsh and Feralas fishing steps (Raw Mithril Head Trout, Raw Redgill, Raw Sunscale Salmon, Raw Nightfin Snapper) counted as fish to buy. They were priced into Route cost and added to Buy Route. They now count as caught on the way, like the catfish in 1.2.1. The solo Cooking guide still lists its fish to buy, since it has no fishing steps.
