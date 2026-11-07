@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.2.1
+
+- Fix: in the Fishing + Cooking guide, the Materials window, the profession's tracker and item tooltips only counted the fish the route's fishing steps wouldn't cover. Bristle Whisker Catfish showed 3 needed while the cooking step needs 119. They now count the full amount the cooking steps use (54/119), with the fish you'll catch shown as a blue "+" ("about 116 caught on the way" in the tooltip). Only the part the catch won't cover is costed or put on a shopping list, as before.
+
 ## 1.2.0
 
 - Skinning now follows wow-professions.com's new **Forever** Skinning guide, replacing the Classic stand-in.

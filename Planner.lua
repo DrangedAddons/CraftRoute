@@ -630,6 +630,9 @@ function CR.BuildPlan(profName, cur, goal)
   -- Simulate: route-made intermediates feed later steps; shortfalls of craftable
   -- intermediates (cured hides, belts...) become extra crafts; everything else is a material.
   local pool, bagsLeft, need, crafted, usage, made = {}, {}, {}, {}, {}, {}
+  -- what the route's gathering steps say you'll catch (fish): still counted in a material's need,
+  -- as "caught" - so the fish a cooking step uses show in full, not just what the catch won't cover
+  local catchPool, caught = {}, {}
   local Consume
 
   local function Bags(id)
@@ -673,6 +676,13 @@ function CR.BuildPlan(profName, cur, goal)
     if qty <= 0 then return end
     AddUsage(id, label, qty, skillAt)
     need[id] = (need[id] or 0) + qty
+    local fromCatch = min(catchPool[id] or 0, qty)
+    if fromCatch > 0 then
+      catchPool[id] = catchPool[id] - fromCatch
+      caught[id] = (caught[id] or 0) + fromCatch
+      qty = qty - fromCatch
+      if qty <= 0 then return end
+    end
     local producer = prof.byItem[id] and prof.recipes[prof.byItem[id]]
     local smelter = not producer and depth < 3 and CR.Smelter(id)
     if producer and not (route.noExpand and route.noExpand[id]) and depth < 3 and producer.learn <= max(skillAt, cur) then
@@ -787,7 +797,7 @@ function CR.BuildPlan(profName, cur, goal)
         or string.format("%s %d-%d", e.skill or profName, e.from or 0, e.to or 0)
       for _, it in ipairs(e.items or {}) do Consume(it[1], it[2], label, e.from or 0, 3) end
       for _, it in ipairs(e.yields or {}) do
-        pool[it[1]] = (pool[it[1]] or 0) + it[2]
+        catchPool[it[1]] = (catchPool[it[1]] or 0) + it[2]
         made[it[1]] = (made[it[1]] or 0) + it[2]
       end
     end
@@ -823,12 +833,13 @@ function CR.BuildPlan(profName, cur, goal)
   -- Materials
   for id, n in pairs(need) do
     local have = CR.HaveCount(id)
-    local m = { id = id, name = ItemName(prof, id), need = n, have = have, crafted = crafted[id] or 0, usage = usage[id] }
-    m.missing = max(0, n - have - m.crafted)
+    local m = { id = id, name = ItemName(prof, id), need = n, have = have, crafted = crafted[id] or 0,
+                caught = caught[id] or 0, usage = usage[id] }
+    m.missing = max(0, n - have - m.crafted - m.caught)
     if m.crafted == 0 then
       m.price, m.priceSrc = CR.GetUnitPrice(id)
       if m.price then
-        m.totalCost = m.price * n
+        m.totalCost = m.price * (n - m.caught)
         m.missingCost = m.price * m.missing
         plan.totalCost = plan.totalCost + m.totalCost
         plan.missingCost = plan.missingCost + m.missingCost

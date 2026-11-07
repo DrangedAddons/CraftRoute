@@ -211,8 +211,10 @@ local function NewTracker(PROF)
       if not self.m then return end
       GameTooltip:SetOwner(self, "ANCHOR_LEFT")
       GameTooltip:SetItemByID(self.m.id)
-      GameTooltip:AddLine(string.format("Route needs %d - you have %d%s.", self.m.need, self.m.have,
-        (self.m.crafted or 0) > 0 and string.format(", %d made on the way", self.m.crafted) or ""), 0.4, 0.8, 1, true)
+      GameTooltip:AddLine(string.format("Route needs %d - you have %d%s%s.", self.m.need, self.m.have,
+        (self.m.crafted or 0) > 0 and string.format(", %d made on the way", self.m.crafted) or "",
+        (self.m.caught or 0) > 0 and string.format(", about %d caught on the way", self.m.caught) or ""),
+        0.4, 0.8, 1, true)
       if editing then GameTooltip:AddLine("Untick to hide it from this list.", 0.6, 0.6, 0.6, true) end
       GameTooltip:Show()
     end)
@@ -275,7 +277,7 @@ local function NewTracker(PROF)
     for i = 1, shown do
       local m, r = list[offset + i], Row(i)
       r.m = m
-      local made = m.crafted or 0
+      local made, catch = m.crafted or 0, m.caught or 0
       local done = m.have >= m.need
       r.icon:SetTexture(CR.GetItemIcon(m.id) or "Interface\\Icons\\INV_Misc_QuestionMark")
       r.icon:ClearAllPoints()
@@ -292,6 +294,9 @@ local function NewTracker(PROF)
       if made > 0 and m.have < m.need then
         r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(m.have, m.need), m.need), "aaaaaa")
           .. CR.ColorText(string.format(" +%d make", made), "33ccff"))
+      elseif catch > 0 and m.have < m.need then
+        r.count:SetText(CR.ColorText(string.format("%d/%d", m.have, m.need), "ffd100")
+          .. CR.ColorText(string.format(" +%d catch", catch), "33ccff"))
       else
         r.count:SetText(CR.ColorText(string.format("%d/%d", math.min(m.have, m.need), m.need), done and "40ff40" or "ffd100"))
       end
@@ -368,7 +373,8 @@ local function NewTracker(PROF)
       m:SetText(it.name)
       nameW = math.max(nameW, tonumber(m:GetStringWidth()) or 0)
       m:SetText(string.format("%d/%d", it.need, it.need) .. (((it.crafted or 0) > 0 and it.have < it.need)
-        and string.format(" +%d make", it.crafted) or ""))
+        and string.format(" +%d make", it.crafted) or ((it.caught or 0) > 0 and it.have < it.need)
+        and string.format(" +%d catch", it.caught) or ""))
       countW = math.max(countW, tonumber(m:GetStringWidth()) or 0)
     end
     local rowW = 8 + (editing and 18 or 0) + (ROW_H - 4) + 5 + nameW + 6 + countW + 2 + 8 + (scrolling and 8 or 0)

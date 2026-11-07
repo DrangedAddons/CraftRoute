@@ -139,13 +139,17 @@ function CR.UpdateMaterialRow(row, m)
   row.icon:Show()
   row.icon:SetTexture(GetItemIcon(m.id))
   row.name:SetText(m.name)
-  local covered = m.have + m.crafted
+  local caught = m.caught or 0
+  local covered = m.have + m.crafted + caught
   local color = covered >= m.need and "40ff40" or "ffffff"
   local count = CR.ColorText(string.format("%d/%d", math.min(m.have, m.need), m.need), color)
   if m.crafted > 0 then count = count .. CR.ColorText(" +" .. m.crafted, "33ccff") end
+  if caught > 0 and m.have < m.need then count = count .. CR.ColorText(" +" .. caught, "33ccff") end
   row.count:SetText(count)
   if m.crafted > 0 then
     row.cost:SetText(CR.ColorText("make " .. m.crafted, "33ccff"))
+  elseif caught > 0 and m.missing == 0 and m.have < m.need then
+    row.cost:SetText(CR.ColorText("catch " .. (m.need - m.have), "33ccff"))
   elseif m.missing == 0 then
     row.cost:SetText(CR.ColorText("done", "40ff40"))
   else

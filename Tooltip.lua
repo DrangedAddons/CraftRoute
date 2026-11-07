@@ -24,7 +24,7 @@ function CR.AddTooltipLines(tooltip, itemID)
 
   tooltip:AddLine(" ")
   tooltip:AddLine("|cff33ccffCraftRoute|r")
-  local need, have, crafted, price = 0, 0, 0, nil
+  local need, have, crafted, price = 0, 0, 0, nil   -- (crafted: made or caught on the way)
   for _, b in ipairs(blocks) do
     local c, m = b.col, b.m
     -- named when there's more than one, or it's another character's
@@ -42,12 +42,13 @@ function CR.AddTooltipLines(tooltip, itemID)
       end
       tooltip:AddDoubleLine("  Needed for " .. CR.TipShort(u.label), u.n, 0.8, 0.8, 0.8, 1, 1, 1)
     end
-    local extra = (m.crafted or 0) > 0 and string.format(" (+%d crafted)", m.crafted) or ""
+    local extra = (m.crafted or 0) > 0 and string.format(" (+%d crafted)", m.crafted)
+      or (m.caught or 0) > 0 and string.format(" (+%d to catch)", m.caught) or ""
     tooltip:AddDoubleLine(string.format("To reach %s %d (from %d):", c.prof, c.goal or 0, c.cur or 0),
-      Count((m.have or 0) + (m.crafted or 0), m.need) .. extra, 1, 0.82, 0)
+      Count((m.have or 0) + (m.crafted or 0) + (m.caught or 0), m.need) .. extra, 1, 0.82, 0)
     need = need + m.need
     have = math.max(have, m.have or 0)   -- (the same stock for each)
-    crafted = crafted + (m.crafted or 0)
+    crafted = crafted + (m.crafted or 0) + (m.caught or 0)
     if not price and m.price and (m.crafted or 0) == 0 then price = m end
   end
   if #blocks > 1 then
