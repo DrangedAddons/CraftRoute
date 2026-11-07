@@ -806,12 +806,13 @@ function CR.RecipeTask(st, profName)
   local cur = CR.GetSkill(rprofName)
   local t = { key = key, kind = "recipe", step = st, recipe = r, profName = profName, skillName = rprofName,
               title = "Learn " .. r.name, icon = CR.RecipeIcon(r), checks = {}, places = {} }
-  table.insert(t.checks, Check(cur >= (r.learn or 1), string.format("%s skill %d (you: %d)", rprofName, r.learn or 1, cur)))
+  local learnAt = CR.LearnAt(r)
+  table.insert(t.checks, Check(cur >= learnAt, string.format("%s skill %d (you: %d)", rprofName, learnAt, cur)))
   local src = r.src or ""
   if src:find("Trainer") then
     t.text = "Learn it from a " .. rprofName .. " trainer."
     t.cost = TrainerCost(rprofName, r.spell)
-    t.places = Nearest(Trainers(rprofName, RankFor(r.learn)))
+    t.places = Nearest(Trainers(rprofName, RankFor(learnAt)))
   else
     t.text = (r.pattern and ("Get " .. r.pattern .. ". ") or "") .. CR.FactionText(src) .. "."
     t.places = Nearest(RecipeVendors(rprofName, r.spell))
@@ -827,7 +828,7 @@ end
 function CR.RecipeSource(profName, r)
   local src = r.src or ""
   if src:find("Trainer") then
-    return "Taught by " .. profName .. " trainers", Nearest(Trainers(profName, RankFor(r.learn))),
+    return "Taught by " .. profName .. " trainers", Nearest(Trainers(profName, RankFor(CR.LearnAt(r)))),
       TrainerCost(profName, r.spell)
   end
   local places = Nearest(RecipeVendors(profName, r.spell))

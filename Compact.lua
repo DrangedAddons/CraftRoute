@@ -626,7 +626,7 @@ local function ShowTooltip(row)
       if info.recipe and info.learned == false then
         GameTooltip:AddLine("Not learned: " .. CR.FactionText(info.recipe.pattern or info.recipe.src or ""), 1, 0.6, 0.4, true)
       elseif info.recipe and not info.skillOK then
-        GameTooltip:AddLine("Needs " .. info.recipe.learn .. " " .. info.prof.name .. " skill.", 1, 0.4, 0.4, true)
+        GameTooltip:AddLine("Needs " .. CR.LearnAt(info.recipe) .. " " .. info.prof.name .. " skill.", 1, 0.4, 0.4, true)
       end
     end
   elseif item.kind == "step" and item.step and item.step.recipe then
@@ -815,7 +815,7 @@ local function ApplyRow(row, item)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
-      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. (item.recipe.learn or 1), "aaaaaa"))
+      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa"))
     end
     return
   end
@@ -2154,7 +2154,7 @@ local function FillMakeLine(row, cinfo)
       text = how .. CR.ColorText("  - not learned", "ff9966")
     elseif not cinfo.skillOK then
       a:SetText("Skill")
-      text = how .. CR.ColorText("  - needs " .. (cinfo.recipe.learn or 1), "ff6060")
+      text = how .. CR.ColorText("  - needs " .. CR.LearnAt(cinfo.recipe), "ff6060")
     elseif not cinfo.open then
       a:SetText("Open")
       a:SetEnabled(not InCombatLockdown())
@@ -3461,7 +3461,7 @@ local function FillDestDetail(info)
   local text, places, cost = "", {}, nil
   if CR.RecipeSource then text, places, cost = CR.RecipeSource(info.profName, r) end
   f.destInfo:SetText(CR.ColorText("Not Learned", "ff6060")
-    .. CR.ColorText(string.format("  -  learn at %d%s", r.learn or 1, (cur or 0) >= (r.learn or 1) and "" or
+    .. CR.ColorText(string.format("  -  learn at %d%s", CR.LearnAt(r), (cur or 0) >= CR.LearnAt(r) and "" or
       string.format(" (you: %d)", cur or 0)), "aaaaaa")
     .. "\n" .. (text or "") .. (cost and ("  " .. CR.FormatMoney(cost)) or ""))
   local anchor = f.destInfo

@@ -38,9 +38,43 @@ function CR.OwnedCount(itemID)
   return n
 end
 
+-- The skill a recipe can be learned at, for planning: TrainerSpells' value (r.learn), unless a
+-- guide step uses the recipe earlier - then that step's start. The guide's author made it there,
+-- so the data is behind; when TrainerSpells catches up, the lower value is the same and nothing
+-- moves. Recipe info still shows r.learn as TrainerSpells has it. A step's own components made
+-- with the same profession count too (the guide has you make the Bolts of Runecloth for the
+-- Runecloth Belts at 225). (Routes are fixed after load, so this is worked out once.)
+local guideFrom
+function CR.LearnAt(r)
+  if not guideFrom then
+    guideFrom = {}
+    local function Use(rr, from)
+      if rr and (not guideFrom[rr] or from < guideFrom[rr]) then guideFrom[rr] = from end
+    end
+    for profName, prof in pairs(CR.professions) do
+      for _, route in pairs(prof.routes or {}) do
+        local rprof = CR.professions[route.recipeProf or profName]
+        for _, st in ipairs(route.steps or {}) do
+          local rr = st.spell and (st.kind or "craft") == "craft" and rprof and rprof.recipes[st.spell]
+          if rr and st.from then
+            Use(rr, st.from)
+            for _, rg in ipairs(rr.reagents or {}) do
+              local maker = rprof.byItem[rg[1]]
+              Use(maker and rprof.recipes[maker], st.from)
+            end
+          end
+        end
+      end
+    end
+  end
+  local learn = r.learn or 1
+  local g = guideFrom[r]
+  return (g and g < learn) and g or learn
+end
+
 -- "orange" | "yellow" | "green" | "grey" | "red" (can't learn yet)
 function CR.Difficulty(r, skill)
-  if skill < (r.learn or 1) then return "red" end
+  if skill < CR.LearnAt(r) then return "red" end
   if skill < r.y then return "orange" end
   if skill < r.g then return "yellow" end
   if skill < r.x then return "green" end
@@ -122,7 +156,7 @@ function CR.Smelter(itemID)
   if not spell then return nil end
   local skill, _, detected = CR.GetSkill("Mining")
   local r = mining.recipes[spell]
-  if detected and skill >= (r.learn or 1) then return r end
+  if detected and skill >= CR.LearnAt(r) then return r end
 end
 
 -- Expected crafts to go from skill lo to hi with one recipe (stops when it turns grey).
@@ -702,7 +736,7 @@ function CR.BuildPlan(profName, cur, goal)
     end
     local producer = prof.byItem[id] and prof.recipes[prof.byItem[id]]
     local smelter = not producer and depth < 3 and CR.Smelter(id)
-    if producer and not (route.noExpand and route.noExpand[id]) and depth < 3 and producer.learn <= max(skillAt, cur) then
+    if producer and not (route.noExpand and route.noExpand[id]) and depth < 3 and CR.LearnAt(producer) <= max(skillAt, cur) then
       local fromBags = min(Bags(id), qty)
       bagsLeft[id] = bagsLeft[id] - fromBags
       local short = qty - fromBags

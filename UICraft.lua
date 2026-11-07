@@ -711,8 +711,8 @@ local function OtherMaker(itemID, current)
       local skill, _, learned = CR.GetSkill(name)
       if learned then
         -- prefer one you have the skill for, then the lowest recipe
-        local ok = (skill or 0) >= (r.learn or 1)
-        if not best or (ok and not best.ok) or (ok == best.ok and (r.learn or 1) < (best.recipe.learn or 1)) then
+        local ok = (skill or 0) >= CR.LearnAt(r)
+        if not best or (ok and not best.ok) or (ok == best.ok and CR.LearnAt(r) < CR.LearnAt(best.recipe)) then
           best = { recipe = r, prof = p, ok = ok }
         end
       end
@@ -1030,7 +1030,7 @@ function CR.ComponentInfo(prof, itemID, need)
   if how.recipe then
     local learned, available = RecipeState(mprof, how.recipe)
     info.learned, info.available = learned, available or 0
-    info.skillOK = not how.recipe.learn or (CR.GetSkill(mprof.name) or 0) >= how.recipe.learn
+    info.skillOK = not how.recipe.learn or (CR.GetSkill(mprof.name) or 0) >= CR.LearnAt(how.recipe)
     info.open = CR.TradeSkillOpenFor(mprof.name)
     info.count = math.min(info.toMake, info.available)
     info.reagents = how.recipe.reagents
@@ -1347,8 +1347,8 @@ function CR.CreateCraftPanel(parent)
       m:Disable()
       if learned == false then
         info = CR.ColorText("Not learned - " .. CR.FactionText(r.pattern or r.src), "ff9966")
-      elseif r.learn and (CR.GetSkill(prof.name) or 0) < r.learn then
-        info = CR.ColorText("Needs " .. r.learn .. " skill", "ff6060")
+      elseif r.learn and (CR.GetSkill(prof.name) or 0) < CR.LearnAt(r) then
+        info = CR.ColorText("Needs " .. CR.LearnAt(r) .. " skill", "ff6060")
       elseif not CR.TradeSkillOpenFor(prof.name) then
         m:SetText("Open")
         m:SetEnabled(not InCombatLockdown())
@@ -1999,7 +1999,7 @@ function CR.CreateCraftPanel(parent)
     local diff = CR.Difficulty(r, cur)
     local diffText = ({ orange = "every craft gives a point", yellow = "most crafts give a point",
                         green = "few crafts give a point", grey = "no skill points",
-                        red = "needs " .. r.learn .. " skill" })[diff]
+                        red = "needs " .. CR.LearnAt(r) .. " skill" })[diff]
     -- step progress: how far through this guide step (e.g. 130-150 at 141), and what's left
     local sFrom, sTo = st.stepFrom or st.from, st.stepTo or st.to
     local inStep = st.kind == "craft" and sTo and sFrom and sTo > sFrom

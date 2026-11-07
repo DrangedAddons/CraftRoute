@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.3.1
+
+- Fix: where a guide makes a recipe earlier than TrainerSpells' data says it can be learned, CraftRoute now goes by the guide. This affected 33 steps across the professions, such as Heavy Grinding Stone at 100 when the data says 125. Those steps no longer show "too soon" or "needs N skill", and Learn steps send you to the right trainer rank. The same applies to the parts those recipes use: Tailoring 225-265 now has you make the 244 Bolts of Runecloth from Runecloth, as the guide says, instead of listing the bolts to buy. Recipe info still shows TrainerSpells' own learn skill, and if TrainerSpells updates to match, nothing changes. Recipes no guide uses still go by TrainerSpells alone.
+
 ## 1.3.0
 
 - Routes follow the 8 Nov wow-professions.com guides, which now cover the Artisan ranks.
