@@ -800,6 +800,9 @@ function CR.BuildPlan(profName, cur, goal)
         catchPool[it[1]] = (catchPool[it[1]] or 0) + it[2]
         made[it[1]] = (made[it[1]] or 0) + it[2]
       end
+      -- fish a step names without a count: you fish there until the skill, so it covers what the
+      -- later cooking steps use - caught, not bought
+      for _, id in ipairs(e.catches or {}) do catchPool[id] = math.huge end
     end
     table.insert(plan.steps, e)
   end

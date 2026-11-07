@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.2.2
+
+- Fix: in the Fishing + Cooking guide, the fish you catch on the Dustwallow Marsh and Feralas fishing steps (Raw Mithril Head Trout, Raw Redgill, Raw Sunscale Salmon, Raw Nightfin Snapper) counted as fish to buy. They were priced into Route cost and added to Buy Route. They now count as caught on the way, like the catfish in 1.2.1. The solo Cooking guide still lists its fish to buy, since it has no fishing steps.
+
 ## 1.2.1
 
 - Fix: in the Fishing + Cooking guide, the Materials window, the profession's tracker and item tooltips only counted the fish the route's fishing steps wouldn't cover. Bristle Whisker Catfish showed 3 needed while the cooking step needs 119. They now count the full amount the cooking steps use (54/119), with the fish you'll catch shown as a blue "+" ("about 116 caught on the way" in the tooltip). Only the part the catch won't cover is costed or put on a shopping list, as before.
