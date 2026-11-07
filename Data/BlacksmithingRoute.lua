@@ -1,15 +1,17 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Blacksmithing guide
--- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 30 Oct 2026).
+-- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 8 Nov 2026).
 -- Reagents per craft come from the recipe database; only skill ranges + craft counts live here.
--- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
+-- 225-300 is the guide's untested draft from the game data: the Imperial Plate plans are quest
+-- rewards from Derotain Mudsipper (Tanaris), each quest taking Thorium Bars.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
 
 local HAMMER = 5956
+local THORIUM = 12359
 
 CR.RegisterRoute("Blacksmithing", {
   source = "wow-professions.com (Forever beta)",
-  routeEnd = 225,
+  routeEnd = 300,
   maxSkill = 300,
 
   tiers = {
@@ -50,6 +52,12 @@ CR.RegisterRoute("Blacksmithing", {
       { key = "breastplate", label = "Heavy Mithril Breastplate" },
       { key = "spurs", label = "Mithril Spurs (world drop plans)" },
     }},
+    { key = "a240", label = "240-270", options = {
+      { key = "imperial", label = "Imperial Plate Belt + Bracers (quests at 240)" },
+      { key = "ebon", label = "Ebon Shiv + Ornate Thorium Handaxe (if the quests need 265)" },
+      { key = "radiant", label = "Radiant Belt + Ornate Thorium Handaxe (world drop plans)" },
+      { key = "tbracers", label = "Thorium Bracers + Ornate Thorium Handaxe (world drop plans)" },
+    }},
   },
 
   steps = {
@@ -73,18 +81,18 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 75,  to = 80,  spell = 2666, crafts = 5, when = { j75 = "belt" } },
     { from = 75,  to = 80,  spell = 7818, crafts = 5, when = { j75 = "rod" },
       note = "If 1 Silver Bar costs less than 10 Copper Bars" },
-    { from = 80,  to = 95,  spell = 2668, crafts = 15 },
+    { from = 80,  to = 95,  spell = 2666, crafts = 18 },
     { from = 95,  to = 100, spell = 2672, crafts = 5, note = "Use 10 of the Coarse Grinding Stones from 50 - keep the other 26 for 112" },
     { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep all 20 - for the Golden Scale Bracers at 175" },
     { from = 112, to = 125, spell = 2672, crafts = 13 },
     { from = 125, to = 140, spell = 2742, crafts = 24,
-      note = "Weak Flux (and Strong Flux for the Bronze Warhammers, 140-165) from the Blacksmithing Supply "
+      note = "Weak Flux (and Strong Flux for the Bronze Warhammers, 140-170) from the Blacksmithing Supply "
         .. "vendor in any capital" },
     { from = 140, to = 150, spell = 9985, crafts = 10 },
 
     -- Expert
-    { from = 150, to = 165, spell = 9985, crafts = 19 },
-    { from = 165, to = 175, spell = 3501, crafts = 15,
+    { from = 150, to = 170, spell = 9985, crafts = 29 },
+    { from = 170, to = 175, spell = 3501, crafts = 9,
       note = "Green Dye from {H:Tamar (Orgrimmar)}{A:Bombus Finespindle (Ironforge)}" },
     { from = 175, to = 185, spell = 7223, crafts = 10,
       note = "Uses the Heavy Grinding Stones from 100. With Mining 165 you can smelt the Steel Bars from Iron "
@@ -96,6 +104,38 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" } },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },
       note = "Plans: Mithril Spurs is a world drop - check the AH" },
+
+    -- Artisan (the guide's untested draft). The Imperial Plate plans are quest rewards from
+    -- Derotain Mudsipper in Tanaris (level 50); each quest takes Thorium Bars. In Classic they needed
+    -- 265 - Forever lowered the recipes to 240, so the quests probably moved too (else: Ebon Shiv).
+    { from = 225, to = 230, spell = 16641, crafts = 5 },
+    { from = 230, to = 240, spell = 9968, crafts = 16 },
+    { kind = "guide", from = 240, to = 245, when = { a240 = "imperial" }, recipes = { 16647 },
+      items = { { THORIUM, 20 } }, title = "Learn Imperial Plate Belt",
+      text = "Do the Imperial Plate Belt quest from Derotain Mudsipper in Tanaris (level 50, 20 Thorium Bars). "
+        .. "Bring at least 250 Thorium Bars: the belts, and the next three plans come from him too. If the "
+        .. "quest still needs Blacksmithing 265, pick the Ebon Shiv path for 240-270 instead." },
+    { from = 240, to = 245, spell = 16647, crafts = 5, when = { a240 = "imperial" } },
+    { kind = "guide", from = 245, to = 270, when = { a240 = "imperial" }, recipes = { 16649 },
+      items = { { THORIUM, 20 } }, title = "Learn Imperial Plate Bracers",
+      text = "Do the Imperial Plate Bracer quest from Derotain Mudsipper in Tanaris (20 Thorium Bars)." },
+    { from = 245, to = 270, spell = 16649, crafts = 27, when = { a240 = "imperial" } },
+    { from = 240, to = 255, spell = 10013, crafts = 15, when = { a240 = "ebon" },
+      note = "Plans from Magnus Frostwake, Western Plaguelands" },
+    { from = 240, to = 255, spell = 16645, crafts = 15, when = { a240 = "radiant" },
+      note = "Plans: Radiant Belt is a world drop" },
+    { from = 240, to = 255, spell = 16644, crafts = 17, when = { a240 = "tbracers" },
+      note = "Plans: Thorium Bracers is a world drop" },
+    { from = 255, to = 270, spell = 16969, crafts = 15, when = { a240 = { "ebon", "radiant", "tbracers" } },
+      note = "Plans from Magnus Frostwake, Western Plaguelands" },
+    { kind = "guide", from = 270, to = 290, recipes = { 16657 }, items = { { THORIUM, 40 } },
+      title = "Learn Imperial Plate Boots",
+      text = "Do the Imperial Plate Boots quest from Derotain Mudsipper in Tanaris (40 Thorium Bars)." },
+    { from = 270, to = 290, spell = 16657, crafts = 20 },
+    { kind = "guide", from = 290, to = 300, recipes = { 16730 }, items = { { THORIUM, 60 } },
+      title = "Learn Imperial Plate Leggings",
+      text = "Do the Imperial Plate Leggings quest from Derotain Mudsipper in Tanaris (60 Thorium Bars)." },
+    { from = 290, to = 300, spell = 16730, crafts = 10 },
   },
 })
 

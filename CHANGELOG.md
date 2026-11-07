@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.3.0
+
+- Routes follow the 8 Nov wow-professions.com guides, which now cover the Artisan ranks.
+  - **Blacksmithing:** 80-95 is 18 Runed Copper Belts (no more Rough Bronze Leggings), 150-170 is 29 Bronze Warhammers, 170-175 is 9 Green Iron Bracers. New 225-300: Dense Sharpening Stones, Heavy Mithril Boots, then the Imperial Plate Belt, Bracers, Boots and Leggings. Their plans are quest rewards from Derotain Mudsipper in Tanaris, each with a "Learn" step and the Thorium Bars its quest takes. For 240-270 you can pick Ebon Shiv, Radiant Belt or Thorium Bracers with Ornate Thorium Handaxes instead, in case the quests still need 265.
+  - **Leatherworking:** 30-55 is Light Armor Kits and Embossed Leather Gloves, or Cured Light Hides if you bought Light Hides. 80-90 and 115-125 have a choice for bought Medium Leather (Fine Leather Belts, Dark Leather Pants, Hillman's Leather Gloves). 100-115 is Dark Leather Cloaks, or Light Leather Pants. New 225-300: Nightscape Boots, Wicked Leather Gauntlets and Runic Leather Headbands, with three pattern alternatives for 285-300.
+  - **Tailoring:** new 225-265: Runecloth Belts, then Runecloth Gloves. The guide hasn't settled 265-300, so that range is a choice between its two candidates, Runecloth Shoulders and Wizardweave Turban, with estimated crafts. It no longer auto-picks Mooncloth, which has a cooldown.
+  - **Engineering:** 175-194 is the 60 Solid Blasting Powder again; the guide dropped the Iron Grenade alternative.
+  - **Enchanting:** the supplies step says only the Zephras Isle and Brill starting trainers sell Motes of Magic, and a starting-zone trade vendor sells the Copper Rod.
+
 ## 1.2.3
 
 - Fix: route steps could show far fewer crafts than the guide (First Aid at 80: Wool Bandage 7x instead of 50x, Heavy Silk Bandage 4x, Mageweave Bandage 1x). Each step's "crafted so far" count was saved by the step's position in the route. Counts from older versions of a route, or from leveling on the beta, landed on other steps, including steps you hadn't reached. Counts are now saved by the step's recipe and skill range along with the skill you had. A count your skill rules out is ignored. Old counts are dropped, so a step you're partway through starts again from your skill's estimate.

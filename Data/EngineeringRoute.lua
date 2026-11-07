@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Engineering guide
--- (https://www.wow-professions.com/forever/engineering-leveling-guide, beta data, as of 9 Oct 2026).
+-- (https://www.wow-professions.com/forever/engineering-leveling-guide, beta data, as of 8 Nov 2026).
 -- Past 225 is the guide's untested Classic route (Engineering ranges are unchanged in Forever).
 -- Powders, bolts, tubes and frames are Engineering recipes, so shortfalls become extra crafts.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -39,10 +39,6 @@ CR.RegisterRoute("Engineering", {
       { key = "scope", label = "Standard Scope (Moss Agate)" },
       { key = "powder", label = "Heavy Blasting Powder early (no Moss Agate)" },
     }},
-    { key = "g175", label = "175-194", options = {
-      { key = "powder", label = "60 Solid Blasting Powder" },
-      { key = "grenade", label = "10 powder + Iron Grenades (Solid Stone is pricey)" },
-    }},
   },
 
   steps = {
@@ -69,9 +65,7 @@ CR.RegisterRoute("Engineering", {
     { from = 143, to = 150, spell = 3942,  crafts = 15, note = "Then these - also for the sheep" },
     { from = 150, to = 160, spell = 3953,  crafts = 15, note = "Keep all 15 for the sheep" },
     { from = 160, to = 175, spell = 3955,  crafts = 15, note = "Keep 5 if you might pick Goblin Engineering" },
-    { from = 175, to = 194, spell = 12585, crafts = 60, when = { g175 = "powder" }, note = "Save them for later" },
-    { from = 175, to = 180, spell = 12585, crafts = 10, when = { g175 = "grenade" } },
-    { from = 180, to = 194, spell = 3962,  crafts = 20, when = { g175 = "grenade" } },
+    { from = 175, to = 194, spell = 12585, crafts = 60, note = "Save them for later" },
     { from = 194, to = 195, spell = 12590, crafts = 1,  note = "Keep it - recipes need it" },
     { from = 195, to = 200, spell = 12589, crafts = 6,  note = "Keep all 6 if you might pick Gnomish Engineering" },
 

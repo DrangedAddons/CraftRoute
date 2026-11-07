@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Enchanting guide
--- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 8 Oct 2026).
+-- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 8 Nov 2026).
 -- 225-300 is the guide's untested Classic route (Enchanting ranges barely changed in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
@@ -42,9 +42,9 @@ CR.RegisterRoute("Enchanting", {
 
   steps = {
     { kind = "guide", from = 1, to = 2, has = { { 6217, 1 }, { 247786, 1 } }, nearTrainer = { "Enchanting" },
-      text = "Buy the Copper Rod and Motes of Magic from the Enchanting Supply vendor next to your trainer, "
-        .. "not the AH. Starting-zone trainers don't have one (except Zephras Isle), so use the capital city "
-        .. "trainer." },
+      text = "Buy the Motes of Magic from the Enchanting Supply vendor next to your trainer, not the AH. In the "
+        .. "starting zones only the trainers on Zephras Isle and in Brill (Tirisfal Glades) sell them - elsewhere "
+        .. "use the capital city trainer. A trade vendor in the starting zone sells the Copper Rod too." },
     { from = 1,   to = 2,   spell = 7421,  crafts = 1 },
     { from = 2,   to = 20,  spell = 7418,  crafts = 18 },
     { from = 20,  to = 70,  spell = 7428,  crafts = 50, when = { e20 = "essence" },

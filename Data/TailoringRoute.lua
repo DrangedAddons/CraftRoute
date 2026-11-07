@@ -1,13 +1,14 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Tailoring guide
--- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 30 Oct 2026).
--- The guide stops at 225 - beyond that CraftRoute fills the gap automatically (see Planner.lua).
+-- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 8 Nov 2026).
+-- 225-265 is the guide's untested draft. It hasn't settled 265-300: it names two world drop
+-- patterns as the candidates, so that's a choice between them with estimated crafts.
 -- Bolts are Tailoring recipes, so any bolts you're short of are added as extra crafts.
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
 
 CR.RegisterRoute("Tailoring", {
   source = "wow-professions.com (Forever beta)",
-  routeEnd = 225,
+  routeEnd = 300,
   maxSkill = 300,
 
   tiers = {
@@ -39,6 +40,10 @@ CR.RegisterRoute("Tailoring", {
       { key = "mageweave", label = "Bolts of Mageweave" },
       { key = "shirt", label = "Red Swashbuckler's Shirt (no Mageweave)" },
     }},
+    { key = "a265", label = "265-300", options = {
+      { key = "shoulders", label = "Runecloth Shoulders (world drop pattern)" },
+      { key = "turban", label = "Wizardweave Turban (world drop pattern)" },
+    }},
   },
 
   steps = {
@@ -62,5 +67,12 @@ CR.RegisterRoute("Tailoring", {
     { from = 170, to = 190, spell = 8799,  crafts = 26, note = "Yellow from 180 - you might need a few more" },
     { from = 190, to = 215, spell = 12053, crafts = 38, note = "Yellow from 195, green from 210" },
     { from = 215, to = 225, spell = 12065, crafts = 26 },
+    { from = 225, to = 240, spell = 18402, crafts = 24,
+      note = "From the Artisan trainers. You need 244 Bolts of Runecloth by 265 - they give no points, so make them all now" },
+    { from = 240, to = 265, spell = 18417, crafts = 43, note = "Pattern from Qia, Winterspring" },
+    { from = 265, to = 300, spell = 18449, when = { a265 = "shoulders" },
+      note = "World drop pattern. The guide hasn't settled 265-300 yet - crafts are an estimate" },
+    { from = 265, to = 300, spell = 18450, when = { a265 = "turban" },
+      note = "World drop pattern. The guide hasn't settled 265-300 yet - crafts are an estimate" },
   },
 })
