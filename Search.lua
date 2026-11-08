@@ -12,6 +12,7 @@ local ALIAS = {
 }
 
 local itemText = {}     -- itemID -> lowercased tooltip effect lines ("" when it has none)
+local itemUsable = {}   -- itemID -> false when a tooltip line is red (level, armor type, skill...)
 local pending = {}      -- itemID -> true while waiting for GET_ITEM_INFO_RECEIVED
 
 local KEEP = { "^equip:", "^use:", "^chance on hit:", "^%+%d", "resistance", "block", "^set:" }
@@ -21,18 +22,28 @@ local function Keep(line)
   for _, p in ipairs(KEEP) do if l:find(p) then return l end end
 end
 
+-- The game colours what you can't meet red (RED_FONT_COLOR, 1 / 0.125 / 0.125): "Requires Level
+-- 22", an armor type your class can't wear, a weapon skill you don't have, a profession or rep.
+local function Red(r, g, b)
+  return r and g and b and r > 0.95 and g < 0.2 and b < 0.2
+end
+
+-- The item's effect lines, and whether any line is red. nil when the tooltip isn't there yet.
 local scanTip
 local function TooltipLines(id)
-  local out = {}
+  local out, red = {}, false
   if C_TooltipInfo and C_TooltipInfo.GetItemByID then
     local data = C_TooltipInfo.GetItemByID(id)
     if not data or not data.lines then return nil end
     for i = 2, #data.lines do
-      local t = data.lines[i].leftText
-      local k = t and Keep(t)
+      local line = data.lines[i]
+      local k = line.leftText and Keep(line.leftText)
       if k then table.insert(out, k) end
+      local lc, rc = line.leftColor, line.rightColor
+      if line.leftText and lc and Red(lc.r, lc.g, lc.b) then red = true end
+      if line.rightText and rc and Red(rc.r, rc.g, rc.b) then red = true end
     end
-    return out
+    return out, red
   end
   if not scanTip then
     scanTip = CreateFrame("GameTooltip", "CraftRouteScanTip", nil, "GameTooltipTemplate")
@@ -40,12 +51,20 @@ local function TooltipLines(id)
   scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
   scanTip:SetItemByID(id)
   for i = 2, scanTip:NumLines() do
-    local fs = _G["CraftRouteScanTipTextLeft" .. i]
-    local k = fs and fs:GetText() and Keep(fs:GetText())
-    if k then table.insert(out, k) end
+    for _, side in ipairs({ "Left", "Right" }) do
+      local fs = _G["CraftRouteScanTip" .. "Text" .. side .. i]
+      local t = fs and fs:IsShown() and fs:GetText()
+      if t then
+        if side == "Left" then
+          local k = Keep(t)
+          if k then table.insert(out, k) end
+        end
+        if Red(fs:GetTextColor()) then red = true end
+      end
+    end
   end
   scanTip:Hide()
-  return out
+  return out, red
 end
 
 local function Cached(id)
@@ -53,24 +72,33 @@ local function Cached(id)
   return GetItemInfo(id) ~= nil
 end
 
--- The item's effect text, or nil while the client is still fetching it.
-local function EffectText(id)
-  if not id or id == 0 then return "" end
-  local t = itemText[id]
-  if t then return t end
+-- Read the item's tooltip into itemText / itemUsable. False while the client is still fetching it.
+local function Scan(id)
   if not Cached(id) then
     if not pending[id] then
       pending[id] = true
       if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id)
       else GetItemInfo(id) end
     end
-    return nil
+    return false
   end
-  local ok, lines = pcall(TooltipLines, id)
-  if not ok or not lines then return nil end
-  t = table.concat(lines, "\n")
-  itemText[id] = t
-  return t
+  local ok, lines, red = pcall(TooltipLines, id)
+  if not ok or not lines then return false end
+  itemText[id] = table.concat(lines, "\n")
+  itemUsable[id] = not red
+  return true
+end
+
+-- The item's effect text, or nil while the client is still fetching it.
+local function EffectText(id)
+  if not id or id == 0 then return "" end
+  if itemText[id] or Scan(id) then return itemText[id] end
+end
+
+-- Can you use the item now (level, class, skills)? nil while it's loading; true with no item.
+function CR.ItemUsable(id)
+  if not id or id == 0 then return true end
+  if itemUsable[id] ~= nil or Scan(id) then return itemUsable[id] end
 end
 
 -- Does `word` start a word in `text`? (so "int" finds Intellect but not "Glinting")
@@ -218,11 +246,25 @@ function CR.ItemStats(r)
   return t
 end
 
--- Items that arrive while a search is up: refresh once things settle.
+-- Items that arrive while a search is up: refresh once things settle. A level or a new skill
+-- changes what's red, so "usable" is worked out again (after a moment: right at level-up the
+-- tooltip can still show the old level).
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("GET_ITEM_INFO_RECEIVED")
-local queued = false
-ev:SetScript("OnEvent", function(_, _, id)
+ev:RegisterEvent("PLAYER_LEVEL_UP")
+ev:RegisterEvent("SKILL_LINES_CHANGED")
+local queued, recheck = false, false
+ev:SetScript("OnEvent", function(_, event, id)
+  if event ~= "GET_ITEM_INFO_RECEIVED" then
+    if recheck then return end
+    recheck = true
+    C_Timer.After(1, function()
+      recheck = false
+      wipe(itemUsable)
+      if CR.RefreshCompact then CR.RefreshCompact() end
+    end)
+    return
+  end
   if not (id and pending[id]) then return end
   pending[id] = nil
   if queued then return end

@@ -394,6 +394,36 @@ function CR.RecipeType(r)
   return t
 end
 
+-- Filter > Type: armor and weapon type from the item's class / subclass (one- and two-handed count
+-- as one type - Slot splits those). On CR, not local: the Filter popup's builder is at Lua's
+-- 60-upvalue limit.
+CR.TYPE_GROUPS = {
+  { "cloth", "Cloth", "Armor" }, { "leather", "Leather", "Armor" }, { "mail", "Mail", "Armor" },
+  { "plate", "Plate", "Armor" }, { "shield", "Shield", "Armor" },
+  { "axe", "Axe", "Weapons" }, { "mace", "Mace", "Weapons" }, { "sword", "Sword", "Weapons" },
+  { "dagger", "Dagger", "Weapons" }, { "fist", "Fist weapon", "Weapons" }, { "polearm", "Polearm", "Weapons" },
+  { "staff", "Staff", "Weapons" }, { "bow", "Bow", "Weapons" }, { "crossbow", "Crossbow", "Weapons" },
+  { "gun", "Gun", "Weapons" }, { "thrown", "Thrown", "Weapons" }, { "wand", "Wand", "Weapons" },
+  { "other", "Other", "Other" },
+}
+local TYPE_OF = {
+  [4] = { [1] = "cloth", [2] = "leather", [3] = "mail", [4] = "plate", [6] = "shield" },
+  [2] = { [0] = "axe", [1] = "axe", [2] = "bow", [3] = "gun", [4] = "mace", [5] = "mace", [6] = "polearm",
+          [7] = "sword", [8] = "sword", [10] = "staff", [13] = "fist", [15] = "dagger", [16] = "thrown",
+          [18] = "crossbow", [19] = "wand" },
+}
+function CR.RecipeType(r)
+  if r._type then return r._type end
+  local t = "other"
+  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if f and r.item and r.item > 0 and not select(2, CR.EnchantSlotFor(r)) then
+    local _, _, _, _, _, class, subclass = f(r.item)
+    t = TYPE_OF[class] and TYPE_OF[class][subclass] or "other"
+  end
+  r._type = t
+  return t
+end
+
 local function RecipeSlot(r)
   if r._slot then return r._slot end
   local slot
@@ -432,6 +462,8 @@ local function BuildDestItems(name)
     local F, ok = DestFilters(name), CR.RecipeMatches(r, q)
     if ok and (F.learned or F.unlearned) then ok = (F.learned and learned) or (F.unlearned and not learned) end
     if ok and F.mats then ok = CR.CraftsReady(pn, r) > 0 end
+    -- your level, class and skills can use the item (one still loading stays until it's in)
+    if ok and F.usable then ok = CR.ItemUsable(r.item) ~= false end
     if ok and F.skillup then
       local diff = CR.Difficulty(r, CR.GetSkill(pn))
       ok = diff ~= "grey" and diff ~= "red"
@@ -4913,14 +4945,14 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 9 * 22 + 18)
+  pop:SetSize(160, 10 * 22 + 18)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
   pop:Hide()
   frame.destFilterPop = pop
   local FILTERS = { { "mats", "Has materials" }, { "skillup", "Has skill-ups" },
-                    { "learned", "Learned" }, { "unlearned", "Not Learned" } }
+                    { "learned", "Learned" }, { "unlearned", "Not Learned" }, { "usable", "Usable by me" } }
   pop.boxes = {}
   for i, spec in ipairs(FILTERS) do
     local cb = CreateFrame("CheckButton", nil, pop, "UICheckButtonTemplate")

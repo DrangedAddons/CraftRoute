@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.7.0
+
+- Filter has a **Usable by me** tickbox: it shows only recipes whose item you can use right now. It goes by what the item's tooltip shows in red: a level above yours, an armor type your class can't wear, a weapon skill you haven't learned, or a profession or reputation you don't have. Recipes that make no item (enchants) always count as usable. It checks again a moment after you level up or learn a skill.
+
 ## 1.6.0
 
 - Filter has a new **Type** list next to Slot, for armor and weapon type: Cloth, Leather, Mail, Plate and Shield under Armor; Axe, Mace, Sword, Dagger, Fist weapon, Polearm, Staff, Bow, Crossbow, Gun, Thrown and Wand under Weapons. Everything else (consumables, bags, enchants, parts) is "Not armor or a weapon". One- and two-handed weapons count as one type, so use Slot to split them. Like the other lists, it shows only what this profession makes, and several ticked types means any of them.
