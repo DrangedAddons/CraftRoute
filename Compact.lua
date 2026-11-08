@@ -364,6 +364,36 @@ local SLOT_OF_ENCHANT = {
   ["Gloves"] = "hands", ["Chest"] = "chest", ["Cloak"] = "back", ["Shield"] = "shield",
   ["Off-Hand"] = "offhand", ["Necklace"] = "neck",
 }
+-- Filter > Type: armor and weapon type from the item's class / subclass (one- and two-handed count
+-- as one type - Slot splits those). On CR, not local: the Filter popup's builder is at Lua's
+-- 60-upvalue limit.
+CR.TYPE_GROUPS = {
+  { "cloth", "Cloth", "Armor" }, { "leather", "Leather", "Armor" }, { "mail", "Mail", "Armor" },
+  { "plate", "Plate", "Armor" }, { "shield", "Shield", "Armor" },
+  { "axe", "Axe", "Weapons" }, { "mace", "Mace", "Weapons" }, { "sword", "Sword", "Weapons" },
+  { "dagger", "Dagger", "Weapons" }, { "fist", "Fist weapon", "Weapons" }, { "polearm", "Polearm", "Weapons" },
+  { "staff", "Staff", "Weapons" }, { "bow", "Bow", "Weapons" }, { "crossbow", "Crossbow", "Weapons" },
+  { "gun", "Gun", "Weapons" }, { "thrown", "Thrown", "Weapons" }, { "wand", "Wand", "Weapons" },
+  { "other", "Not armor or a weapon", "Other" },
+}
+local TYPE_OF = {
+  [4] = { [1] = "cloth", [2] = "leather", [3] = "mail", [4] = "plate", [6] = "shield" },
+  [2] = { [0] = "axe", [1] = "axe", [2] = "bow", [3] = "gun", [4] = "mace", [5] = "mace", [6] = "polearm",
+          [7] = "sword", [8] = "sword", [10] = "staff", [13] = "fist", [15] = "dagger", [16] = "thrown",
+          [18] = "crossbow", [19] = "wand" },
+}
+function CR.RecipeType(r)
+  if r._type then return r._type end
+  local t = "other"
+  local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if f and r.item and r.item > 0 and not select(2, CR.EnchantSlotFor(r)) then
+    local _, _, _, _, _, class, subclass = f(r.item)
+    t = TYPE_OF[class] and TYPE_OF[class][subclass] or "other"
+  end
+  r._type = t
+  return t
+end
+
 local function RecipeSlot(r)
   if r._slot then return r._slot end
   local slot
@@ -390,10 +420,11 @@ local function BuildDestItems(name)
   if not p then return {}, {}, { profName = pn, dest = true } end
   local q = (ui.destSearch or ""):lower()
   local all, learnedOf = {}, {}
-  ui.destPresent = { quality = {}, slot = {}, stats = {} }   -- what this profession has (the sub-lists offer only these)
+  ui.destPresent = { quality = {}, slot = {}, type = {}, stats = {} }   -- what this profession has (the sub-lists offer only these)
   for _, r in pairs(p.recipes) do
     ui.destPresent.quality[r.q or 1] = true
     ui.destPresent.slot[RecipeSlot(r)] = true
+    ui.destPresent.type[CR.RecipeType(r)] = true
     local st = CR.ItemStats(r)
     for k in pairs(st) do ui.destPresent.stats[k] = true end
     local learned = CR.RecipeLearned(pn, r) == true
@@ -407,6 +438,7 @@ local function BuildDestItems(name)
     end
     if ok and F.quality and next(F.quality) then ok = F.quality[r.q or 1] and true or false end
     if ok and F.slot and next(F.slot) then ok = F.slot[RecipeSlot(r)] and true or false end
+    if ok and F.type and next(F.type) then ok = F.type[CR.RecipeType(r)] and true or false end
     if ok and F.stats then
       -- every ticked stat, at least its minimum (true = any amount)
       for k, min in pairs(F.stats) do
@@ -4881,7 +4913,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 8 * 22 + 18)
+  pop:SetSize(160, 9 * 22 + 18)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
@@ -4942,6 +4974,20 @@ local function BuildOverlay()
     { key = "slot", label = "Slot", options = function()
         local out, have = {}, ui.destPresent and ui.destPresent.slot or {}
         for _, g in ipairs(SLOT_GROUPS) do if have[g[1]] then table.insert(out, { g[1], g[2] }) end end
+        return out
+      end },
+    { key = "type", label = "Type", options = function()
+        -- armor / weapon type, under Armor and Weapons headings; only what this profession makes
+        local out, have, group = {}, ui.destPresent and ui.destPresent.type or {}, nil
+        for _, g in ipairs(CR.TYPE_GROUPS) do
+          if have[g[1]] then
+            if g[3] ~= group then
+              group = g[3]
+              table.insert(out, { header = group })
+            end
+            table.insert(out, { g[1], g[2] })
+          end
+        end
         return out
       end },
     { key = "stats", label = "Stats", minBox = true, options = function()

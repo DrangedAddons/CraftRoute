@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.6.0
+
+- Filter has a new **Type** list next to Slot, for armor and weapon type: Cloth, Leather, Mail, Plate and Shield under Armor; Axe, Mace, Sword, Dagger, Fist weapon, Polearm, Staff, Bow, Crossbow, Gun, Thrown and Wand under Weapons. Everything else (consumables, bags, enchants, parts) is "Not armor or a weapon". One- and two-handed weapons count as one type, so use Slot to split them. Like the other lists, it shows only what this profession makes, and several ticked types means any of them.
+
 ## 1.5.2
 
 - Filter > Sort has one **Highest first / Lowest first** switch at the top, for Profit and every stat. The two Profit entries are now one, and the stat headings are just the group names (Attributes, Spell...). Level always sorts low to high, so the switch is greyed out while Level is picked. A saved "Profit: low to high" carries over as Profit with Lowest first.
