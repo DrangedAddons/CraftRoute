@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 1.4.0
+
+- The Craft view's search box also searches what the crafted item has on it. Type a stat (`int`, `spirit`, `heal`, `sp`, `fire res`, `crit`) and it lists recipes whose item has it. Words combine (`int spi`), a number sets the amount (`+6 int`), and slot words work (`chest int`). Short forms: int, agi, str, sta, spi, def, crit, heal, res, sp (spell damage), mp5, ap. Equip and Use effects (healing, spell damage, crit, hit, mana per 5) come from the item's tooltip, so they show up once the game has loaded the item.
+- Filter has a new **Stats** list next to Quality and Slot. Tick a stat to show only recipes whose item has it, and type a minimum in the box on its line to require at least that much (blank means any amount). It lists only the stats this profession's items have. Hovering the Filter button lists which filters are on.
+
 ## 1.3.1
 
 - Fix: where a guide makes a recipe earlier than TrainerSpells' data says it can be learned, CraftRoute now goes by the guide. This affected 33 steps across the professions, such as Heavy Grinding Stone at 100 when the data says 125. Those steps no longer show "too soon" or "needs N skill", and Learn steps send you to the right trainer rank. The same applies to the parts those recipes use: Tailoring 225-265 now has you make the 244 Bolts of Runecloth from Runecloth, as the guide says, instead of listing the bolts to buy. Recipe info still shows TrainerSpells' own learn skill, and if TrainerSpells updates to match, nothing changes. Recipes no guide uses still go by TrainerSpells alone.

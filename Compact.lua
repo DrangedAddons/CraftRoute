@@ -371,13 +371,15 @@ local function BuildDestItems(name)
   if not p then return {}, {}, { profName = pn, dest = true } end
   local q = (ui.destSearch or ""):lower()
   local all, learnedOf = {}, {}
-  ui.destPresent = { quality = {}, slot = {} }   -- what this profession has (the sub-lists offer only these)
+  ui.destPresent = { quality = {}, slot = {}, stats = {} }   -- what this profession has (the sub-lists offer only these)
   for _, r in pairs(p.recipes) do
     ui.destPresent.quality[r.q or 1] = true
     ui.destPresent.slot[RecipeSlot(r)] = true
+    local st = CR.ItemStats(r)
+    for k in pairs(st) do ui.destPresent.stats[k] = true end
     local learned = CR.RecipeLearned(pn, r) == true
     learnedOf[r.spell] = learned
-    local F, ok = DestFilters(name), q == "" or r.name:lower():find(q, 1, true)
+    local F, ok = DestFilters(name), CR.RecipeMatches(r, q)
     if ok and (F.learned or F.unlearned) then ok = (F.learned and learned) or (F.unlearned and not learned) end
     if ok and F.mats then ok = CR.CraftsReady(pn, r) > 0 end
     if ok and F.skillup then
@@ -386,6 +388,13 @@ local function BuildDestItems(name)
     end
     if ok and F.quality and next(F.quality) then ok = F.quality[r.q or 1] and true or false end
     if ok and F.slot and next(F.slot) then ok = F.slot[RecipeSlot(r)] and true or false end
+    if ok and F.stats then
+      -- every ticked stat, at least its minimum (true = any amount)
+      for k, min in pairs(F.stats) do
+        local v = st[k]
+        if not v or v < (type(min) == "number" and min or 1) then ok = false break end
+      end
+    end
     if ok then table.insert(all, r) end
   end
   local order = DestSort(name)
@@ -4819,7 +4828,7 @@ local function BuildOverlay()
   frame.destSearch:SetAutoFocus(false)
   frame.destSearch.hint = frame.destSearch:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   frame.destSearch.hint:SetPoint("LEFT", 2, 0)
-  frame.destSearch.hint:SetText("Search recipes")
+  frame.destSearch.hint:SetText("Search name or stat")
   frame.destSearch:SetScript("OnTextChanged", function(self, user)
     if not user then return end
     ui.destSearch = self:GetText()
@@ -4838,7 +4847,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 7 * 22 + 18)
+  pop:SetSize(160, 8 * 22 + 18)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
@@ -4886,6 +4895,14 @@ local function BuildOverlay()
         for _, g in ipairs(SLOT_GROUPS) do if have[g[1]] then table.insert(out, { g[1], g[2] }) end end
         return out
       end },
+    { key = "stats", label = "Stats", minBox = true, options = function()
+        local out, have = {}, ui.destPresent and ui.destPresent.stats or {}
+        local F = DestFilters(PlanProfession()).stats or {}
+        for _, s in ipairs(CR.STATS) do
+          if have[s[1]] or F[s[1]] then table.insert(out, { s[1], s[2] }) end
+        end
+        return out
+      end },
   }
   local sub = CreateFrame("Frame", nil, pop, "BackdropTemplate")
   sub:SetFrameStrata("DIALOG")
@@ -4900,7 +4917,7 @@ local function BuildOverlay()
     sub.spec, sub.anchor = spec, anchor
     sub:ClearAllPoints()
     sub:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 6)
-    sub:SetSize(150, math.max(1, #opts) * 22 + 12)
+    sub:SetSize(spec.minBox and 196 or 150, math.max(1, #opts) * 22 + 12)
     local chosen = spec.radio and { [DestSort(PlanProfession())] = true } or DestFilters(PlanProfession())[spec.key] or {}
     for i, o in ipairs(opts) do
       local cb = sub.boxes[i]
@@ -4926,6 +4943,7 @@ local function BuildOverlay()
           local set = F[key] or {}
           set[self.value] = self:GetChecked() and true or nil
           F[key] = next(set) and set or nil
+          if self.min and not self:GetChecked() then self.min:SetText("") end
           ui.keepScroll = false
           frame:Refresh()
         end)
@@ -4934,6 +4952,42 @@ local function BuildOverlay()
       cb.value = o[1]
       cb.label:SetText(o[2])
       cb:SetChecked(chosen[o[1]] and true or false)
+      -- Stats: a minimum on the right of the line (blank = any amount; typing one ticks it)
+      if spec.minBox and not cb.min then
+        local m = CreateFrame("EditBox", nil, cb, "InputBoxTemplate")
+        m:SetSize(30, 18)
+        m:SetPoint("LEFT", cb, "LEFT", 152, 0)
+        m:SetAutoFocus(false)
+        m:SetNumeric(true)
+        m:SetMaxLetters(4)
+        m:SetJustifyH("CENTER")
+        m.hint = m:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        m.hint:SetPoint("CENTER")
+        m.hint:SetText("min")
+        m:SetScript("OnTextChanged", function(self, user)
+          self.hint:SetShown(self:GetText() == "" and not self:HasFocus())
+          if not user then return end
+          local F = DestFilters(PlanProfession())
+          local set = F.stats or {}
+          local n = tonumber(self:GetText())
+          set[cb.value] = (n and n > 0) and n or (cb:GetChecked() and true or nil)
+          F.stats = next(set) and set or nil
+          cb:SetChecked(set[cb.value] ~= nil)
+          ui.keepScroll = false
+          frame:Refresh()
+        end)
+        m:SetScript("OnEditFocusGained", function(self) self.hint:Hide() self:HighlightText() end)
+        m:SetScript("OnEditFocusLost", function(self) self.hint:SetShown(self:GetText() == "") end)
+        m:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        m:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        cb.min = m
+      end
+      if cb.min then
+        cb.min:SetShown(spec.minBox and true or false)
+        local v = spec.minBox and chosen[o[1]]
+        if not cb.min:HasFocus() then cb.min:SetText(type(v) == "number" and tostring(v) or "") end
+      end
+      cb:SetHitRectInsets(0, spec.minBox and -124 or -112, 0, 0)
       cb:Show()
     end
     for i = #opts + 1, #sub.boxes do sub.boxes[i]:Hide() end
@@ -4966,6 +5020,32 @@ local function BuildOverlay()
   line:SetPoint("TOPLEFT", 10, -9 - #FILTERS * 22)
   line:SetPoint("TOPRIGHT", -10, -9 - #FILTERS * 22)
 
+  -- hover: what's on, so a closed popup still says what it's hiding
+  frame.destFilterDD:SetScript("OnEnter", function(self)
+    local F, lines = DestFilters(PlanProfession()), {}
+    for _, cb in ipairs(pop.boxes) do
+      if F[cb.key] then table.insert(lines, cb.label:GetText()) end
+    end
+    for _, b in ipairs(pop.subRows) do
+      local set = not b.spec.radio and F[b.spec.key]
+      if set then
+        local names = {}
+        for _, o in ipairs(b.spec.options()) do
+          local v = set[o[1]]
+          if v then table.insert(names, type(v) == "number" and string.format("%s %d+", o[2], v) or o[2]) end
+        end
+        if #names > 0 then table.insert(lines, b.spec.label .. ": " .. table.concat(names, ", ")) end
+      end
+    end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Filter")
+    if #lines == 0 then
+      GameTooltip:AddLine("Nothing filtered. Open it for learned, materials, quality, slot and stats.", 0.8, 0.8, 0.8, true)
+    end
+    for _, l in ipairs(lines) do GameTooltip:AddLine(l, 1, 1, 1, true) end
+    GameTooltip:Show()
+  end)
+  frame.destFilterDD:SetScript("OnLeave", GameTooltip_Hide)
   frame.destFilterDD:SetScript("OnClick", function()
     pop:SetShown(not pop:IsShown())
     if not pop:IsShown() then sub:Hide() end
