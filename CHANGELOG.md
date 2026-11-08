@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.4.1
+
+- Filter > Stats is grouped under headings with a divider between groups: Attributes, Spell, Physical, Defense, Resistances, Bags.
+
 ## 1.4.0
 
 - The Craft view's search box also searches what the crafted item has on it. Type a stat (`int`, `spirit`, `heal`, `sp`, `fire res`, `crit`) and it lists recipes whose item has it. Words combine (`int spi`), a number sets the amount (`+6 int`), and slot words work (`chest int`). Short forms: int, agi, str, sta, spi, def, crit, heal, res, sp (spell damage), mp5, ap. Equip and Use effects (healing, spell damage, crit, hit, mana per 5) come from the item's tooltip, so they show up once the game has loaded the item.

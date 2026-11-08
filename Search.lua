@@ -130,20 +130,22 @@ function CR.RecipeMatches(r, q)
   return true
 end
 
--- Stats as numbers, for the Filter > Stats list. Order here is the order in that list.
+-- Stats as numbers, for the Filter > Stats list: { key, label, group }, in list order.
 CR.STATS = {
-  { "armor", "Armor" }, { "sta", "Stamina" }, { "str", "Strength" }, { "agi", "Agility" },
-  { "int", "Intellect" }, { "spi", "Spirit" },
-  { "heal", "Healing" }, { "spell", "Spell damage" }, { "fire", "Fire spell damage" },
-  { "frost", "Frost spell damage" }, { "shadow", "Shadow spell damage" }, { "nature", "Nature spell damage" },
-  { "arcane", "Arcane spell damage" }, { "holy", "Holy spell damage" },
-  { "mp5", "Mana per 5 sec" }, { "hp5", "Health per 5 sec" },
-  { "crit", "Crit %" }, { "hit", "Hit %" }, { "scrit", "Spell crit %" }, { "shit", "Spell hit %" },
-  { "ap", "Attack power" }, { "rap", "Ranged attack power" },
-  { "def", "Defense" }, { "dodge", "Dodge %" }, { "parry", "Parry %" }, { "block", "Block" },
-  { "rfire", "Fire resistance" }, { "rfrost", "Frost resistance" }, { "rnature", "Nature resistance" },
-  { "rshadow", "Shadow resistance" }, { "rarcane", "Arcane resistance" },
-  { "slots", "Bag slots" },
+  { "sta", "Stamina", "Attributes" }, { "str", "Strength", "Attributes" }, { "agi", "Agility", "Attributes" },
+  { "int", "Intellect", "Attributes" }, { "spi", "Spirit", "Attributes" },
+  { "heal", "Healing", "Spell" }, { "spell", "Spell damage", "Spell" },
+  { "fire", "Fire damage", "Spell" }, { "frost", "Frost damage", "Spell" },
+  { "shadow", "Shadow damage", "Spell" }, { "nature", "Nature damage", "Spell" },
+  { "arcane", "Arcane damage", "Spell" }, { "holy", "Holy damage", "Spell" },
+  { "scrit", "Spell crit %", "Spell" }, { "shit", "Spell hit %", "Spell" }, { "mp5", "Mana per 5 sec", "Spell" },
+  { "ap", "Attack power", "Physical" }, { "rap", "Ranged attack power", "Physical" },
+  { "crit", "Crit %", "Physical" }, { "hit", "Hit %", "Physical" },
+  { "armor", "Armor", "Defense" }, { "def", "Defense", "Defense" }, { "dodge", "Dodge %", "Defense" },
+  { "parry", "Parry %", "Defense" }, { "block", "Block", "Defense" }, { "hp5", "Health per 5 sec", "Defense" },
+  { "rfire", "Fire", "Resistances" }, { "rfrost", "Frost", "Resistances" }, { "rnature", "Nature", "Resistances" },
+  { "rshadow", "Shadow", "Resistances" }, { "rarcane", "Arcane", "Resistances" },
+  { "slots", "Bag slots", "Bags" },
 }
 local PRIMARY = { stamina = "sta", strength = "str", agility = "agi", intellect = "int", spirit = "spi",
   defense = "def" }

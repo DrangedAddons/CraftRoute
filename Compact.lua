@@ -4898,8 +4898,15 @@ local function BuildOverlay()
     { key = "stats", label = "Stats", minBox = true, options = function()
         local out, have = {}, ui.destPresent and ui.destPresent.stats or {}
         local F = DestFilters(PlanProfession()).stats or {}
+        local group
         for _, s in ipairs(CR.STATS) do
-          if have[s[1]] or F[s[1]] then table.insert(out, { s[1], s[2] }) end
+          if have[s[1]] or F[s[1]] then
+            if s[3] ~= group then
+              group = s[3]
+              table.insert(out, { header = group })
+            end
+            table.insert(out, { s[1], s[3] == "Resistances" and (s[2] .. " resistance") or s[2], short = s[2] })
+          end
         end
         return out
       end },
@@ -4917,14 +4924,39 @@ local function BuildOverlay()
     sub.spec, sub.anchor = spec, anchor
     sub:ClearAllPoints()
     sub:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 6)
-    sub:SetSize(spec.minBox and 196 or 150, math.max(1, #opts) * 22 + 12)
     local chosen = spec.radio and { [DestSort(PlanProfession())] = true } or DestFilters(PlanProfession())[spec.key] or {}
-    for i, o in ipairs(opts) do
+    sub.heads = sub.heads or {}
+    local i, h, y = 0, 0, -6
+    for _, o in ipairs(opts) do
+     if o.header then
+      -- a group heading (Stats): gold text, with a thin line above all but the first
+      h = h + 1
+      local hd = sub.heads[h]
+      if not hd then
+        hd = CreateFrame("Frame", nil, sub)
+        hd:SetSize(180, 18)
+        hd.text = hd:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        hd.text:SetPoint("BOTTOMLEFT", 6, 2)
+        hd.line = hd:CreateTexture(nil, "ARTWORK")
+        hd.line:SetColorTexture(1, 1, 1, 0.12)
+        hd.line:SetHeight(1)
+        hd.line:SetPoint("TOPLEFT", 4, 0)
+        hd.line:SetPoint("TOPRIGHT", -4, 0)
+        sub.heads[h] = hd
+      end
+      if h > 1 then y = y - 4 end
+      hd:ClearAllPoints()
+      hd:SetPoint("TOPLEFT", 6, y)
+      hd.line:SetShown(h > 1)
+      hd.text:SetText(o.header)
+      hd:Show()
+      y = y - 18
+     else
+      i = i + 1
       local cb = sub.boxes[i]
       if not cb then
         cb = CreateFrame("CheckButton", nil, sub, "UICheckButtonTemplate")
         cb:SetSize(22, 22)
-        cb:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 22)
         cb:SetHitRectInsets(0, -112, 0, 0)   -- the whole line toggles it, not just the box
         cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
@@ -4949,8 +4981,11 @@ local function BuildOverlay()
         end)
         sub.boxes[i] = cb
       end
+      cb:ClearAllPoints()
+      cb:SetPoint("TOPLEFT", 6, y)
+      y = y - 22
       cb.value = o[1]
-      cb.label:SetText(o[2])
+      cb.label:SetText(o.short or o[2])
       cb:SetChecked(chosen[o[1]] and true or false)
       -- Stats: a minimum on the right of the line (blank = any amount; typing one ticks it)
       if spec.minBox and not cb.min then
@@ -4989,8 +5024,11 @@ local function BuildOverlay()
       end
       cb:SetHitRectInsets(0, spec.minBox and -124 or -112, 0, 0)
       cb:Show()
+     end
     end
-    for i = #opts + 1, #sub.boxes do sub.boxes[i]:Hide() end
+    for k = i + 1, #sub.boxes do sub.boxes[k]:Hide() end
+    for k = h + 1, #sub.heads do sub.heads[k]:Hide() end
+    sub:SetSize(spec.minBox and 196 or 150, math.max(22, -y + 6))
     sub:Show()
   end
   pop.subRows = {}
