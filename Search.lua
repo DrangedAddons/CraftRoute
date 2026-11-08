@@ -13,6 +13,7 @@ local ALIAS = {
 
 local itemText = {}     -- itemID -> lowercased tooltip effect lines ("" when it has none)
 local itemUsable = {}   -- itemID -> false when a tooltip line is red (level, armor type, skill...)
+local itemReqLevel = {} -- itemID -> required level (0 = none)
 local pending = {}      -- itemID -> true while waiting for GET_ITEM_INFO_RECEIVED
 
 local KEEP = { "^equip:", "^use:", "^chance on hit:", "^%+%d", "resistance", "block", "^set:" }
@@ -86,6 +87,8 @@ local function Scan(id)
   if not ok or not lines then return false end
   itemText[id] = table.concat(lines, "\n")
   itemUsable[id] = not red
+  local info = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+  itemReqLevel[id] = tonumber((select(5, info(id)))) or 0
   return true
 end
 
@@ -93,6 +96,12 @@ end
 local function EffectText(id)
   if not id or id == 0 then return "" end
   if itemText[id] or Scan(id) then return itemText[id] end
+end
+
+-- The level the item needs (0 = none). nil while it's loading; 0 with no item.
+function CR.ItemReqLevel(id)
+  if not id or id == 0 then return 0 end
+  if itemReqLevel[id] or Scan(id) then return itemReqLevel[id] end
 end
 
 -- Can you use the item now (level, class, skills)? nil while it's loading; true with no item.

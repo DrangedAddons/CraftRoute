@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.8.0
+
+- Filter has a **Level** range at the bottom: type a min, a max or both to show only gear you can equip whose required level is in that range. Gear with no requirement counts as level 1. Potions, enchants, bags and other things you don't wear drop out while a range is set. Clear both boxes, or press X, to turn it off.
+
 ## 1.7.0
 
 - Filter has a **Usable by me** tickbox: it shows only recipes whose item you can use right now. It goes by what the item's tooltip shows in red: a level above yours, an armor type your class can't wear, a weapon skill you haven't learned, or a profession or reputation you don't have. Recipes that make no item (enchants) always count as usable. It checks again a moment after you level up or learn a skill.

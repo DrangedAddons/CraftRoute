@@ -464,6 +464,16 @@ local function BuildDestItems(name)
     if ok and F.mats then ok = CR.CraftsReady(pn, r) > 0 end
     -- your level, class and skills can use the item (one still loading stays until it's in)
     if ok and F.usable then ok = CR.ItemUsable(r.item) ~= false end
+    -- level range: equippable items whose required level is in it (none = 1; loading stays)
+    if ok and (F.lvlMin or F.lvlMax) then
+      local slot = RecipeSlot(r)
+      ok = slot ~= "other" and slot ~= "bag" and slot ~= "ammo" and not select(2, CR.EnchantSlotFor(r))
+      local lvl = ok and CR.ItemReqLevel(r.item)
+      if lvl then
+        lvl = math.max(1, lvl)
+        ok = lvl >= (F.lvlMin or 1) and lvl <= (F.lvlMax or 999)
+      end
+    end
     if ok and F.skillup then
       local diff = CR.Difficulty(r, CR.GetSkill(pn))
       ok = diff ~= "grey" and diff ~= "red"
@@ -4945,7 +4955,7 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.destFilterDD)
   local pop = CreateFrame("Frame", nil, frame, "BackdropTemplate")
   pop:SetFrameStrata("DIALOG")
-  pop:SetSize(160, 10 * 22 + 18)
+  pop:SetSize(160, 10 * 22 + 18 + 30)
   pop:SetPoint("TOPRIGHT", frame.destFilterDD, "BOTTOMRIGHT", 0, -2)
   CR.Backdrop(pop, 0.05, 0.05, 0.07, 0.97)
   pop:EnableMouse(true)
@@ -5223,6 +5233,57 @@ local function BuildOverlay()
   line:SetHeight(1)
   line:SetPoint("TOPLEFT", 10, -9 - #FILTERS * 22)
   line:SetPoint("TOPRIGHT", -10, -9 - #FILTERS * 22)
+  -- Level [min] - [max]: equippable items needing a level in that range (either box can be blank)
+  do
+    local y = -12 - (#FILTERS + #SUBS) * 22 - 8
+    local sep = pop:CreateTexture(nil, "ARTWORK")
+    sep:SetColorTexture(1, 1, 1, 0.12)
+    sep:SetHeight(1)
+    sep:SetPoint("TOPLEFT", 10, y + 3)
+    sep:SetPoint("TOPRIGHT", -10, y + 3)
+    local label = pop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    label:SetPoint("TOPLEFT", 10, y - 8)
+    label:SetText("Level")
+    local function Box(key, hint, x)
+      local m = CreateFrame("EditBox", nil, pop, "InputBoxTemplate")
+      m:SetSize(30, 18)
+      m:SetPoint("TOPLEFT", x, y - 4)
+      m:SetAutoFocus(false)
+      m:SetNumeric(true)
+      m:SetMaxLetters(2)
+      m:SetJustifyH("CENTER")
+      m.hint = m:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      m.hint:SetPoint("CENTER")
+      m.hint:SetText(hint)
+      m:SetScript("OnTextChanged", function(self, user)
+        self.hint:SetShown(self:GetText() == "" and not self:HasFocus())
+        if not user then return end
+        local n = tonumber(self:GetText())
+        DestFilters(PlanProfession())[key] = (n and n > 0) and n or nil
+        ui.keepScroll = false
+        frame:Refresh()
+      end)
+      m:SetScript("OnEditFocusGained", function(self) self.hint:Hide() self:HighlightText() end)
+      m:SetScript("OnEditFocusLost", function(self) self.hint:SetShown(self:GetText() == "") end)
+      m:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+      m:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+      m:SetScript("OnEnter", function(self)
+        if pop.sub then pop.sub:Hide() end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Level range")
+        GameTooltip:AddLine("Only gear you can equip, needing a level from min to max. Leave a box blank for no limit.", 1, 1, 1, true)
+        GameTooltip:Show()
+      end)
+      m:SetScript("OnLeave", GameTooltip_Hide)
+      m.key = key
+      return m
+    end
+    pop.lvlMin = Box("lvlMin", "min", 62)
+    local dash = pop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    dash:SetPoint("LEFT", pop.lvlMin, "RIGHT", 4, 0)
+    dash:SetText("-")
+    pop.lvlMax = Box("lvlMax", "max", 108)
+  end
 
   -- hover: what's on, so a closed popup still says what it's hiding
   frame.destFilterDD:SetScript("OnEnter", function(self)
@@ -5240,6 +5301,9 @@ local function BuildOverlay()
         end
         if #names > 0 then table.insert(lines, b.spec.label .. ": " .. table.concat(names, ", ")) end
       end
+    end
+    if F.lvlMin or F.lvlMax then
+      table.insert(lines, string.format("Level %s-%s (gear only)", F.lvlMin or 1, F.lvlMax or "any"))
     end
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Filter")
@@ -5314,6 +5378,11 @@ local function BuildOverlay()
         b.label:SetText(k > 0 and string.format("%s (%d)", b.spec.label, k) or b.spec.label)
       end
     end
+    for _, m in ipairs({ pop.lvlMin, pop.lvlMax }) do
+      if not m:HasFocus() then m:SetText(F[m.key] and tostring(F[m.key]) or "") end
+      m.hint:SetShown(m:GetText() == "" and not m:HasFocus())
+    end
+    if F.lvlMin or F.lvlMax then n = n + 1 end
     self:SetText(n > 0 and string.format("Filter (%d)", n) or "Filter")
     frame.destFilterClear:SetEnabled(n > 0 or DestSort(PlanProfession()) ~= "level")
   end
