@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.5.0
+
+- Sort by a stat: Filter > Sort has a "Highest stat" section listing the stats this profession's items have. Pick one (Healing, Intellect, Fire resistance...) to list recipes by that stat, highest first. Recipes whose item doesn't have it go to the bottom. Each row shows the value next to the level, such as "18 Healing". Pick it again to go back to sorting by level.
+
 ## 1.4.1
 
 - Filter > Stats is grouped under headings with a divider between groups: Attributes, Spell, Physical, Defense, Resistances, Bags.

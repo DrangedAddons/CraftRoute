@@ -193,7 +193,7 @@ local function DestFilters(name)
 end
 
 -- The recipe list's order for this profession (kept per character): "level" (learn skill, the
--- default), "profitDesc" or "profitAsc".
+-- default), "profitDesc", "profitAsc" or "stat:<key>" (that stat, highest first).
 local function DestSort(name)
   local db = DB()
   return (db and name and db.destSort and db.destSort[name]) or "level"
@@ -398,12 +398,17 @@ local function BuildDestItems(name)
     if ok then table.insert(all, r) end
   end
   local order = DestSort(name)
+  local statKey = order:match("^stat:(.+)")
   local profitOf = {}
-  if order ~= "level" then
+  if order ~= "level" and not statKey then
     for _, r in ipairs(all) do profitOf[r] = Profit(r) or false end
   end
   table.sort(all, function(a, b)
-    if order ~= "level" then
+    if statKey then
+      -- highest first; items without the stat at the end
+      local va, vb = CR.ItemStats(a)[statKey] or 0, CR.ItemStats(b)[statKey] or 0
+      if va ~= vb then return va > vb end
+    elseif order ~= "level" then
       -- by profit (high or low first); recipes with no price at the end either way
       local pa, pb = profitOf[a], profitOf[b]
       if (pa ~= false) ~= (pb ~= false) then return pa ~= false end
@@ -1067,8 +1072,13 @@ local function ApplyRow(row, item)
       -- the level it's learned at, and "Not Learned" if you don't know it yet
       -- (dimmed like the name: the red at 55%)
       sub = tostring(r.learn or 1) .. (learned and "" or ("   " .. CR.ColorText("Not Learned", "8c2323")))
-      -- sorted by profit: each one's profit per craft beside it
-      if DestSort(item.list) ~= "level" then
+      -- sorted by a stat: its value beside the level; by profit: the profit per craft
+      local order = DestSort(item.list)
+      local statKey = order:match("^stat:(.+)")
+      if statKey then
+        local v = CR.ItemStats(r)[statKey]
+        if v then sub = sub .. "   " .. CR.ColorText(v .. " " .. CR.StatLabel(statKey), "40ff40") end
+      elseif order ~= "level" then
         local p = Profit(r)
         sub = sub .. "   " .. (p and ProfitText(p) or CR.ColorText("no price", "666666"))
       end
@@ -4884,7 +4894,19 @@ local function BuildOverlay()
   local SORTS = { { "level", "Level (default)" }, { "profitDesc", "Profit: high to low" },
                   { "profitAsc", "Profit: low to high" } }
   local SUBS = {
-    { key = "sort", label = "Sort", radio = true, options = function() return SORTS end },
+    { key = "sort", label = "Sort", radio = true, options = function()
+        -- level / profit, then every stat this profession's items have: that stat, highest first
+        local out, have = {}, ui.destPresent and ui.destPresent.stats or {}
+        for _, o in ipairs(SORTS) do table.insert(out, o) end
+        local head = false
+        for _, st in ipairs(CR.STATS) do
+          if have[st[1]] then
+            if not head then table.insert(out, { header = "Highest stat" }) head = true end
+            table.insert(out, { "stat:" .. st[1], CR.StatLabel(st[1]) })
+          end
+        end
+        return out
+      end },
     { key = "quality", label = "Quality", options = function()
         local out, have = {}, ui.destPresent and ui.destPresent.quality or {}
         for q = 0, 7 do if have[q] then table.insert(out, { q, QualityName(q) }) end end
@@ -4927,6 +4949,7 @@ local function BuildOverlay()
     local chosen = spec.radio and { [DestSort(PlanProfession())] = true } or DestFilters(PlanProfession())[spec.key] or {}
     sub.heads = sub.heads or {}
     local i, h, y = 0, 0, -6
+    local width = spec.minBox and 196 or 150
     for _, o in ipairs(opts) do
      if o.header then
       -- a group heading (Stats): gold text, with a thin line above all but the first
@@ -4947,6 +4970,7 @@ local function BuildOverlay()
       if h > 1 then y = y - 4 end
       hd:ClearAllPoints()
       hd:SetPoint("TOPLEFT", 6, y)
+      hd:SetWidth(width - 12)
       hd.line:SetShown(h > 1)
       hd.text:SetText(o.header)
       hd:Show()
@@ -5028,7 +5052,7 @@ local function BuildOverlay()
     end
     for k = i + 1, #sub.boxes do sub.boxes[k]:Hide() end
     for k = h + 1, #sub.heads do sub.heads[k]:Hide() end
-    sub:SetSize(spec.minBox and 196 or 150, math.max(22, -y + 6))
+    sub:SetSize(width, math.max(22, -y + 6))
     sub:Show()
   end
   pop.subRows = {}
@@ -5136,7 +5160,9 @@ local function BuildOverlay()
       if b.spec.radio then
         -- the sort isn't a filter: its row just says which order is on
         local cur = DestSort(PlanProfession())
-        local tag = cur == "profitDesc" and "profit, high first" or cur == "profitAsc" and "profit, low first" or nil
+        local sk = cur:match("^stat:(.+)")
+        local tag = cur == "profitDesc" and "profit, high first" or cur == "profitAsc" and "profit, low first"
+          or sk and ("highest " .. CR.StatLabel(sk)) or nil
         b.label:SetText(tag and (b.spec.label .. CR.ColorText(" (" .. tag .. ")", "aaaaaa")) or b.spec.label)
       else
         local set, k = F[b.spec.key], 0

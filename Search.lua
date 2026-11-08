@@ -147,6 +147,14 @@ CR.STATS = {
   { "rshadow", "Shadow", "Resistances" }, { "rarcane", "Arcane", "Resistances" },
   { "slots", "Bag slots", "Bags" },
 }
+-- "Healing", "Fire resistance": a stat's name on its own
+function CR.StatLabel(key)
+  for _, s in ipairs(CR.STATS) do
+    if s[1] == key then return s[3] == "Resistances" and (s[2] .. " resistance") or s[2] end
+  end
+  return key
+end
+
 local PRIMARY = { stamina = "sta", strength = "str", agility = "agi", intellect = "int", spirit = "spi",
   defense = "def" }
 local SCHOOL = { fire = true, frost = true, shadow = true, nature = true, arcane = true, holy = true }
