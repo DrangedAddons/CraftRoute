@@ -4895,14 +4895,18 @@ local function BuildOverlay()
                   { "profitAsc", "Profit: low to high" } }
   local SUBS = {
     { key = "sort", label = "Sort", radio = true, options = function()
-        -- level / profit, then every stat this profession's items have: that stat, highest first
+        -- level / profit, then every stat this profession's items have (that stat, highest first),
+        -- under the same group headings as Filter > Stats
         local out, have = {}, ui.destPresent and ui.destPresent.stats or {}
         for _, o in ipairs(SORTS) do table.insert(out, o) end
-        local head = false
+        local group
         for _, st in ipairs(CR.STATS) do
           if have[st[1]] then
-            if not head then table.insert(out, { header = "Highest stat" }) head = true end
-            table.insert(out, { "stat:" .. st[1], CR.StatLabel(st[1]) })
+            if st[3] ~= group then
+              group = st[3]
+              table.insert(out, { header = "Highest: " .. group })
+            end
+            table.insert(out, { "stat:" .. st[1], CR.StatLabel(st[1]), short = st[2] })
           end
         end
         return out
@@ -4952,7 +4956,7 @@ local function BuildOverlay()
     local width = spec.minBox and 196 or 150
     for _, o in ipairs(opts) do
      if o.header then
-      -- a group heading (Stats): gold text, with a thin line above all but the first
+      -- a group heading: gold text, with a thin line above it unless it's the top line
       h = h + 1
       local hd = sub.heads[h]
       if not hd then
@@ -4967,11 +4971,12 @@ local function BuildOverlay()
         hd.line:SetPoint("TOPRIGHT", -4, 0)
         sub.heads[h] = hd
       end
-      if h > 1 then y = y - 4 end
+      local below = h > 1 or i > 0
+      if below then y = y - 4 end
       hd:ClearAllPoints()
       hd:SetPoint("TOPLEFT", 6, y)
       hd:SetWidth(width - 12)
-      hd.line:SetShown(h > 1)
+      hd.line:SetShown(below)
       hd.text:SetText(o.header)
       hd:Show()
       y = y - 18
