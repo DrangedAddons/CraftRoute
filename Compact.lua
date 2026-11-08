@@ -193,16 +193,35 @@ local function DestFilters(name)
 end
 
 -- The recipe list's order for this profession (kept per character): "level" (learn skill, the
--- default), "profitDesc", "profitAsc" or "stat:<key>" (that stat, highest first).
+-- default), "profit" or "stat:<key>". Profit and stats go highest first unless destSortLow is set
+-- (one toggle for both); level always goes low to high.
 local function DestSort(name)
   local db = DB()
-  return (db and name and db.destSort and db.destSort[name]) or "level"
+  local v = db and name and db.destSort and db.destSort[name]
+  -- 1.5.1 and older saved the direction in the value
+  if v == "profitDesc" or v == "profitAsc" then
+    db.destSortLow = db.destSortLow or {}
+    db.destSortLow[name] = (v == "profitAsc") or nil
+    v = "profit"
+    db.destSort[name] = v
+  end
+  return v or "level"
 end
 local function SetDestSort(name, v)
   local db = DB()
   if not db or not name then return end
   db.destSort = db.destSort or {}
   db.destSort[name] = (v ~= "level") and v or nil
+end
+function CR.DestSortLow(name)
+  local db = DB()
+  return (db and name and db.destSortLow and db.destSortLow[name]) and true or false
+end
+function CR.SetDestSortLow(name, low)
+  local db = DB()
+  if not db or not name then return end
+  db.destSortLow = db.destSortLow or {}
+  db.destSortLow[name] = low or nil
 end
 
 -- Your list's shopping selection: which recipes are ticked and how many of each (per profession,
@@ -403,17 +422,22 @@ local function BuildDestItems(name)
   if order ~= "level" and not statKey then
     for _, r in ipairs(all) do profitOf[r] = Profit(r) or false end
   end
+  local low = CR.DestSortLow(name)
   table.sort(all, function(a, b)
     if statKey then
-      -- highest first; items without the stat at the end
-      local va, vb = CR.ItemStats(a)[statKey] or 0, CR.ItemStats(b)[statKey] or 0
-      if va ~= vb then return va > vb end
+      -- items without the stat at the end, whichever way round
+      local va, vb = CR.ItemStats(a)[statKey], CR.ItemStats(b)[statKey]
+      if (va ~= nil) ~= (vb ~= nil) then return va ~= nil end
+      if va and vb and va ~= vb then
+        if low then return va < vb end
+        return va > vb
+      end
     elseif order ~= "level" then
-      -- by profit (high or low first); recipes with no price at the end either way
+      -- recipes with no price at the end, whichever way round
       local pa, pb = profitOf[a], profitOf[b]
       if (pa ~= false) ~= (pb ~= false) then return pa ~= false end
       if pa and pb and pa ~= pb then
-        if order == "profitAsc" then return pa < pb end
+        if low then return pa < pb end
         return pa > pb
       end
     end
@@ -4891,20 +4915,19 @@ local function BuildOverlay()
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
     return (c and c.r) and CR.ColorText(n, string.format("%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255)) or n
   end
-  local SORTS = { { "level", "Level (default)" }, { "profitDesc", "Profit: high to low" },
-                  { "profitAsc", "Profit: low to high" } }
+  local SORTS = { { "level", "Level (default)" }, { "profit", "Profit" } }
   local SUBS = {
     { key = "sort", label = "Sort", radio = true, options = function()
         -- level / profit, then every stat this profession's items have (that stat, highest first),
         -- under the same group headings as Filter > Stats
-        local out, have = {}, ui.destPresent and ui.destPresent.stats or {}
+        local out, have = { { toggle = true } }, ui.destPresent and ui.destPresent.stats or {}
         for _, o in ipairs(SORTS) do table.insert(out, o) end
         local group
         for _, st in ipairs(CR.STATS) do
           if have[st[1]] then
             if st[3] ~= group then
               group = st[3]
-              table.insert(out, { header = "Highest: " .. group })
+              table.insert(out, { header = group })
             end
             table.insert(out, { "stat:" .. st[1], CR.StatLabel(st[1]), short = st[2] })
           end
@@ -4953,9 +4976,45 @@ local function BuildOverlay()
     local chosen = spec.radio and { [DestSort(PlanProfession())] = true } or DestFilters(PlanProfession())[spec.key] or {}
     sub.heads = sub.heads or {}
     local i, h, y = 0, 0, -6
-    local width = spec.minBox and 196 or 150
+    local width = spec.minBox and 196 or spec.radio and 170 or 150
+    if sub.toggle then sub.toggle:Hide() end
     for _, o in ipairs(opts) do
-     if o.header then
+     if o.toggle then
+      -- Sort: one Highest / Lowest first switch for profit and every stat (level is always low to high)
+      local t = sub.toggle
+      if not t then
+        t = CreateFrame("Button", nil, sub)
+        t:SetHeight(22)
+        t.text = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        t.text:SetPoint("LEFT", 6, 0)
+        local hl = t:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.08)
+        t.line = t:CreateTexture(nil, "ARTWORK")
+        t.line:SetColorTexture(1, 1, 1, 0.12)
+        t.line:SetHeight(1)
+        t.line:SetPoint("BOTTOMLEFT", 4, -3)
+        t.line:SetPoint("BOTTOMRIGHT", -4, -3)
+        t:SetScript("OnClick", function()
+          local pn = PlanProfession()
+          CR.SetDestSortLow(pn, not CR.DestSortLow(pn))
+          OpenSub(sub.spec, sub.anchor)
+          ui.keepScroll = false
+          frame:Refresh()
+        end)
+        sub.toggle = t
+      end
+      local pn = PlanProfession()
+      local onLevel = DestSort(pn) == "level"
+      t:ClearAllPoints()
+      t:SetPoint("TOPLEFT", 6, y)
+      t:SetWidth(width - 12)
+      t:SetEnabled(not onLevel)
+      t.text:SetText((CR.DestSortLow(pn) and "Lowest first" or "Highest first") .. CR.ColorText("  (click to flip)", "888888"))
+      t.text:SetAlpha(onLevel and 0.4 or 1)
+      t:Show()
+      y = y - 28
+     elseif o.header then
       -- a group heading: gold text, with a thin line above it unless it's the top line
       h = h + 1
       local hd = sub.heads[h]
@@ -5144,6 +5203,7 @@ local function BuildOverlay()
     local F = DestFilters(PlanProfession())
     for k in pairs(F) do F[k] = nil end
     SetDestSort(PlanProfession(), "level")
+    CR.SetDestSortLow(PlanProfession(), false)
     sub:Hide()
     ui.keepScroll = false
     frame:Refresh()
@@ -5166,8 +5226,8 @@ local function BuildOverlay()
         -- the sort isn't a filter: its row just says which order is on
         local cur = DestSort(PlanProfession())
         local sk = cur:match("^stat:(.+)")
-        local tag = cur == "profitDesc" and "profit, high first" or cur == "profitAsc" and "profit, low first"
-          or sk and ("highest " .. CR.StatLabel(sk)) or nil
+        local what = cur == "profit" and "profit" or sk and CR.StatLabel(sk)
+        local tag = what and ((CR.DestSortLow(PlanProfession()) and "lowest " or "highest ") .. what) or nil
         b.label:SetText(tag and (b.spec.label .. CR.ColorText(" (" .. tag .. ")", "aaaaaa")) or b.spec.label)
       else
         local set, k = F[b.spec.key], 0

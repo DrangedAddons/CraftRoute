@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.5.2
+
+- Filter > Sort has one **Highest first / Lowest first** switch at the top, for Profit and every stat. The two Profit entries are now one, and the stat headings are just the group names (Attributes, Spell...). Level always sorts low to high, so the switch is greyed out while Level is picked. A saved "Profit: low to high" carries over as Profit with Lowest first.
+
 ## 1.5.1
 
 - Filter > Sort lists its stats under the same group headings as Filter > Stats (Highest: Attributes, Spell, Physical, Defense, Resistances, Bags), with a divider under the Level and Profit options.
