@@ -48,6 +48,8 @@ local ui = {
   openProf = nil,
   pinned = nil, -- dropdown pick that the profession frame has not switched to yet
   keepUntil = nil, -- a profession switch started here: stay on this view while it loads
+  keepView = nil,  -- an Open on a row (a component's profession): the profession this view stays on
+  keepViewUntil = nil,
   -- Destinations view
   destSelected = nil, -- recipe (spell) shown on the right
   destSearch = "",
@@ -130,6 +132,17 @@ local function SyncOpenProfession()
   -- (the window's profession has loaded: a restored view has done its job)
   if ui.restoreView and name == ui.restoreWindow then ui.restoreView, ui.restoreWindow = nil, nil end
   if name == ui.openProf then return end
+  -- opened from a row here (e.g. Mining, to smelt Engineering's bars): the window has the other
+  -- profession loaded, this view stays on the one you were looking at
+  local hold = ui.keepView and GetTime() < (ui.keepViewUntil or 0) and ui.keepView
+  -- (still the profession you were on: the other one hasn't loaded yet - keep waiting for it)
+  if hold and name == hold then ui.openProf = name return end
+  ui.keepView, ui.keepViewUntil = nil, nil
+  if hold then
+    ui.openProf = name
+    ui.pinned = hold
+    return
+  end
   ui.openProf = name
   local prof = name and CR.professions[name]
   if not (prof and prof.routes) then return end
@@ -146,6 +159,15 @@ local function SyncOpenProfession()
     -- This refresh is already running and will build the new plan.
     CR.NotifyChanged({ keepPlan = true, keepLive = true, keepLocations = true, skipCompact = true })
   end
+end
+
+-- A row's Open (secure /cast) is about to load another profession into the window: keep this
+-- view up through the switch and on its profession afterwards. (On CR: the row builders are near
+-- Lua's 60-upvalue limit.)
+function CR.HoldCompactView()
+  ui.keepUntil = GetTime() + 2
+  ui.keepView = PlanProfession()
+  ui.keepViewUntil = GetTime() + 3
 end
 
 local function ProfessionOf(recipe)
@@ -1679,8 +1701,9 @@ local function CreateRow(parent)
   CR.ThemeRegisterButton(row.buy)
   -- essences split / combine by using the item, which needs a secure click
   row.actCover = AttachPlainCover and AttachPlainCover(row.act, function()
-      -- "Open" casts another profession: stay on this view while it loads
-      if row.actMacro and row.actMacro:find("^/cast") then ui.keepUntil = GetTime() + 2 end
+      -- "Open" casts another profession: stay on this view while it loads, and on this
+      -- profession once it has (only the window switches)
+      if row.actMacro and row.actMacro:find("^/cast") then CR.HoldCompactView() end
       return row.actMacro or ""
     end,
     function() return overlay and overlay:IsShown() and row:IsVisible() and row.act:IsShown() and row.actMacro ~= nil end)
@@ -2220,7 +2243,7 @@ local function SubRow(i)
   CR.ThemeRegisterButton(row.buy)
   -- Open (another profession) and Combine / Split need a secure click
   row.actCover = AttachPlainCover and AttachPlainCover(row.act, function()
-      if row.actMacro and row.actMacro:find("^/cast") then ui.keepUntil = GetTime() + 2 end
+      if row.actMacro and row.actMacro:find("^/cast") then CR.HoldCompactView() end
       return row.actMacro or ""
     end,
     function() return overlay and overlay:IsShown() and row:IsVisible() and row.act:IsShown() and row.actMacro ~= nil end)

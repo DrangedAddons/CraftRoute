@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.8.1
+
+- Fix: opening another profession from a component row (such as Smelt for Engineering's bars, with Mining) switched CraftRoute to that profession's guide. Now only the profession window switches: CraftRoute stays on the page you were on, and the row's button turns into Smelt / Make. Opening a profession from the profession picker or Blizzard's own buttons still switches the view as before.
+
 ## 1.8.0
 
 - Filter has a **Level** range at the bottom: type a min, a max or both to show only gear you can equip whose required level is in that range. Gear with no requirement counts as level 1. Potions, enchants, bags and other things you don't wear drop out while a range is set. Clear both boxes, or press X, to turn it off.
