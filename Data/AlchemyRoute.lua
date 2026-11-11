@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Alchemy guide
--- (https://www.wow-professions.com/forever/alchemy-leveling-guide, beta data, as of 8 Oct 2026).
+-- (https://www.wow-professions.com/forever/alchemy-leveling-guide, beta data, as of 12 Nov 2026).
 -- 225-300 is the guide's untested Classic route with the healing potions removed (they moved
 -- to First Aid in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -64,7 +64,7 @@ CR.RegisterRoute("Alchemy", {
       note = "Recipe (bind on pickup - buy it on this character): Bronk / Logannas (Feralas), Glyx Brewright "
         .. "(Stranglethorn), Alchemist Pestlezugg (Tanaris)" },
     { from = 225, to = 230, spell = 7259,    crafts = 12, note = "Untested in Forever (Classic route)" },
-    { from = 230, to = 265, spell = 11460,   crafts = 45, note = "Yellow from 245" },
+    { from = 230, to = 265, spell = 11465,   crafts = 41 },
     { from = 265, to = 275, spell = 17553,   crafts = 10,
       note = "Recipe from {H:Algernon, Undercity}{A:Ulthir, Darnassus}" },
     { from = 275, to = 290, spell = 17553,   crafts = 20, when = { a275 = "supmana" } },

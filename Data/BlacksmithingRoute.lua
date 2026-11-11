@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Blacksmithing guide
--- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 8 Nov 2026).
+-- (https://www.wow-professions.com/forever/blacksmithing-leveling-guide, beta data, as of 12 Nov 2026).
 -- Reagents per craft come from the recipe database; only skill ranges + craft counts live here.
 -- 225-300 is the guide's untested draft from the game data: the Imperial Plate plans are quest
 -- rewards from Derotain Mudsipper (Tanaris), each quest taking Thorium Bars.
@@ -44,9 +44,9 @@ CR.RegisterRoute("Blacksmithing", {
       { key = "belt", label = "Runed Copper Belt" },
       { key = "rod", label = "Silver Rod (if Silver Bars are cheap)" },
     }},
-    { key = "e185", label = "185-215", options = {
-      { key = "pants", label = "Mithril Plate Pants" },
-      { key = "steel", label = "Steel Breastplate + Steel Plate Helm (if Mithril Bars are dear)" },
+    { key = "j125", label = "125-140", options = {
+      { key = "sword", label = "Bronze Shortsword" },
+      { key = "bracers", label = "Patterned Bronze Bracers (if you disenchant your greens)" },
     }},
     { key = "e215", label = "215-225", options = {
       { key = "breastplate", label = "Heavy Mithril Breastplate" },
@@ -83,10 +83,11 @@ CR.RegisterRoute("Blacksmithing", {
       note = "If 1 Silver Bar costs less than 10 Copper Bars" },
     { from = 80,  to = 95,  spell = 2666, crafts = 18 },
     { from = 95,  to = 100, spell = 2672, crafts = 5, note = "Use 10 of the Coarse Grinding Stones from 50 - keep the other 26 for 112" },
-    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep all 20 - for the Golden Scale Bracers at 175" },
+    { from = 100, to = 112, spell = 3337, crafts = 20, note = "Keep all 20 - for the Golden Scale Bracers at 180" },
     { from = 112, to = 125, spell = 2672, crafts = 13 },
-    { from = 125, to = 140, spell = 2742, crafts = 24,
-      note = "Weak Flux (and Strong Flux for the Bronze Warhammers, 140-170) from the Blacksmithing Supply "
+    { from = 125, to = 140, spell = 2672, crafts = 24, when = { j125 = "bracers" } },
+    { from = 125, to = 140, spell = 2742, crafts = 24, when = { j125 = "sword" },
+      note = "They vendor for over twice what the bracers do, so they end up cheaper. Weak Flux (and Strong Flux for the Bronze Warhammers, 140-170) from the Blacksmithing Supply "
         .. "vendor in any capital" },
     { from = 140, to = 150, spell = 9985, crafts = 10 },
 
@@ -94,14 +95,15 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 150, to = 170, spell = 9985, crafts = 29 },
     { from = 170, to = 175, spell = 3501, crafts = 9,
       note = "Green Dye from {H:Tamar (Orgrimmar)}{A:Bombus Finespindle (Ironforge)}" },
-    { from = 175, to = 185, spell = 7223, crafts = 10,
-      note = "Uses the Heavy Grinding Stones from 100. With Mining 165 you can smelt the Steel Bars from Iron "
-        .. "Bar and Coal - Coal is sold by the Blacksmithing Supply vendor in any capital" },
-    { from = 185, to = 215, spell = 9931, crafts = 36, when = { e185 = "pants" } },
-    { from = 185, to = 200, spell = 9916, crafts = 15, when = { e185 = "steel" },
-      note = "If 432 Mithril Bars cost more than about 478 Steel Bars, 135 Heavy Stone and 68 Solid Stone" },
-    { from = 200, to = 215, spell = 9935, crafts = 17, when = { e185 = "steel" } },
-    { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" } },
+    { from = 175, to = 180, spell = 9920, crafts = 8, note = "Keep them - 6 go into the Heavy Mithril Axes at 210" },
+    { from = 180, to = 195, spell = 7223, crafts = 20,
+      note = "Uses the 20 Heavy Grinding Stones from 100 and 20 more (60 Heavy Stone). With Mining 165 you can "
+        .. "smelt the Steel Bars from Iron Bar and Coal - Coal is sold by the Blacksmithing Supply vendor in any "
+        .. "capital.{A: Keep 6 - you might need them for Armorsmithing.}" },
+    { from = 195, to = 210, spell = 9928, crafts = 21 },
+    { from = 210, to = 215, spell = 9993, crafts = 6, note = "Keep 2 - you might need them for Weaponsmithing" },
+    { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" },
+      note = "Keep 2 - you might need them for Armorsmithing" },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },
       note = "Plans: Mithril Spurs is a world drop - check the AH" },
 
@@ -109,7 +111,7 @@ CR.RegisterRoute("Blacksmithing", {
     -- Derotain Mudsipper in Tanaris (level 50); each quest takes Thorium Bars. In Classic they needed
     -- 265 - Forever lowered the recipes to 240, so the quests probably moved too (else: Ebon Shiv).
     { from = 225, to = 230, spell = 16641, crafts = 5 },
-    { from = 230, to = 240, spell = 9968, crafts = 16 },
+    { from = 230, to = 240, spell = 9968, crafts = 16, note = "Keep 2 - you might need them for Armorsmithing" },
     { kind = "guide", from = 240, to = 245, when = { a240 = "imperial" }, recipes = { 16647 },
       items = { { THORIUM, 20 } }, title = "Learn Imperial Plate Belt",
       text = "Do the Imperial Plate Belt quest from Derotain Mudsipper in Tanaris (level 50, 20 Thorium Bars). "

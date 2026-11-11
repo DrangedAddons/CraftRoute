@@ -1,5 +1,26 @@
 # CraftRoute changelog
 
+## 1.8.2
+
+Routes updated to the latest wow-professions.com Forever guides (12 Nov):
+
+- **Alchemy** 230-265: 41x Elixir of Greater Intellect instead of Draught of Detect Undead.
+- **Blacksmithing**:
+  - 125-140 has a choice: Bronze Shortsword (default), or Patterned Bronze Bracers if you disenchant your greens.
+  - 175-215 is new: 8x Solid Grinding Stone (175-180), 20x Golden Scale Bracers (180-195), 21x Heavy Mithril Gauntlet (195-210) and 6x Heavy Mithril Axe (210-215). This replaces the Mithril Plate Pants / Steel choice.
+  - Notes on which crafts to keep for Armorsmithing and Weaponsmithing.
+- **Enchanting**:
+  - The Strange Dust options are now the default at 20-70 and 70-150.
+  - 165-200: 47x Enchant Boots - Lesser Agility. The other choice is boots to 185, then Bracer - Strength.
+  - 225-250: 37x Enchant Gloves - Agility in place of the three steps.
+- **Tailoring**:
+  - 190-215: 29x Black Mageweave Shoulders in place of the gloves.
+  - 215-225 has a choice: Mageweave Bags (default) or Runecloth Belts.
+  - The Red Swashbuckler's Shirt option at 140 is gone.
+- **First Aid**:
+  - 210-225: 19x Mageweave Bandage. The Heavy Silk option is gone.
+  - 225-240: 29x Mageweave Bandage instead of Superior Healing Potion.
+
 ## 1.8.1
 
 - Fix: opening another profession from a component row (such as Smelt for Engineering's bars, with Mining) switched CraftRoute to that profession's guide. Now only the profession window switches: CraftRoute stays on the page you were on, and the row's button turns into Smelt / Make. Opening a profession from the profession picker or Blizzard's own buttons still switches the view as before.

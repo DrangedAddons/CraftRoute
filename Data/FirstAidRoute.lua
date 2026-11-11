@@ -1,5 +1,5 @@
 -- First Aid route transcribed from wow-professions.com's WoW Forever First Aid guide
--- (https://www.wow-professions.com/forever/first-aid-leveling-guide, beta data, Oct 2026).
+-- (https://www.wow-professions.com/forever/first-aid-leveling-guide, beta data, as of 12 Nov 2026).
 -- In Forever, First Aid also makes the healing potions that used to be Alchemy recipes.
 -- 225-300 is the untested Classic route (beta was capped at level 30).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
@@ -36,10 +36,6 @@ CR.RegisterRoute("First Aid", {
       { key = "bandages", label = "Bandages (Linen Cloth)" },
       { key = "potions", label = "Minor Healing Potions (Peacebloom)" },
     }},
-    { key = "e210", label = "210-225", options = {
-      { key = "mageweave", label = "Mageweave Bandage" },
-      { key = "silk", label = "Heavy Silk Bandage (no Mageweave)" },
-    }},
   },
 
   steps = {
@@ -54,11 +50,8 @@ CR.RegisterRoute("First Aid", {
     { from = 115, to = 150, spell = 3278,    crafts = 50, note = "Learn at 115 - yellow the whole way" },
     { from = 150, to = 180, spell = 7928,    crafts = 42, note = "Yellow the whole way" },
     { from = 180, to = 210, spell = 7929,    crafts = 46, note = "Use Manual: Heavy Silk Bandage first" },
-    { from = 210, to = 225, spell = 10840,   crafts = 17, when = { e210 = "mageweave" },
-      note = "Use Manual: Mageweave Bandage first" },
-    { from = 210, to = 225, spell = 7929,    crafts = 42, when = { e210 = "silk" } },
-    { from = 225, to = 240, spell = 1244435, crafts = 16,
-      note = "Manual: Superior Healing Potion drops from higher level mobs - untested" },
+    { from = 210, to = 225, spell = 10840,   crafts = 19, note = "Use Manual: Mageweave Bandage first" },
+    { from = 225, to = 240, spell = 10840,   crafts = 29 },
     { from = 240, to = 260, spell = 10841,   crafts = 30, note = "The Triage doctor teaches it at 240" },
     { from = 260, to = 275, spell = 18629,   crafts = 20, note = "The Triage doctor teaches it at 260" },
     { from = 275, to = 300, spell = 1244436, crafts = 30,

@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Enchanting guide
--- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 8 Nov 2026).
+-- (https://www.wow-professions.com/forever/enchanting-leveling-guide, beta data, as of 12 Nov 2026).
 -- 225-300 is the guide's untested Classic route (Enchanting ranges barely changed in Forever).
 -- {H:...} / {A:...} text is only shown to Horde / Alliance.
 local _, CR = ...
@@ -20,7 +20,7 @@ CR.RegisterRoute("Enchanting", {
     { name = "Artisan",    cap = 300, skill = 200, level = 35,
       text = "Learn Artisan Enchanting (level 35, skill 200) from Annora in Uldaman (back entrance - bring a "
         .. "group). She only spawns once every mob in her area is dead. Learn every recipe she teaches - the "
-        .. "230+ ones aren't taught anywhere else - and bring enough mats for 250 (about 100 Vision Dust)." },
+        .. "230+ ones aren't taught anywhere else - and bring enough mats for 250 (about 50 Vision Dust)." },
   },
 
   commonMats = {
@@ -31,12 +31,16 @@ CR.RegisterRoute("Enchanting", {
 
   choices = {
     { key = "e20", label = "20-70", options = {
-      { key = "essence", label = "Minor Deflect (Lesser Magic Essence)" },
       { key = "dust", label = "Chest - Inferior Stamina (Strange Dust)" },
+      { key = "essence", label = "Minor Deflect (Lesser Magic Essence)" },
     }},
     { key = "e70", label = "70-150", options = {
-      { key = "essence", label = "Lesser Magic Essence path" },
       { key = "dust", label = "Strange Dust path" },
+      { key = "essence", label = "Lesser Magic Essence path" },
+    }},
+    { key = "e165", label = "165-200", options = {
+      { key = "boots", label = "Boots - Lesser Agility all the way (Soul Dust)" },
+      { key = "bracer", label = "Bracer - Strength from 185 (if 2 Vision Dust cost less than 3 Soul Dust)" },
     }},
   },
 
@@ -76,10 +80,9 @@ CR.RegisterRoute("Enchanting", {
       note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Thaddeus Webb (Undercity)}"
         .. "{A:Vaean (Darnassus), Tilli Thistlefuzz (Ironforge) or Jessara Cordell (Stormwind)} - buy Formula: "
         .. "Lesser Wizard Oil there too, for 200. Maple Seed from Reagent vendors, Leaded Vial from Alchemy Supply" },
-    { from = 165, to = 185, spell = 13637, crafts = 22,
-      note = "Beta: Vision Dust is expensive with the level cap and Soul Dust isn't, so keep making these until 200 "
-        .. "(around 22 more)" },
-    { from = 185, to = 200, spell = 13661, crafts = 15 },
+    { from = 165, to = 200, spell = 13637, crafts = 47, when = { e165 = "boots" } },
+    { from = 165, to = 185, spell = 13637, crafts = 22, when = { e165 = "bracer" } },
+    { from = 185, to = 200, spell = 13661, crafts = 15, when = { e165 = "bracer" } },
     { from = 200, to = 201, spell = 13702, crafts = 1 },
     { from = 201, to = 220, spell = 25126, crafts = 25,
       note = "Formula from {H:Kithas (Orgrimmar), Nata Dawnstrider (Thunder Bluff) or Thaddeus Webb (Undercity)}"
@@ -88,9 +91,7 @@ CR.RegisterRoute("Enchanting", {
     { from = 220, to = 225, spell = 13746, crafts = 5 },
 
     -- Artisan (untested Classic route)
-    { from = 225, to = 230, spell = 13815, crafts = 5,  note = "Untested in Forever (Classic route)" },
-    { from = 230, to = 235, spell = 13836, crafts = 5 },
-    { from = 235, to = 250, spell = 13858, crafts = 20 },
+    { from = 225, to = 250, spell = 13815, crafts = 37, note = "Untested in Forever (Classic route)" },
     { from = 250, to = 265, spell = 25127, crafts = 20,
       note = "Formula from Kania (Silithus inn, upstairs)" },
     { from = 265, to = 294, spell = 20017, crafts = 32,

@@ -1,5 +1,5 @@
 -- Leveling route transcribed from wow-professions.com's WoW Forever Tailoring guide
--- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 8 Nov 2026).
+-- (https://www.wow-professions.com/forever/tailoring-leveling-guide, beta data, as of 12 Nov 2026).
 -- 225-265 is the guide's untested draft. It hasn't settled 265-300: it names two world drop
 -- patterns as the candidates, so that's a choice between them with estimated crafts.
 -- Bolts are Tailoring recipes, so any bolts you're short of are added as extra crafts.
@@ -36,9 +36,9 @@ CR.RegisterRoute("Tailoring", {
       { key = "silk", label = "Bolts of Silk" },
       { key = "shoulders", label = "Shoulders (stopping at 150)" },
     }},
-    { key = "e140", label = "140-150", options = {
-      { key = "mageweave", label = "Bolts of Mageweave" },
-      { key = "shirt", label = "Red Swashbuckler's Shirt (no Mageweave)" },
+    { key = "e215", label = "215-225", options = {
+      { key = "bags", label = "Mageweave Bags" },
+      { key = "belt", label = "Runecloth Belts (needs Artisan, level 35)" },
     }},
     { key = "a265", label = "265-300", options = {
       { key = "shoulders", label = "Runecloth Shoulders (world drop pattern)" },
@@ -60,13 +60,12 @@ CR.RegisterRoute("Tailoring", {
     { from = 120, to = 125, spell = 3852,  crafts = 5,
       note = "Elixir of Wisdom from the AH or an Alchemist" },
     { from = 125, to = 140, spell = 3852,  crafts = 24, note = "Yellow the whole way - you might need a few more" },
-    { from = 140, to = 150, spell = 3865,  crafts = 23, when = { e140 = "mageweave" },
-      note = "Keep the bolts - you need 180 by 225" },
-    { from = 140, to = 150, spell = 8489,  crafts = 10, when = { e140 = "shirt" } },
+    { from = 140, to = 150, spell = 3865,  crafts = 23, note = "Keep the bolts - you need 191 by 225" },
     { from = 150, to = 170, spell = 8791,  crafts = 20 },
     { from = 170, to = 190, spell = 8799,  crafts = 26, note = "Yellow from 180 - you might need a few more" },
-    { from = 190, to = 215, spell = 12053, crafts = 38, note = "Yellow from 195, green from 210" },
-    { from = 215, to = 225, spell = 12065, crafts = 26 },
+    { from = 190, to = 215, spell = 12074, crafts = 29 },
+    { from = 215, to = 225, spell = 12065, crafts = 26, when = { e215 = "bags" } },
+    { from = 215, to = 225, spell = 18402, crafts = 10, when = { e215 = "belt" } },
     { from = 225, to = 240, spell = 18402, crafts = 24,
       note = "From the Artisan trainers. You need 244 Bolts of Runecloth by 265 - they give no points, so make them all now" },
     { from = 240, to = 265, spell = 18417, crafts = 43, note = "Pattern from Qia, Winterspring" },
