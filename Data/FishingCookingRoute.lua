@@ -165,7 +165,7 @@ local route = {
       title = "Dustwallow Marsh: fish to 225",
       text = "No Nightcrawlers left? Buy 3 from Kilxx in Ratchet (nobody in Dustwallow sells them). Fish any "
         .. "inland open water in Dustwallow Marsh (not the ocean) until 225, Nightcrawler on." },
-    { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300, quest = "Nat Pagle, Angler Extreme",
+    { kind = "guide", skill = F, from = 205, to = 255, trainCap = 300, quest = "Nat Pagle, Angler Extreme", questNpc = "Nat Pagle",
       has = CR.NAT_PAGLE_FISH,
       title = "Artisan Fishing: Nat Pagle's quest",
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
@@ -180,7 +180,7 @@ local route = {
       note = "Cook your Mithril Head Trout - stop at 225 and keep the rest" },
 
     -- Artisan Cooking quest
-    { kind = "guide", skill = C, from = 175, to = 250, trainCap = 300, quest = "Clamlette Surprise",
+    { kind = "guide", skill = C, from = 175, to = 250, trainCap = 300, quest = "Clamlette Surprise", questNpc = "Dirge Quikcleave",
       recipes = { 18238, 18243, 18244 },   -- from Gikkix
       items = { { GIANT_EGG, 12 }, { ZESTY_CLAM, 10 }, { ALTERAC_SWISS, 20 } },
       title = "Artisan Cooking: Clamlette Surprise",

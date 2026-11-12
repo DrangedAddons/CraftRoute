@@ -107,7 +107,7 @@ CR.RegisterRoute("Fishing", {
     { name = "Expert", cap = 225, skill = 125, level = 20, book = 16083,
       text = "Buy and read 'Expert Fishing - The Bass and You' (skill 125, level 20) from Old Man Heming "
         .. "at the bottom of Booty Bay, near the fishing sign. Also on the Auction House." },
-    { name = "Artisan", cap = 300, skill = 225, level = 35, quest = "Nat Pagle, Angler Extreme",
+    { name = "Artisan", cap = 300, skill = 225, level = 35, quest = "Nat Pagle, Angler Extreme", questNpc = "Nat Pagle",
       has = CR.NAT_PAGLE_FISH,
       text = "Quest 'Nat Pagle, Angler Extreme' from Nat Pagle, Tidefury Cove, Dustwallow Marsh (level 35, "
         .. "skill 225). Catch Feralas Ahi (Feralas, use Bright Baubles), Misty Reed Mahi Mahi (Swamp of "

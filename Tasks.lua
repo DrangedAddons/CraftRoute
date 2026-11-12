@@ -543,14 +543,22 @@ local function QuestInLog(title)
   return found
 end
 
--- The rank's quest (st.quest = its title): picked up, or done once the rank it rewards is
--- learned. Shown, not required - turning it in is what trains the rank.
-local function QuestCheck(checks, title, trained)
+-- A checklist line's grey aside: "  (0/2)", "  (you: 180)".
+local function Aside(s) return CR.ColorText("  (" .. s .. ")", "aaaaaa") end
+-- "Leatherworking 225  (you: 200)"
+local function NeedLine(what, n, have) return string.format("%s %d", what, n) .. Aside("you: " .. have) end
+-- The word for a profession's recipe items: "Pattern: Tough Scorpid Gloves".
+local RECIPE_WORD = { Blacksmithing = "Plans", Leatherworking = "Pattern", Engineering = "Schematic",
+                      Tailoring = "Pattern", Alchemy = "Recipe", Enchanting = "Formula", Cooking = "Recipe",
+                      ["First Aid"] = "Manual", Mining = "Plans" }
+
+-- The rank's quest (st.quest = its title): done once the rank it rewards is learned. Shown, not
+-- required - turning it in is what trains the rank.
+local function QuestCheck(checks, title, trained, npc)
   if type(title) ~= "string" then return end
   local inLog = QuestInLog(title)
-  local label = trained and ("Quest '" .. title .. "' done")
-    or (inLog and ("Quest '" .. title .. "' picked up") or ("Pick up the quest '" .. title .. "'"))
-  table.insert(checks, Check(trained or inLog, label))
+  table.insert(checks, Check(trained, "Complete " .. title .. ((not trained and inLog) and Aside("in your log") or "")))
+  checks[#checks].place = CR.LinePlace and CR.LinePlace(npc)   -- (its quest giver)
 end
 
 -- Learned this recipe? Spellbook first (works with the profession closed), then what the
@@ -581,6 +589,7 @@ local function LinePlace(npc)
   end
   return Nearest(list, 1)[1]
 end
+CR.LinePlace = LinePlace
 
 -- A specialization quest's checklist (spec.steps), in order - short lines; the details of where
 -- things are go in the step's text. Each line is one of:
@@ -592,8 +601,6 @@ end
 -- npc = who to see (the line's Pin; "|" separates alternatives, nearest wins), optional = shown
 -- only, faction = "Alliance" / "Horde". The last line is spec.final, the quest that teaches the
 -- spec: "Complete <final>" (pinned to spec.finalNpc), ticked once it's learned (which ticks all).
-local RECIPE_WORD = { Blacksmithing = "Plans", Leatherworking = "Pattern", Engineering = "Schematic",
-                      Tailoring = "Pattern", Alchemy = "Recipe", Enchanting = "Formula" }
 local function SpecChecklist(spec, known, rprofName, Cond, checks)
   local list = {}
   for _, e in ipairs(spec.steps or {}) do
@@ -625,7 +632,7 @@ local function SpecChecklist(spec, known, rprofName, Cond, checks)
       local _, have = Owned(e.item)
       own = have >= e.count
       label = string.format("%s %d %s", e.verb or "Get", e.count, CR.ItemName(e.item))
-        .. (known and "" or CR.ColorText(string.format("  (%d/%d)", math.min(have, e.count), e.count), "aaaaaa"))
+        .. (known and "" or Aside(string.format("%d/%d", math.min(have, e.count), e.count)))
     end
     ok[i], labels[i] = known or own, label or "?"
   end
@@ -638,7 +645,7 @@ local function SpecChecklist(spec, known, rprofName, Cond, checks)
     end
   end
   for i, e in ipairs(list) do
-    local label = e.optional and (labels[i] .. CR.ColorText("  (optional)", "aaaaaa")) or labels[i]
+    local label = e.optional and (labels[i] .. Aside("optional")) or labels[i]
     if e.optional then table.insert(checks, Check(ok[i], label)) else Cond(ok[i], label) end
     checks[#checks].place = LinePlace(e.npc)
   end
@@ -679,18 +686,18 @@ function CR.StepTask(st, profName)
     for _, list in ipairs({ st.items or {}, st.has or {} }) do
       for _, it in ipairs(list) do
         local total, have = Owned(it[1])
-        local label = string.format("%d/%d %s in your bags", math.min(have, it[2]), it[2], CR.ItemName(it[1]))
+        local name = string.format("Get %d %s", it[2], CR.ItemName(it[1]))
         if trainedNow then
-          table.insert(t.checks, Check(true, CR.ItemName(it[1]) .. " (handed in)"))
+          table.insert(t.checks, Check(true, name .. Aside("handed in")))
         else
-          if have < it[2] and total > have then label = label .. CR.ColorText("  (more in your bank / on alts)", "ffd100") end
-          Prep(have >= it[2], label)
-          -- where to get it (a fishing spot): the line gets its own Pin button
+          local count = string.format("%d/%d", math.min(have, it[2]), it[2])
+          if have < it[2] and total > have then count = count .. ", more in bank / alts" end
+          Prep(have >= it[2], name .. Aside(count))
+          -- where to get it (a fishing spot): the line gets its own Pin (its tooltip names the spot)
           local spot = it[3]
           if spot then
-            t.checks[#t.checks].place = { name = CR.ItemName(it[1]) .. " (" .. spot.name .. ")", uiMapID = spot.uiMapID, x = spot.x, y = spot.y,
-                                          zone = ZoneName(spot.uiMapID) }
-            t.checks[#t.checks].text = label .. CR.ColorText("  -  " .. spot.name .. ", " .. ZoneName(spot.uiMapID), "aaaaaa")
+            t.checks[#t.checks].place = { name = CR.ItemName(it[1]) .. " - " .. spot.name, uiMapID = spot.uiMapID,
+                                          x = spot.x, y = spot.y, zone = ZoneName(spot.uiMapID) }
           end
           local price = CR.GetUnitPrice and CR.GetUnitPrice(it[1])
           if price and total < it[2] then cost = cost + price * (it[2] - total) end
@@ -702,8 +709,8 @@ function CR.StepTask(st, profName)
       local pr = CR.professions[rprofName]
       local r = pr and pr.recipes[spell]
       local known = KnowsRecipe(rprofName, spell)
-      Prep(known == true, "Learned " .. (r and r.name or ("recipe " .. spell))
-        .. (known == nil and CR.ColorText("  (open " .. rprofName .. " once to check)", "aaaaaa") or ""))
+      Prep(known == true, (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. (r and r.name or ("recipe " .. spell))
+        .. (known == nil and Aside("open " .. rprofName .. " to check") or ""))
     end
   end
 
@@ -723,7 +730,7 @@ function CR.StepTask(st, profName)
           if alt.quest then
             local done = C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted
               and C_QuestLog.IsQuestFlaggedCompleted(alt.quest) or false
-            table.insert(t.checks, Check(done, "Optional: quest '" .. (alt.questName or alt.quest) .. "' done"))
+            table.insert(t.checks, Check(done, "Complete " .. (alt.questName or alt.quest) .. Aside("optional")))
           end
           if alt.npc then
             for _, p in ipairs(Nearest(NpcPlaces(alt.npc, alt.npcName), 1)) do table.insert(altPlaces, p) end
@@ -740,20 +747,20 @@ function CR.StepTask(st, profName)
       t.title = (st.tierName or RANK_NAMES[rank] or "Next rank") .. " " .. skillName
       t.icon = st.book and "Interface\\Icons\\INV_Misc_Book_11" or (st.quest and "Interface\\Icons\\INV_Misc_Note_01"
         or "Interface\\Icons\\INV_Misc_Book_09")
-      if st.need then table.insert(t.checks, Check(cur >= st.need, string.format("%s skill %d (you: %d)", skillName, st.need, cur))) end
+      if st.need then table.insert(t.checks, Check(cur >= st.need, NeedLine(skillName, st.need, cur))) end
       if st.level and st.level > 0 then
         local lvl = UnitLevel("player") or 1
-        table.insert(t.checks, Check(lvl >= st.level, string.format("Level %d (you: %d)", st.level, lvl)))
+        table.insert(t.checks, Check(lvl >= st.level, NeedLine("Level", st.level, lvl)))
       end
       need, trained = st.need, learned and maxRank >= st.cap
       if st.book then
         local _, bags = Owned(st.book)
-        local ok, label = bags > 0 or trained, "Bought " .. CR.ItemName(st.book)
+        local ok, label = bags > 0 or trained, "Buy " .. CR.ItemName(st.book)
         if st.need and cur < st.need and not trained then Prep(ok, label) else table.insert(t.checks, Check(ok, label)) end
       end
-      QuestCheck(t.checks, st.quest, learned and maxRank >= st.cap)
+      QuestCheck(t.checks, st.quest, learned and maxRank >= st.cap, st.questNpc)
       Objectives(trained)
-      Cond(learned and maxRank >= st.cap, string.format("%s %s learned (max skill %d)", st.tierName or "", skillName, st.cap))
+      Cond(learned and maxRank >= st.cap, string.format("Learn %s %s", st.tierName or "", skillName) .. Aside("max skill " .. st.cap))
       if st.book or st.quest then
         t.places = Nearest(NpcsInText(text))
       else
@@ -784,7 +791,7 @@ function CR.StepTask(st, profName)
       local lvl = UnitLevel and UnitLevel("player") or 1
       local known = CR.KnowsSpec(st.spec)
       if st.spec.level then
-        table.insert(t.checks, Check(lvl >= st.spec.level or known, string.format("Level %d (you: %d)", st.spec.level, lvl)))
+        table.insert(t.checks, Check(lvl >= st.spec.level or known, NeedLine("Level", st.spec.level, lvl)))
       end
       SpecChecklist(st.spec, known, rprofName, Cond, t.checks)
       Cond(known, st.spec.final and ("Complete " .. st.spec.final) or (st.spec.name .. " learned"))
@@ -802,11 +809,11 @@ function CR.StepTask(st, profName)
       trained = learned and maxRank >= st.trainCap
       local tier = RankTier(skillName, st.trainCap)
       need = tier and tier.skill
-      Cond(trained, string.format("%s trained to %d", skillName, st.trainCap))
-      QuestCheck(t.checks, st.quest, trained)
+      Cond(trained, string.format("Train %s to %d", skillName, st.trainCap))
+      QuestCheck(t.checks, st.quest, trained, st.questNpc)
       if st.book then
         local _, bags = Owned(st.book)
-        local ok, label = bags > 0 or trained, "Bought " .. CR.ItemName(st.book)
+        local ok, label = bags > 0 or trained, "Buy " .. CR.ItemName(st.book)
         if need and cur < need and not trained then Prep(ok, label) else table.insert(t.checks, Check(ok, label)) end
       end
     end
@@ -814,8 +821,7 @@ function CR.StepTask(st, profName)
     for _, b in ipairs(st.books or {}) do
       local _, bags = Owned(b[1])
       local _, bmax = CR.GetSkill(b[2])
-      Prep(bags > 0 or (bmax or 0) >= b[3], "Bought " .. CR.ItemName(b[1])
-        .. ((bmax or 0) >= b[3] and CR.ColorText("  (read)", "aaaaaa") or ""))
+      Prep(bags > 0 or (bmax or 0) >= b[3], "Buy " .. CR.ItemName(b[1]) .. ((bmax or 0) >= b[3] and Aside("read") or ""))
     end
     Objectives(trained)
     -- leveling that isn't crafting (fishing): done at the skill
@@ -825,7 +831,7 @@ function CR.StepTask(st, profName)
     local activity = not st.trainCap and not st.learnStep
       and ((st.yields and #st.yields > 0) or st.catches or st.chosen or st.gather or st.ownSkill == "Fishing")
     if activity and st.to and st.to > (st.from or 0) then
-      Cond(cur >= st.to, string.format("%s %d (you: %d)", skillName, st.to, cur))
+      Cond(cur >= st.to, NeedLine(skillName, st.to, cur))
       -- over the guide's whole step (the plan's own range starts at your skill, so it'd never fill)
       t.progress = { from = st.stepFrom or st.from or 0, to = st.to, cur = cur }
     elseif ((st.items and #st.items > 0) or (st.has and #st.has > 0)) and not st.trainCap and not st.learnStep then
@@ -855,11 +861,11 @@ function CR.StepTask(st, profName)
       local tier = RankTier(skillName, st.trainCap)
       if tier then
         if tier.skill then
-          table.insert(t.checks, 1, Check(cur >= tier.skill, string.format("%s skill %d (you: %d)", skillName, tier.skill, cur)))
+          table.insert(t.checks, 1, Check(cur >= tier.skill, NeedLine(skillName, tier.skill, cur)))
         end
         if tier.level and tier.level > 0 then
           local lvl = UnitLevel("player") or 1
-          table.insert(t.checks, 2, Check(lvl >= tier.level, string.format("Level %d (you: %d)", tier.level, lvl)))
+          table.insert(t.checks, 2, Check(lvl >= tier.level, NeedLine("Level", tier.level, lvl)))
         end
       end
       if #t.places == 0 and not st.quest and not st.book then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
@@ -911,7 +917,7 @@ function CR.RecipeTask(st, profName)
   local t = { key = key, kind = "recipe", step = st, recipe = r, profName = profName, skillName = rprofName,
               title = "Learn " .. r.name, icon = CR.RecipeIcon(r), checks = {}, places = {} }
   local learnAt = CR.LearnAt(r)
-  table.insert(t.checks, Check(cur >= learnAt, string.format("%s skill %d (you: %d)", rprofName, learnAt, cur)))
+  table.insert(t.checks, Check(cur >= learnAt, NeedLine(rprofName, learnAt, cur)))
   local src = r.src or ""
   if src:find("Trainer") then
     t.text = "Learn it from a " .. rprofName .. " trainer."
@@ -922,7 +928,7 @@ function CR.RecipeTask(st, profName)
     t.places = Nearest(RecipeVendors(rprofName, r.spell))
     if #t.places == 0 then t.places = Nearest(NpcsInText(CR.FactionText(src))) end
   end
-  table.insert(t.checks, Check(false, "Recipe learned"))
+  table.insert(t.checks, Check(false, "Learn " .. r.name))
   t.auto = true
   return t
 end

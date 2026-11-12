@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.11.1
+
+Every step checklist now uses the clean layout from the specialization steps: training ranks, rank quests (Nat Pagle, Clamlette Surprise, Triage), books, recipes to learn and supplies.
+
+- **Short lines.** Counts and extras sit in grey brackets: "Get 1 Feralas Ahi (0/1)", "Fishing 225 (you: 210)", "Level 35 (you: 32)", "Buy Expert Cookbook", "Manual: Heavy Silk Bandage", "Complete Triage (in your log)", "Learn Artisan Fishing (max skill 300)".
+- **Pins in their own column.** Any checklist with a Pin on a line is laid out like the spec steps: Pins on the left, text in the next column, rows one height.
+- **Fishing spots move into the Pin.** Nat Pagle's fish no longer have the spot written on the line; hover the Pin to see it.
+- **Quest givers on the quest line.** A rank quest's line gets a Pin to its giver where CraftRoute knows the position, e.g. Nat Pagle.
+
 ## 1.11.0
 
 - Fix: once you have a specialization, its choice and quest step leave the route. Before, the choice stayed because the other spec's step was still waiting, e.g. after becoming a Gnomish Engineer.

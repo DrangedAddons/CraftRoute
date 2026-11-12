@@ -21,6 +21,7 @@ CR.RegisterRoute("First Aid", {
         .. "{H:Balai Lok'Wein, Dustwallow Marsh}{A:Deneb Walker, Arathi Highlands}. Buy Manual: Heavy Silk "
         .. "Bandage and Manual: Mageweave Bandage there too (or on the AH)." },
     { name = "Artisan",    cap = 300, skill = 225, level = 35, quest = "Triage",
+      questNpc = "{H:Doctor Gregory Victor}{A:Doctor Gustaf VanHowzen}",
       text = "Complete the Triage quest (level 35, skill 225) from {H:Doctor Gregory Victor at Hammerfall, "
         .. "Arathi Highlands}{A:Doctor Gustaf VanHowzen at Theramore, Dustwallow Marsh}. Use the doctor's "
         .. "Triage Bandages, heal the critical patients first, and turn in as soon as 15 are saved." },

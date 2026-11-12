@@ -163,20 +163,23 @@ function CR.CreateTaskCard(parent, width)
     self.text:SetText(task.text or "")
     y = y - (self.text:GetStringHeight() or 14) - 12
 
+    -- a checklist with a Pin on any line: a grid (Pins in their own column, text in the next)
+    local grid = task.pinColumn
+    for _, c in ipairs(task.checks) do if c.place then grid = true end end
     for i, fs in ipairs(self.checks) do
       local c = task.checks[i]
       local pin = self.checkPins[i]
       pin.place = c and c.place
       pin:SetShown(c and c.place and true or false)
       if c then
-        local indent = (c.place or task.pinColumn) and 46 or 0
+        local indent = (c.place or grid) and 46 or 0
         fs:ClearAllPoints()
         fs:SetWidth(w - indent)
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
         local textH = fs:GetStringHeight() or 14
-        if task.pinColumn then
+        if grid then
           -- a checklist with pins on its lines: a grid - the Pins in a column of their own on the
           -- left, every line's text in the next column, every row the same height (text centred
           -- on its Pin)
