@@ -36,6 +36,15 @@ local function AddTrainersAndExtras()
       for _, loc in ipairs(t.locations or {}) do AddNpc(t.names and t.names.enUS, loc, t.faction) end
     end
   end
+  -- spec trainers (Gnomish Engineer, Armorsmith, Dragonscale...) are in a table of their own
+  local specTrainers = type(TrainerSpellsProfessionSpecTrainers) == "table" and TrainerSpellsProfessionSpecTrainers or {}
+  for _, specs in pairs(specTrainers) do
+    for _, spec in ipairs(specs) do
+      for _, t in ipairs(spec.trainers or {}) do
+        for _, loc in ipairs(t.locations or {}) do AddNpc(t.names and t.names.enUS, loc, t.faction) end
+      end
+    end
+  end
   for name, locs in pairs(EXTRA_NPCS) do
     if not npcIndex[name] then for _, l in ipairs(locs) do AddNpc(name, l, l.faction) end end
   end
@@ -689,6 +698,14 @@ function CR.StepTask(st, profName)
     end
     if st.learnStep then Cond(learned, skillName .. " learned") end
     if st.learns then Prep(learned, skillName .. " learned") end
+    -- a specialization quest: the level it needs, and done once its spell is known
+    if st.spec then
+      local lvl = UnitLevel and UnitLevel("player") or 1
+      if st.spec.level then
+        table.insert(t.checks, Check(lvl >= st.spec.level, string.format("Level %d (you: %d)", st.spec.level, lvl)))
+      end
+      Cond(IsPlayerSpell and IsPlayerSpell(st.spec.spell) or false, st.spec.name .. " learned")
+    end
     -- a gathering step's target herbs / veins and the skill each needs (the card colours them)
     if st.nodes then
       t.nodes = { label = st.nodes.label, list = {} }

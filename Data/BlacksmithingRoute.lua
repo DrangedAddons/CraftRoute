@@ -48,6 +48,11 @@ CR.RegisterRoute("Blacksmithing", {
       { key = "sword", label = "Bronze Shortsword" },
       { key = "bracers", label = "Patterned Bronze Bracers (if you disenchant your greens)" },
     }},
+    { key = "spec", label = "215 specialization", options = {
+      { key = "none", label = "Not now" },
+      { key = "armor", label = "Armorsmith" },
+      { key = "weapon", label = "Weaponsmith" },
+    }},
     { key = "e215", label = "215-225", options = {
       { key = "breastplate", label = "Heavy Mithril Breastplate" },
       { key = "spurs", label = "Mithril Spurs (world drop plans)" },
@@ -87,8 +92,8 @@ CR.RegisterRoute("Blacksmithing", {
     { from = 112, to = 125, spell = 2672, crafts = 13 },
     { from = 125, to = 140, spell = 2672, crafts = 24, when = { j125 = "bracers" } },
     { from = 125, to = 140, spell = 2742, crafts = 24, when = { j125 = "sword" },
-      note = "They vendor for over twice what the bracers do, so they end up cheaper. Weak Flux (and Strong Flux for the Bronze Warhammers, 140-170) from the Blacksmithing Supply "
-        .. "vendor in any capital" },
+      note = "They vendor for over twice what the bracers do, so they end up cheaper. Weak Flux (and Strong "
+        .. "Flux for the Bronze Warhammers, 140-170) from the Blacksmithing Supply vendor in any capital" },
     { from = 140, to = 150, spell = 9985, crafts = 10 },
 
     -- Expert
@@ -102,6 +107,35 @@ CR.RegisterRoute("Blacksmithing", {
         .. "capital.{A: Keep 6 - you might need them for Armorsmithing.}" },
     { from = 195, to = 210, spell = 9928, crafts = 21 },
     { from = 210, to = 215, spell = 9993, crafts = 6, note = "Keep 2 - you might need them for Weaponsmithing" },
+
+    -- Specialization quests (wow-professions.com's Armorsmith / Weaponsmith guides, Nov 2026)
+    { kind = "guide", from = 215, to = 215,
+      text = "Blacksmithing specialization: at Blacksmithing 200 and level 40 you can become an Armorsmith or a "
+        .. "Weaponsmith. Optional - you don't need one to level, and you can choose later. Pick one under the "
+        .. "215 specialization choice for its quest steps." },
+    { kind = "guide", from = 215, to = 215, when = { spec = "armor" }, title = "Become an Armorsmith",
+      spec = { spell = 9788, name = "Armorsmith", level = 40 },
+      text = "Talk to {H:Krathok Moltenfist in Orgrimmar}{A:Myolor Sunderfury in Ironforge} and pick \"I wish "
+        .. "to become an armorsmith\". Then take The Art of the Armorsmith from the Armorsmith trainer next to "
+        .. "them, {H:Okothos Ironrager}{A:Grumnus Steelshaper}."
+        .. "\n\nIt needs 4 Ornate Mithril Helm, 2 Ornate Mithril Boots and 1 Ornate Mithril Breastplate in your "
+        .. "bags - you can buy them or have someone craft them."
+        .. "\n\nTo make them yourself, the plans come from The Mithril Order quest chain (Blacksmithing 210): "
+        .. "{A:The Origins of Smithing from Hank the Hammer in Stormwind (6 Golden Scale Bracers - the ones you "
+        .. "kept at 180)}{H:The Old Ways from Aturk the Anvil in Orgrimmar (4 Steel Breastplate, 4 Steel Plate "
+        .. "Helm)}, then McGavan in Booty Bay, Galvan the Ancient in northern Stranglethorn Vale and Trenton "
+        .. "Lighthammer in Gadgetzan (Blacksmithing 235, with the Heavy Mithril Boots and Breastplates you kept)." },
+    { kind = "guide", from = 215, to = 215, when = { spec = "weapon" }, title = "Become a Weaponsmith",
+      spec = { spell = 9787, name = "Weaponsmith", level = 40 },
+      text = "Talk to {H:Krathok Moltenfist in Orgrimmar}{A:Myolor Sunderfury in Ironforge} and pick \"I wish "
+        .. "to become a weaponsmith\" - without that the quest doesn't show. Then take The Way of the "
+        .. "Weaponsmith from the Weaponsmith trainer next to them, {H:Borgosh Corebender}{A:Ironus Coldsteel}."
+        .. "\n\nIt needs 4 Moonsteel Broadsword, 4 Massive Iron Axe, 2 Heavy Mithril Axe (the ones you kept at "
+        .. "210) and 2 Big Black Mace in your bags - bought or crafted. Plans: Moonsteel Broadsword is sold by "
+        .. "Zarena Cromwind in Booty Bay, Plans: Massive Iron Axe by Jaquilina Dramet at Nesingwary's Camp"
+        .. "{H: or Vharr in Grom'gol}. Brikk Keencraft in Booty Bay teaches Big Black Mace at 205."
+        .. "\n\nAfterwards you can become a Master Axesmith, Hammersmith or Swordsmith in Everlook, "
+        .. "Winterspring (the three trainers stand together in one house), each with a dungeon quest." },
     { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" },
       note = "Keep 2 - you might need them for Armorsmithing" },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },

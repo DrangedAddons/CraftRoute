@@ -56,6 +56,12 @@ CR.RegisterRoute("Leatherworking", {
       { key = "hide",    label = "Cured Heavy Hide" },
       { key = "nohide",  label = "Leveling without Heavy Hide" },
     }},
+    { key = "spec", label = "225 specialization", options = {
+      { key = "none", label = "Not now" },
+      { key = "dragonscale", label = "Dragonscale" },
+      { key = "elemental", label = "Elemental" },
+      { key = "tribal", label = "Tribal" },
+    }},
     { key = "a285", label = "285-300", options = {
       { key = "headband", label = "Runic Leather Headband" },
       { key = "scorpid", label = "Heavy Scorpid Shoulders (pattern drop)" },
@@ -111,6 +117,34 @@ CR.RegisterRoute("Leatherworking", {
     -- Artisan (210-300); past 225 the guide's untested draft
     { from = 210, to = 225, spell = 10548, crafts = 15,
       note = "Only the Artisan trainers teach this - not the Expert trainers in Thunder Bluff / Darnassus" },
+    -- Specialization quests (wow-professions.com's Dragonscale / Elemental / Tribal guides, Nov 2026)
+    { kind = "guide", from = 225, to = 225,
+      text = "Leatherworking specialization: at Leatherworking 225 and level 40 you can pick Dragonscale (mail "
+        .. "gear), Elemental (elemental resistance and agility leather gear) or Tribal (intellect and agility "
+        .. "leather gear, and the Devilsaur set). Optional. Pick one under the 225 specialization choice for its "
+        .. "quest steps." },
+    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale" }, title = "Become a Dragonscale Leatherworker",
+      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40 },
+      text = "Craft 2 Tough Scorpid Breastplate and 2 Tough Scorpid Gloves, get 10 Worn Dragonscale, then do "
+        .. "the Dragonscale Leatherworking quest from {A:Peter Galen at the Ruins of Eldarath, Azshara}"
+        .. "{H:Thorkaf Dragoneye in the Badlands}."
+        .. "\n\nPattern: Tough Scorpid Breastplate drops from Wastewander Bandits and Pattern: Tough Scorpid "
+        .. "Gloves from Wastewander Thieves, both in Tanaris - or buy them on the AH."
+        .. "\n\nShopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale." },
+    { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, title = "Become an Elemental Leatherworker",
+      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40 },
+      text = "Bring 2 Globe of Water, 2 Heart of Fire, 2 Core of Earth and 2 Breath of Wind to "
+        .. "{A:Sarah Tanner in Searing Gorge}{H:Brumn Winterhoof in Arathi Highlands} and do the Elemental "
+        .. "Leatherworking quest." },
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal" }, title = "Become a Tribal Leatherworker",
+      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40 },
+      text = "First the Wild Leather quests from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor "
+        .. "Swiftstrider in Camp Mojache}, Feralas: Wild Leather Armor opens the Vest, Shoulders, Leggings, "
+        .. "Helmet and Boots quests. Pattern: Turtle Scale Gloves is the only pattern to buy - the quest giver "
+        .. "sells it. Then hand in Master of the Wild Leather to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}."
+        .. "\n\nThen craft 1 Wild Leather Vest and 1 Wild Leather Helmet and take them to {A:Caryssia "
+        .. "Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale} for the Tribal Leatherworking quest."
+        .. "\n\nShopping: 214 Thick Leather, 112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide." },
     { from = 225, to = 235, spell = 10558, crafts = 12 },
     { from = 235, to = 250, spell = 19049, crafts = 15,
       note = "Pattern from {H:Werg Thickblade, Tirisfal Glades}{A:Leonard Porter, Western Plaguelands}" },

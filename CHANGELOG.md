@@ -1,5 +1,16 @@
 # CraftRoute changelog
 
+## 1.9.0
+
+- Specializations are now a choice on the route, with step-by-step quest instructions and map pins for the NPCs:
+  - **Engineering** (200, level 30): Gnomish or Goblin.
+  - **Blacksmithing** (215, level 40): Armorsmith or Weaponsmith.
+  - **Leatherworking** (225, level 40): Dragonscale, Elemental or Tribal.
+- Each choice starts on "Not now", so nobody gets a quest step until they pick one.
+- A picked spec's step shows Alliance or Horde quest givers, the items to bring and where to get the plans.
+- The step stays on your route until you've learned the specialization, even if you pick it long after reaching the skill. It ticks off by itself once you learn it, and shows a level check until then.
+- Pins now include the specialization trainers (Tinkmaster Overspark, Nixx Sprocketspring, the Armorsmith / Weaponsmith trainers, the Leatherworking spec trainers) from TrainerSpells.
+
 ## 1.8.2
 
 Routes updated to the latest wow-professions.com Forever guides (12 Nov):

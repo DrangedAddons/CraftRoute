@@ -39,6 +39,11 @@ CR.RegisterRoute("Engineering", {
       { key = "scope", label = "Standard Scope (Moss Agate)" },
       { key = "powder", label = "Heavy Blasting Powder early (no Moss Agate)" },
     }},
+    { key = "spec", label = "200 specialization", options = {
+      { key = "none", label = "Not now" },
+      { key = "gnomish", label = "Gnomish Engineering" },
+      { key = "goblin", label = "Goblin Engineering" },
+    }},
   },
 
   steps = {
@@ -70,10 +75,34 @@ CR.RegisterRoute("Engineering", {
     { from = 195, to = 200, spell = 12589, crafts = 6,  note = "Keep all 6 if you might pick Gnomish Engineering" },
 
     -- Artisan
+    -- Specialization quests (wow-professions.com's Gnomish vs Goblin Engineering guide, Nov 2026)
     { kind = "guide", from = 200, to = 200,
       text = "Engineering specialization: at Engineering 200 and level 30 you can pick Gnomish or Goblin "
-        .. "Engineering (a quest). Some items need a specific one to use; most made by one are usable by any "
-        .. "engineer. See the guide's Engineering Specializations page to choose." },
+        .. "Engineering with a short quest chain. Optional - you don't need one to level. Most items one makes "
+        .. "can be used by either, so the choice mostly comes down to the teleporter and a few bind on pickup "
+        .. "trinkets. Pick one under the 200 specialization choice for its quest steps. Switching later means "
+        .. "unlearning Engineering and leveling it back to 200." },
+    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish" }, title = "Become a Gnomish Engineer",
+      spec = { spell = 20219, name = "Gnomish Engineer", level = 30 },
+      text = "{A:Take Gnome Engineering from Springspindle Fizzlegear in Ironforge (or Lilliam Sparkspindle in "
+        .. "Stormwind) and hand it in to Tinkmaster Overspark in Tinker Town. Take The Pledge of Secrecy from "
+        .. "him, right-click Overspark's Pledge of Secrecy in your bags, then take Show Your Work.}"
+        .. "{H:Take Gnome Engineering from Tinkerwiz in Ratchet (or Graham Van Talen in Undercity), then take "
+        .. "the boat to Booty Bay and find Oglethorpe Obnoticus. Take The Pledge of Secrecy from him, right-click "
+        .. "Oglethorpe's Pledge of Secrecy in your bags, then take Show Your Work.}"
+        .. "\n\nShow Your Work needs 6 Mithril Tube (the ones from 195, or 18 Mithril Bar), 1 Accurate Scope and "
+        .. "2 Advanced Target Dummy. Schematic: Accurate Scope is sold by Mazk Snipeshot in Booty Bay."
+        .. "\n\nYou get: Ultrasafe Transporter - Gadgetzan (Gnomish only), Gnomish Death Ray and Gnomish Battle "
+        .. "Chicken (bind on pickup)." },
+    { kind = "guide", from = 200, to = 200, when = { spec = "goblin" }, title = "Become a Goblin Engineer",
+      spec = { spell = 20222, name = "Goblin Engineer", level = 30 },
+      text = "Take Goblin Engineering from {A:Springspindle Fizzlegear in Ironforge (or Lilliam Sparkspindle in "
+        .. "Stormwind)}{H:Tinkerwiz in Ratchet (or Graham Van Talen in Undercity)}, then go to Gadgetzan in "
+        .. "Tanaris and take The Pledge of Secrecy from Nixx Sprocketspring. Right-click Nixx's Pledge of "
+        .. "Secrecy in your bags, then take Show Your Work."
+        .. "\n\nShow Your Work needs 20 Big Iron Bomb, 20 Solid Dynamite and 5 Explosive Sheep (keep 5 from 160)."
+        .. "\n\nYou get: Dimensional Ripper - Everlook (Goblin only), Goblin Sapper Charge and Goblin Rocket "
+        .. "Boots." },
     { from = 200, to = 215, spell = 12591, crafts = 20, note = "Keep all 20 for the bombs at 238" },
     { from = 215, to = 238, spell = 12599, crafts = 40,
       note = "Keep 40 for the bombs. Past 225 is untested in Forever (Classic route)" },

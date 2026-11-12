@@ -418,11 +418,16 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     if detected then return nil end
   elseif st.trainCap then
     if (detected and smax >= st.trainCap) or c >= st.to then return nil end
+  elseif st.spec then
+    -- a specialization quest stays until its spell is learned: it's usually picked well past its
+    -- skill (it needs level 30-40), then it shows at your current skill
+    if (IsPlayerSpell and IsPlayerSpell(st.spec.spell)) or (not route.sequential and st.from >= goal) then return nil end
   elseif c >= st.to or (not route.sequential and st.from >= goal) then
     return nil
   end
   local lo, hi = max(st.from, c), min(st.to, goal)
   if st.trainCap or st.learnStep then lo, hi = st.from, st.to end
+  if st.spec and c > st.to then lo, hi = c, c end
   local frac = (st.to > st.from) and (hi - lo) / (st.to - st.from) or 1
   local out = { kind = st.kind or "craft", from = lo, to = hi, skill = skillName, catches = st.catches,
                 note = st.note and CR.FactionText(st.note), text = st.text and CR.FactionText(st.text),
@@ -434,7 +439,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
                 train = (st.trainCap or st.learnStep) and true or nil,
                 -- for the task cards (Tasks.lua)
                 trainCap = st.trainCap, learnStep = st.learnStep, book = st.book, quest = st.quest,
-                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has, learns = st.learns, books = st.books, gather = st.gather,
+                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has, learns = st.learns, books = st.books, gather = st.gather, spec = st.spec,
                 nodes = st.nodes }
   if out.kind == "craft" then
     local r = rprof.recipes[st.spell]
