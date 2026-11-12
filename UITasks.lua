@@ -169,19 +169,31 @@ function CR.CreateTaskCard(parent, width)
       pin.place = c and c.place
       pin:SetShown(c and c.place and true or false)
       if c then
-        -- (a checklist with pins on its lines: every line in one column)
         local indent = (c.place or task.pinColumn) and 46 or 0
-        if c.place then
-          pin:ClearAllPoints()
-          pin:SetPoint("TOPLEFT", 0, y + 2)
-        end
         fs:ClearAllPoints()
-        fs:SetPoint("TOPLEFT", indent, y)
         fs:SetWidth(w - indent)
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
-        y = y - math.max(c.place and 20 or 0, (fs:GetStringHeight() or 14)) - 4
+        local textH = fs:GetStringHeight() or 14
+        if task.pinColumn then
+          -- a checklist with pins on its lines: a grid - the Pins in a column of their own on the
+          -- left, every line's text in the next column, every row the same height (text centred
+          -- on its Pin)
+          if c.place then
+            pin:ClearAllPoints()
+            pin:SetPoint("TOPLEFT", 0, y)
+          end
+          fs:SetPoint("TOPLEFT", indent, y - 3)
+          y = y - math.max(20, textH + 3) - 3
+        else
+          if c.place then
+            pin:ClearAllPoints()
+            pin:SetPoint("TOPLEFT", 0, y + 2)
+          end
+          fs:SetPoint("TOPLEFT", indent, y)
+          y = y - math.max(c.place and 20 or 0, textH) - 4
+        end
       else
         fs:Hide()
       end

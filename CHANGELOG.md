@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.10.2
+
+- Specialization checklists are laid out as a grid. The Pins have a column of their own on the left, every line's text starts in the column next to it, and every row is the same height, with the text centred on its Pin.
+
 ## 1.10.1
 
 - Specialization checklists are tidier.
