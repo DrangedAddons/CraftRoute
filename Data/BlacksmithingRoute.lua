@@ -10,6 +10,11 @@ local HAMMER = 5956
 local THORIUM = 12359
 
 CR.RegisterRoute("Blacksmithing", {
+  -- Change Specialisation, at the end once you have one
+  specChange = { at = 300,
+    text = "To switch, unlearn Blacksmithing in the Skills tab of your character window - you lose every "
+      .. "recipe and all your skill. Level it back to 200, then do the other specialization's quest (pick it "
+      .. "below)." },
   source = "wow-professions.com (Forever beta)",
   routeEnd = 300,
   maxSkill = 300,

@@ -94,6 +94,40 @@ function CR.RegisterRoute(profName, route, mode)
   route.mode = mode
   route.id = route.id or (profName .. ":" .. mode)
   route.label = route.label or (profName .. " only")
+  if route.specChange then CR.AddSpecChange(route) end
+end
+
+-- "Change Specialisation" at the end of a route with specialization quests (route.specChange =
+-- { at = skill, text = how to switch }): a heading, and a choice of the specs again, each one a
+-- copy of its quest step. It shows only while you have a spec; the copy of yours stays hidden.
+-- (Unlearning the profession to switch takes the spec away, and the route's own spec choice is
+-- back where it was.)
+function CR.AddSpecChange(route)
+  local sc = route.specChange
+  local labels = {}
+  for _, c in ipairs(route.choices or {}) do
+    if c.key == "spec" then
+      for _, o in ipairs(c.options) do labels[o.key] = o.label end
+    end
+  end
+  local options, copies = { { key = "none", label = "Not now" } }, {}
+  for _, st in ipairs(route.steps) do
+    if st.spec and st.when and st.when.spec then
+      local key = st.when.spec
+      table.insert(options, { key = key, label = labels[key] or key, spec = st.spec })
+      local copy = {}
+      for k, v in pairs(st) do copy[k] = v end
+      copy.when = { specChange = key }
+      copy.from, copy.to, copy.changeSpec = sc.at, sc.at, true
+      copy.text = sc.text .. "\n\n" .. (st.text or "")
+      table.insert(copies, copy)
+    end
+  end
+  route.choices = route.choices or {}
+  table.insert(route.choices, { key = "specChange", label = "Change Specialisation", options = options })
+  table.insert(route.steps, { kind = "guide", from = sc.at, to = sc.at, changeSpec = true,
+                              title = "Change Specialisation", text = sc.text })
+  for _, copy in ipairs(copies) do table.insert(route.steps, copy) end
 end
 
 function CR.GetProfession(name) return CR.professions[name] end

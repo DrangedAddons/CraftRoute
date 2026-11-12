@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.11.0
+
+- Fix: once you have a specialization, its choice and quest step leave the route. Before, the choice stayed because the other spec's step was still waiting, e.g. after becoming a Gnomish Engineer.
+- Specializations are now also recognised by name in your spellbook and, for Engineering, by the Gnome / Goblin Engineer Membership Card in your bags, as well as by spell ID.
+- New permanent **Change Specialisation** section at the end of the Engineering, Blacksmithing and Leatherworking routes, shown while you have a specialization:
+  - It says how to switch: unlearn the profession, level it back to 200, or 225 for Leatherworking, and for Engineering read Soothsaying for Dummies at Steamwheedle Port.
+  - It offers the other specs, each with its full quest checklist, and starts on "Not now".
+  - Once you unlearn the profession, the normal route and its spec choice come back.
+
 ## 1.10.2
 
 - Specialization checklists are laid out as a grid. The Pins have a column of their own on the left, every line's text starts in the column next to it, and every row is the same height, with the text centred on its Pin.

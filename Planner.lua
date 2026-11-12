@@ -405,6 +405,48 @@ local function SkillOf(name)
   return cur, maxRank or 0, detected
 end
 
+-- Is this specialization learned? Its spell (by ID, then by name in the spellbook), or its
+-- membership card in your bags (Engineering). Cached until spells or skills change.
+local specCache = {}
+do
+  local f = CreateFrame("Frame")
+  for _, e in ipairs({ "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB", "SKILL_LINES_CHANGED" }) do pcall(f.RegisterEvent, f, e) end
+  f:SetScript("OnEvent", function() wipe(specCache) end)
+end
+local function SpellbookHas(name)
+  for i = 1, 1000 do
+    local n
+    if C_SpellBook and C_SpellBook.GetSpellBookItemName and Enum and Enum.SpellBookSpellBank then
+      n = C_SpellBook.GetSpellBookItemName(i, Enum.SpellBookSpellBank.Player)
+    elseif GetSpellBookItemName then
+      n = GetSpellBookItemName(i, BOOKTYPE_SPELL or "spell")
+    end
+    if not n then return false end
+    if n == name then return true end
+  end
+  return false
+end
+function CR.KnowsSpec(spec)
+  if not spec then return false end
+  local hit = specCache[spec.spell]
+  if hit ~= nil then return hit end
+  local known = (IsPlayerSpell and IsPlayerSpell(spec.spell)) or (IsSpellKnown and IsSpellKnown(spec.spell)) or false
+  if not known and spec.name then
+    local ok, has = pcall(SpellbookHas, spec.name)
+    known = ok and has or false
+  end
+  if not known and spec.card and CR.BagsAndElsewhere then known = (CR.BagsAndElsewhere(spec.card) or 0) > 0 end
+  specCache[spec.spell] = known and true or false
+  return specCache[spec.spell]
+end
+-- Any of the route's specializations learned?
+function CR.KnowsAnySpec(route)
+  for _, st in ipairs(route and route.steps or {}) do
+    if st.spec and not st.changeSpec and CR.KnowsSpec(st.spec) then return true end
+  end
+  return false
+end
+
 -- Scales a route step to the part still ahead of the player. Returns nil if it's done.
 -- Steps can be on another skill (combined guide), "train" steps stay until the tier is learned,
 -- and "learnStep" steps only show while the profession isn't learned at all.
@@ -418,16 +460,21 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     if detected then return nil end
   elseif st.trainCap then
     if (detected and smax >= st.trainCap) or c >= st.to then return nil end
+  elseif st.changeSpec then
+    -- "Change Specialisation" at the end: only once you have a spec, never the one you have
+    if not CR.KnowsAnySpec(route) or (st.spec and CR.KnowsSpec(st.spec)) then return nil end
   elseif st.spec then
-    -- a specialization quest stays until its spell is learned: it's usually picked well past its
-    -- skill (it needs level 30-40), then it shows at your current skill
-    if (IsPlayerSpell and IsPlayerSpell(st.spec.spell)) or (not route.sequential and st.from >= goal) then return nil end
+    -- a specialization quest stays until you have a spec (any of them - then the choice is gone
+    -- too): it's usually picked well past its skill (it needs level 30-40), then it shows at your
+    -- current skill
+    if CR.KnowsAnySpec(route) or (not route.sequential and st.from >= goal) then return nil end
   elseif c >= st.to or (not route.sequential and st.from >= goal) then
     return nil
   end
   local lo, hi = max(st.from, c), min(st.to, goal)
   if st.trainCap or st.learnStep then lo, hi = st.from, st.to end
   if st.spec and c > st.to then lo, hi = c, c end
+  if st.changeSpec then lo, hi = st.from, st.to end
   local frac = (st.to > st.from) and (hi - lo) / (st.to - st.from) or 1
   local out = { kind = st.kind or "craft", from = lo, to = hi, skill = skillName, catches = st.catches,
                 note = st.note and CR.FactionText(st.note), text = st.text and CR.FactionText(st.text),
@@ -585,7 +632,8 @@ local function ForkEvents(route, rprof, profName, cur, goal)
                           skill = skillName })
       local n = 0
       for _, o in ipairs(c.options) do
-        if FactionOK(o) then
+        -- (Change Specialisation doesn't offer the spec you have)
+        if FactionOK(o) and not (o.spec and CR.KnowsSpec(o.spec)) then
           n = n + 1
           -- Net materials for this option; items it makes for itself cancel out.
           -- crafts: what this option has you make (shown as the option itself, in route order)

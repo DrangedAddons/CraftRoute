@@ -782,7 +782,7 @@ function CR.StepTask(st, profName)
     -- a specialization quest: the level it needs, its checklist, and done once its spell is known
     if st.spec then
       local lvl = UnitLevel and UnitLevel("player") or 1
-      local known = IsPlayerSpell and IsPlayerSpell(st.spec.spell) or false
+      local known = CR.KnowsSpec(st.spec)
       if st.spec.level then
         table.insert(t.checks, Check(lvl >= st.spec.level or known, string.format("Level %d (you: %d)", st.spec.level, lvl)))
       end

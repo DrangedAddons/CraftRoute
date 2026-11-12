@@ -6,6 +6,11 @@
 local _, CR = ...
 
 CR.RegisterRoute("Leatherworking", {
+  -- Change Specialisation, at the end once you have one
+  specChange = { at = 300,
+    text = "To switch, unlearn Leatherworking in the Skills tab of your character window - you lose every "
+      .. "recipe and all your skill. Level it back to 225, then do the other specialization's quest (pick it "
+      .. "below)." },
   id = "Leatherworking",   -- keeps choices saved before routes had ids
   source = "wow-professions.com (Forever beta)",
   routeEnd = 300,

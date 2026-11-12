@@ -8,6 +8,11 @@ local _, CR = ...
 local HAMMER = 5956
 
 CR.RegisterRoute("Engineering", {
+  -- Change Specialisation, at the end once you have one (wow-professions.com's Gnomish vs Goblin guide)
+  specChange = { at = 300,
+    text = "To switch, unlearn Engineering in the Skills tab of your character window - you lose every "
+      .. "recipe and all your skill. Level it back to 200, then read Soothsaying for Dummies in a hut at "
+      .. "Steamwheedle Port, Tanaris. Then do the other specialization's quest (pick it below)." },
   source = "wow-professions.com (Forever beta)",
   routeEnd = 300,
   maxSkill = 300,
@@ -80,8 +85,8 @@ CR.RegisterRoute("Engineering", {
       text = "Engineering specialization: at Engineering 200 and level 30 you can pick Gnomish or Goblin "
         .. "Engineering with a short quest chain. Optional - you don't need one to level. Most items one makes "
         .. "can be used by either, so the choice mostly comes down to the teleporter and a few bind on pickup "
-        .. "trinkets. Pick one under the 200 specialization choice for its quest steps. Switching later means "
-        .. "unlearning Engineering and leveling it back to 200." },
+        .. "trinkets. Pick one under the 200 specialization choice for its quest steps. Switching later: see "
+        .. "Change Specialisation at the end of the route." },
     { kind = "guide", from = 200, to = 200, when = { spec = "gnomish" }, title = "Become a Gnomish Engineer",
       text = "Gnome Engineering is from {A:Springspindle Fizzlegear in Ironforge or Lilliam Sparkspindle in "
         .. "Stormwind; hand it in to Tinkmaster Overspark in Tinker Town}{H:Tinkerwiz in Ratchet or Graham Van "
@@ -89,8 +94,9 @@ CR.RegisterRoute("Engineering", {
         .. "Pledge of Secrecy (right-click it in your bags) and Show Your Work. Schematic: Accurate Scope is sold "
         .. "by Mazk Snipeshot in Booty Bay."
         .. "\n\nYou get the Ultrasafe Transporter - Gadgetzan (Gnomish only), and can make the Gnomish Death Ray "
-        .. "and Gnomish Battle Chicken (bind on pickup).",
-      spec = { spell = 20219, name = "Gnomish Engineer", level = 30, final = "Show Your Work",
+        .. "and Gnomish Battle Chicken (bind on pickup)."
+        .. "\n\nSwitching from Goblin? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first.",
+      spec = { spell = 20219, name = "Gnomish Engineer", level = 30, card = 10790, final = "Show Your Work",
         finalNpc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}",
         steps = {
           { quest = "Gnome Engineering", npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
@@ -105,8 +111,9 @@ CR.RegisterRoute("Engineering", {
         .. "Stormwind}{H:Tinkerwiz in Ratchet or Graham Van Talen in Undercity}. Hand it in to Nixx Sprocketspring "
         .. "in Gadgetzan, Tanaris: he gives The Pledge of Secrecy (right-click it in your bags) and Show Your Work."
         .. "\n\nYou get the Dimensional Ripper - Everlook (Goblin only), and can make Goblin Sapper Charges and "
-        .. "Goblin Rocket Boots.",
-      spec = { spell = 20222, name = "Goblin Engineer", level = 30, final = "Show Your Work",
+        .. "Goblin Rocket Boots."
+        .. "\n\nSwitching from Gnomish? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first.",
+      spec = { spell = 20222, name = "Goblin Engineer", level = 30, card = 10791, final = "Show Your Work",
         finalNpc = "Nixx Sprocketspring",
         steps = {
           { quest = "Goblin Engineering", npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
