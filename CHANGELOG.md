@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.11.2
+
+- Fix: the profession picker in the Professions book. If the profession you learned first was the one you picked for Second Profession, the game shows it under First Profession. Your other pick was left on a section the game had filled, so you couldn't pick it for Second Profession ("Picked for your other profession"). Now a learned pick is cleared, and your remaining pick moves to the section still open.
+
 ## 1.11.1
 
 Every step checklist now uses the clean layout from the specialization steps: training ranks, rank quests (Nat Pagle, Clamlette Surprise, Triage), books, recipes to learn and supplies.

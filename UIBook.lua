@@ -31,6 +31,37 @@ local function Learned()
   return set
 end
 
+-- Picks are per section, but the game fills First Profession with whichever you learn first. So
+-- a pick you've learned is dropped, and a pick whose section the game has filled moves to the
+-- section still open (picked Tailoring first and Mining second, learned Mining: Mining shows
+-- under First Profession, Tailoring moves to Second). open = { [1] = bool, [2] = bool }.
+local function SettlePicks(open)
+  local picks, learned = Picks(), Learned()
+  for s = 1, 2 do
+    if picks[s] and learned[picks[s]] then picks[s] = nil end
+  end
+  for s = 1, 2 do
+    local o = s == 1 and 2 or 1
+    if picks[s] and not open[s] and open[o] and not picks[o] then picks[o], picks[s] = picks[s], nil end
+  end
+end
+
+-- Which primary sections are still open: from GetProfessions, else by counting the primary
+-- professions you have (the game fills First Profession first).
+local function OpenSections()
+  if GetProfessions then
+    local p1, p2 = GetProfessions()
+    return { [1] = p1 == nil, [2] = p2 == nil }, p1, p2
+  end
+  local n, learned = 0, Learned()
+  for _, g in ipairs(CR.PROFESSION_GROUPS or {}) do
+    if g.title ~= "" and not g.title:find("^Secondary") then
+      for _, spec in ipairs(g.list) do if learned[spec[1]] then n = n + 1 end end
+    end
+  end
+  return { [1] = n < 1, [2] = n < 2 }
+end
+
 -- Trainer rows: Pin + name and zone (distance)
 local function TrainerRows(host, n, width)
   local rows = {}
@@ -136,6 +167,7 @@ local function OpenPicker(o)
   local p = Picker()
   if p:IsShown() and p.slot == o.slot then p:Hide() return end
   p.slot, p.anchor, p.onPick = o.slot, o.icon, function() CR.SafeCall(CR.RefreshBook) end
+  SettlePicks((OpenSections()))
   local learned, picks = Learned(), Picks()
   local other = picks[o.slot == 1 and 2 or 1]
   for _, b in ipairs(p.buttons) do
@@ -265,16 +297,16 @@ function CR.RefreshBook()
     if root and root:IsShown() then Scan(root, found, 0) end
   end
   if #found == 0 then return end
-  local prof1, prof2 = nil, nil
-  if GetProfessions then prof1, prof2 = GetProfessions() end
+  local open, prof1, prof2 = OpenSections()
+  SettlePicks(open)
   local learned = Learned()
   for _, sec in ipairs(found) do
     local f, kind = sec.host, sec.kind
     local visitShown = false
     for _, r in ipairs(sec.visit) do if r:IsShown() then visitShown = true end end
     local notLearned
-    if kind == 1 then notLearned = prof1 == nil
-    elseif kind == 2 then notLearned = prof2 == nil
+    if kind == 1 then notLearned = open[1]
+    elseif kind == 2 then notLearned = open[2]
     else notLearned = not learned[kind] end
     local empty = visitShown and notLearned
     local o = built[f]
