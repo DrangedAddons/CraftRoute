@@ -83,26 +83,50 @@ CR.RegisterRoute("Engineering", {
         .. "trinkets. Pick one under the 200 specialization choice for its quest steps. Switching later means "
         .. "unlearning Engineering and leveling it back to 200." },
     { kind = "guide", from = 200, to = 200, when = { spec = "gnomish" }, title = "Become a Gnomish Engineer",
-      spec = { spell = 20219, name = "Gnomish Engineer", level = 30 },
-      text = "{A:Take Gnome Engineering from Springspindle Fizzlegear in Ironforge (or Lilliam Sparkspindle in "
-        .. "Stormwind) and hand it in to Tinkmaster Overspark in Tinker Town. Take The Pledge of Secrecy from "
-        .. "him, right-click Overspark's Pledge of Secrecy in your bags, then take Show Your Work.}"
-        .. "{H:Take Gnome Engineering from Tinkerwiz in Ratchet (or Graham Van Talen in Undercity), then take "
-        .. "the boat to Booty Bay and find Oglethorpe Obnoticus. Take The Pledge of Secrecy from him, right-click "
-        .. "Oglethorpe's Pledge of Secrecy in your bags, then take Show Your Work.}"
-        .. "\n\nShow Your Work needs 6 Mithril Tube (the ones from 195, or 18 Mithril Bar), 1 Accurate Scope and "
-        .. "2 Advanced Target Dummy. Schematic: Accurate Scope is sold by Mazk Snipeshot in Booty Bay."
-        .. "\n\nYou get: Ultrasafe Transporter - Gadgetzan (Gnomish only), Gnomish Death Ray and Gnomish Battle "
-        .. "Chicken (bind on pickup)." },
+      text = "A short quest chain, then hand in 6 Mithril Tube, 1 Accurate Scope and 2 Advanced Target Dummy. "
+        .. "You get the Ultrasafe Transporter - Gadgetzan (Gnomish only), and can make the Gnomish Death Ray and "
+        .. "Gnomish Battle Chicken (bind on pickup).",
+      spec = { spell = 20219, name = "Gnomish Engineer", level = 30,
+        done = "Hand in Show Your Work: Gnomish Engineer learned",
+        steps = {
+          { quest = "Gnome Engineering",
+            text = "Pick up Gnome Engineering from {A:Springspindle Fizzlegear (Ironforge) or Lilliam Sparkspindle "
+              .. "(Stormwind)}{H:Tinkerwiz (Ratchet) or Graham Van Talen (Undercity)}",
+            npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
+          { quest = "The Pledge of Secrecy",
+            text = "{A:Hand it in to Tinkmaster Overspark in Tinker Town}{H:Take the boat to Booty Bay and hand it "
+              .. "in to Oglethorpe Obnoticus}, then take The Pledge of Secrecy",
+            npc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}" },
+          { quest = "Show Your Work",
+            text = "Right-click the Pledge of Secrecy in your bags, then take Show Your Work",
+            npc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}" },
+          { recipes = { 3979 }, text = "Learn Schematic: Accurate Scope - Mazk Snipeshot, Booty Bay",
+            npc = "Mazk Snipeshot" },
+          { item = 10559, count = 6, verb = "Craft" },
+          { item = 4407, count = 1, verb = "Craft" },
+          { item = 4392, count = 2, verb = "Craft" },
+        } } },
     { kind = "guide", from = 200, to = 200, when = { spec = "goblin" }, title = "Become a Goblin Engineer",
-      spec = { spell = 20222, name = "Goblin Engineer", level = 30 },
-      text = "Take Goblin Engineering from {A:Springspindle Fizzlegear in Ironforge (or Lilliam Sparkspindle in "
-        .. "Stormwind)}{H:Tinkerwiz in Ratchet (or Graham Van Talen in Undercity)}, then go to Gadgetzan in "
-        .. "Tanaris and take The Pledge of Secrecy from Nixx Sprocketspring. Right-click Nixx's Pledge of "
-        .. "Secrecy in your bags, then take Show Your Work."
-        .. "\n\nShow Your Work needs 20 Big Iron Bomb, 20 Solid Dynamite and 5 Explosive Sheep (keep 5 from 160)."
-        .. "\n\nYou get: Dimensional Ripper - Everlook (Goblin only), Goblin Sapper Charge and Goblin Rocket "
-        .. "Boots." },
+      text = "A short quest chain, then hand in 20 Big Iron Bomb, 20 Solid Dynamite and 5 Explosive Sheep. You get "
+        .. "the Dimensional Ripper - Everlook (Goblin only), and can make Goblin Sapper Charges and Goblin Rocket "
+        .. "Boots.",
+      spec = { spell = 20222, name = "Goblin Engineer", level = 30,
+        done = "Hand in Show Your Work: Goblin Engineer learned",
+        steps = {
+          { quest = "Goblin Engineering",
+            text = "Pick up Goblin Engineering from {A:Springspindle Fizzlegear (Ironforge) or Lilliam Sparkspindle "
+              .. "(Stormwind)}{H:Tinkerwiz (Ratchet) or Graham Van Talen (Undercity)}",
+            npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
+          { quest = "The Pledge of Secrecy",
+            text = "Go to Gadgetzan in Tanaris, hand it in to Nixx Sprocketspring and take The Pledge of Secrecy",
+            npc = "Nixx Sprocketspring" },
+          { quest = "Show Your Work",
+            text = "Right-click Nixx's Pledge of Secrecy in your bags, then take Show Your Work",
+            npc = "Nixx Sprocketspring" },
+          { item = 4394, count = 20, verb = "Craft" },
+          { item = 10507, count = 20, verb = "Craft" },
+          { item = 4384, count = 5, verb = "Craft" },
+        } } },
     { from = 200, to = 215, spell = 12591, crafts = 20, note = "Keep all 20 for the bombs at 238" },
     { from = 215, to = 238, spell = 12599, crafts = 40,
       note = "Keep 40 for the bombs. Past 225 is untested in Forever (Classic route)" },

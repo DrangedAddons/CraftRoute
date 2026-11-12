@@ -6,7 +6,7 @@ local _, CR = ...
 
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t "
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t "
-local MAX_CHECKS, MAX_PLACES = 16, 3
+local MAX_CHECKS, MAX_PLACES = 20, 3
 
 -- Book names, for "Bought ..." lines before the item is cached.
 CR.extraNames[16083] = "Expert Fishing - The Bass and You"

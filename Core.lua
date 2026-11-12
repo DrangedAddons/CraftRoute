@@ -583,6 +583,8 @@ for _, event in ipairs({
   "TRADE_SKILL_LIST_UPDATE", "NEW_RECIPE_LEARNED", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED",
   "PLAYERBANKSLOTS_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_EQUIPMENT_CHANGED",
   "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN",
+  -- quest steps and specialization checklists tick on these
+  "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "LEARNED_SPELL_IN_TAB",
 }) do
   SafeRegister(event)
 end
@@ -630,6 +632,8 @@ local function OnEvent(event, ...)
     CR.QueueOpenRecipeScan()
     return
   end
+  -- (the quest log cache is otherwise only cleared on QUEST_LOG_UPDATE, which may come after)
+  if event:find("^QUEST_") and CR.WipeQuestCache then CR.WipeQuestCache() end
   CR.NotifyChanged()
 end
 

@@ -1,5 +1,15 @@
 # CraftRoute changelog
 
+## 1.10.0
+
+- Specialization steps are now a checklist that ticks itself as you go, like Nat Pagle's quest step.
+- Lines cover each quest in the chain, recipes or patterns to learn, and items to craft or get with a have/need count.
+- Most quest lines have a **Pin** to the NPC.
+- Quest lines tick when the quest is in your log, and stay ticked once you've moved on to a later quest in the chain.
+- Learning the specialization ticks everything and takes the step off your route.
+- Optional lines don't block the step. Example: The Mithril Order plans when you can buy the Ornate Mithril pieces instead.
+- The route now refreshes when you accept, turn in or abandon a quest, and when you learn a spell.
+
 ## 1.9.0
 
 - Specializations are now a choice on the route, with step-by-step quest instructions and map pins for the NPCs:

@@ -114,28 +114,58 @@ CR.RegisterRoute("Blacksmithing", {
         .. "Weaponsmith. Optional - you don't need one to level, and you can choose later. Pick one under the "
         .. "215 specialization choice for its quest steps." },
     { kind = "guide", from = 215, to = 215, when = { spec = "armor" }, title = "Become an Armorsmith",
-      spec = { spell = 9788, name = "Armorsmith", level = 40 },
-      text = "Talk to {H:Krathok Moltenfist in Orgrimmar}{A:Myolor Sunderfury in Ironforge} and pick \"I wish "
-        .. "to become an armorsmith\". Then take The Art of the Armorsmith from the Armorsmith trainer next to "
-        .. "them, {H:Okothos Ironrager}{A:Grumnus Steelshaper}."
-        .. "\n\nIt needs 4 Ornate Mithril Helm, 2 Ornate Mithril Boots and 1 Ornate Mithril Breastplate in your "
-        .. "bags - you can buy them or have someone craft them."
-        .. "\n\nTo make them yourself, the plans come from The Mithril Order quest chain (Blacksmithing 210): "
-        .. "{A:The Origins of Smithing from Hank the Hammer in Stormwind (6 Golden Scale Bracers - the ones you "
-        .. "kept at 180)}{H:The Old Ways from Aturk the Anvil in Orgrimmar (4 Steel Breastplate, 4 Steel Plate "
-        .. "Helm)}, then McGavan in Booty Bay, Galvan the Ancient in northern Stranglethorn Vale and Trenton "
-        .. "Lighthammer in Gadgetzan (Blacksmithing 235, with the Heavy Mithril Boots and Breastplates you kept)." },
+      text = "Hand in 4 Ornate Mithril Helm, 2 Ornate Mithril Boots and 1 Ornate Mithril Breastplate. They only "
+        .. "have to be in your bags: buy them, have someone craft them, or get the plans from The Mithril Order "
+        .. "quest chain (optional lines).",
+      spec = { spell = 9788, name = "Armorsmith", level = 40,
+        done = "Hand in The Art of the Armorsmith: Armorsmith learned",
+        steps = {
+          { talk = true, text = "Talk to {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} and "
+              .. "pick \"I wish to become an armorsmith\" (next to the Armorsmith trainer)",
+            npc = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}" },
+          { quest = "The Art of the Armorsmith",
+            text = "Pick up The Art of the Armorsmith from {A:Grumnus Steelshaper}{H:Okothos Ironrager}",
+            npc = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}" },
+          { optional = true, recipes = { 9945, 9952, 9950 },
+            text = "The Mithril Order (Blacksmithing 210): {A:The Origins of Smithing from Hank the Hammer, "
+              .. "Stormwind (6 Golden Scale Bracers)}{H:The Old Ways from Aturk the Anvil, Orgrimmar (4 Steel "
+              .. "Breastplate, 4 Steel Plate Helm)}, McGavan in Booty Bay, then Galvan the Ancient's three quests "
+              .. "(plans: Ornate Mithril Pants, Shoulders, Gloves)",
+            npc = "{A:Hank the Hammer}{H:Aturk the Anvil}" },
+          { optional = true, recipes = { 9980, 9979, 9972 },
+            text = "Trenton Lighthammer's three quests in Gadgetzan (Blacksmithing 235; 2 each of Mithril Coif, "
+              .. "Heavy Mithril Boots and Breastplate, 1 of each Ornate) - plans: Ornate Mithril Helm, Boots, "
+              .. "Breastplate",
+            npc = "Trenton Lighthammer" },
+          { item = 7937, count = 4, verb = "Craft or buy" },
+          { item = 7936, count = 2, verb = "Craft or buy" },
+          { item = 7935, count = 1, verb = "Craft or buy" },
+        } } },
     { kind = "guide", from = 215, to = 215, when = { spec = "weapon" }, title = "Become a Weaponsmith",
-      spec = { spell = 9787, name = "Weaponsmith", level = 40 },
-      text = "Talk to {H:Krathok Moltenfist in Orgrimmar}{A:Myolor Sunderfury in Ironforge} and pick \"I wish "
-        .. "to become a weaponsmith\" - without that the quest doesn't show. Then take The Way of the "
-        .. "Weaponsmith from the Weaponsmith trainer next to them, {H:Borgosh Corebender}{A:Ironus Coldsteel}."
-        .. "\n\nIt needs 4 Moonsteel Broadsword, 4 Massive Iron Axe, 2 Heavy Mithril Axe (the ones you kept at "
-        .. "210) and 2 Big Black Mace in your bags - bought or crafted. Plans: Moonsteel Broadsword is sold by "
-        .. "Zarena Cromwind in Booty Bay, Plans: Massive Iron Axe by Jaquilina Dramet at Nesingwary's Camp"
-        .. "{H: or Vharr in Grom'gol}. Brikk Keencraft in Booty Bay teaches Big Black Mace at 205."
-        .. "\n\nAfterwards you can become a Master Axesmith, Hammersmith or Swordsmith in Everlook, "
-        .. "Winterspring (the three trainers stand together in one house), each with a dungeon quest." },
+      text = "Hand in 4 Moonsteel Broadsword, 4 Massive Iron Axe, 2 Heavy Mithril Axe (the ones you kept at 210) "
+        .. "and 2 Big Black Mace - bought or crafted. Afterwards you can become a Master Axesmith, Hammersmith or "
+        .. "Swordsmith in Everlook, Winterspring, each with a dungeon quest.",
+      spec = { spell = 9787, name = "Weaponsmith", level = 40,
+        done = "Hand in The Way of the Weaponsmith: Weaponsmith learned",
+        steps = {
+          { talk = true, text = "Talk to {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} and "
+              .. "pick \"I wish to become a weaponsmith\" - without it the quest doesn't show",
+            npc = "{A:Ironus Coldsteel}{H:Borgosh Corebender}" },
+          { quest = "The Way of the Weaponsmith",
+            text = "Pick up The Way of the Weaponsmith from {A:Ironus Coldsteel}{H:Borgosh Corebender}",
+            npc = "{A:Ironus Coldsteel}{H:Borgosh Corebender}" },
+          { optional = true, recipes = { 3496 }, text = "Plans: Moonsteel Broadsword - Zarena Cromwind, Booty Bay",
+            npc = "Zarena Cromwind" },
+          { optional = true, recipes = { 3498 },
+            text = "Plans: Massive Iron Axe - Jaquilina Dramet, Nesingwary's Camp{H: (or Vharr, Grom'gol)}",
+            npc = "Jaquilina Dramet{H:|Vharr}" },
+          { optional = true, recipes = { 10001 }, text = "Big Black Mace - Brikk Keencraft, Booty Bay teaches it at 205",
+            npc = "Brikk Keencraft" },
+          { item = 3853, count = 4, verb = "Craft or buy" },
+          { item = 3855, count = 4, verb = "Craft or buy" },
+          { item = 7941, count = 2, verb = "Craft or buy" },
+          { item = 7945, count = 2, verb = "Craft or buy" },
+        } } },
     { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" },
       note = "Keep 2 - you might need them for Armorsmithing" },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },

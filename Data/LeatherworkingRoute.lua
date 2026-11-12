@@ -124,27 +124,63 @@ CR.RegisterRoute("Leatherworking", {
         .. "leather gear, and the Devilsaur set). Optional. Pick one under the 225 specialization choice for its "
         .. "quest steps." },
     { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale" }, title = "Become a Dragonscale Leatherworker",
-      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40 },
-      text = "Craft 2 Tough Scorpid Breastplate and 2 Tough Scorpid Gloves, get 10 Worn Dragonscale, then do "
-        .. "the Dragonscale Leatherworking quest from {A:Peter Galen at the Ruins of Eldarath, Azshara}"
-        .. "{H:Thorkaf Dragoneye in the Badlands}."
-        .. "\n\nPattern: Tough Scorpid Breastplate drops from Wastewander Bandits and Pattern: Tough Scorpid "
-        .. "Gloves from Wastewander Thieves, both in Tanaris - or buy them on the AH."
-        .. "\n\nShopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale." },
+      text = "Shopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale.",
+      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40,
+        done = "Hand in Dragonscale Leatherworking: Dragonscale learned",
+        steps = {
+          { recipes = { 10525 },
+            text = "Get Pattern: Tough Scorpid Breastplate - drops from Wastewander Bandits in Tanaris, or the AH" },
+          { recipes = { 10542 },
+            text = "Get Pattern: Tough Scorpid Gloves - drops from Wastewander Thieves in Tanaris, or the AH" },
+          { item = 8203, count = 2, verb = "Craft" },
+          { item = 8204, count = 2, verb = "Craft" },
+          { item = 8165, count = 10, verb = "Get" },
+          { quest = "Dragonscale Leatherworking",
+            text = "Pick up Dragonscale Leatherworking from {A:Peter Galen, Ruins of Eldarath, Azshara}{H:Thorkaf "
+              .. "Dragoneye, Badlands}",
+            npc = "{A:Peter Galen}{H:Thorkaf Dragoneye}" },
+        } } },
     { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, title = "Become an Elemental Leatherworker",
-      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40 },
-      text = "Bring 2 Globe of Water, 2 Heart of Fire, 2 Core of Earth and 2 Breath of Wind to "
-        .. "{A:Sarah Tanner in Searing Gorge}{H:Brumn Winterhoof in Arathi Highlands} and do the Elemental "
-        .. "Leatherworking quest." },
+      text = "Bring the four elementals to the Elemental Leatherworking trainer.",
+      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40,
+        done = "Hand in Elemental Leatherworking: Elemental learned",
+        steps = {
+          { item = 7079, count = 2, verb = "Get" },
+          { item = 7077, count = 2, verb = "Get" },
+          { item = 7075, count = 2, verb = "Get" },
+          { item = 7081, count = 2, verb = "Get" },
+          { quest = "Elemental Leatherworking",
+            text = "Pick up Elemental Leatherworking from {A:Sarah Tanner, Searing Gorge}{H:Brumn Winterhoof, "
+              .. "Arathi Highlands}",
+            npc = "{A:Sarah Tanner}{H:Brumn Winterhoof}" },
+        } } },
     { kind = "guide", from = 225, to = 225, when = { spec = "tribal" }, title = "Become a Tribal Leatherworker",
-      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40 },
-      text = "First the Wild Leather quests from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor "
-        .. "Swiftstrider in Camp Mojache}, Feralas: Wild Leather Armor opens the Vest, Shoulders, Leggings, "
-        .. "Helmet and Boots quests. Pattern: Turtle Scale Gloves is the only pattern to buy - the quest giver "
-        .. "sells it. Then hand in Master of the Wild Leather to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}."
-        .. "\n\nThen craft 1 Wild Leather Vest and 1 Wild Leather Helmet and take them to {A:Caryssia "
-        .. "Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale} for the Tribal Leatherworking quest."
-        .. "\n\nShopping: 214 Thick Leather, 112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide." },
+      text = "The Wild Leather quests in Feralas first. Bring everything with you. Shopping: 214 Thick Leather, "
+        .. "112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide.",
+      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40,
+        done = "Hand in Tribal Leatherworking: Tribal learned",
+        steps = {
+          { quest = "Wild Leather Armor",
+            text = "Pick up Wild Leather Armor from {A:Pratt McGrubben, Feathermoon Stronghold}{H:Jangdor "
+              .. "Swiftstrider, Camp Mojache}, Feralas",
+            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { recipes = { 10509 },
+            text = "Buy Pattern: Turtle Scale Gloves from {A:Pratt McGrubben}{H:Jangdor Swiftstrider} - the only "
+              .. "pattern to buy, your trainer teaches the rest",
+            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { quests = { "Wild Leather Vest", "Wild Leather Shoulders", "Wild Leather Leggings", "Wild Leather Helmet",
+                       "Wild Leather Boots" },
+            text = "Do the Wild Leather Vest, Shoulders, Leggings, Helmet and Boots quests",
+            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { quest = "Master of the Wild Leather",
+            text = "Take Master of the Wild Leather to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}",
+            npc = "{A:Telonis}{H:Una}" },
+          { item = 8211, count = 1, verb = "Craft" },
+          { item = 8214, count = 1, verb = "Craft" },
+          { quest = "Tribal Leatherworking",
+            text = "Pick up Tribal Leatherworking from {A:Caryssia Moonhunter, Feralas}{H:Se'Jib, Stranglethorn Vale}",
+            npc = "{A:Caryssia Moonhunter}{H:Se'Jib}" },
+        } } },
     { from = 225, to = 235, spell = 10558, crafts = 12 },
     { from = 235, to = 250, spell = 19049, crafts = 15,
       note = "Pattern from {H:Werg Thickblade, Tirisfal Glades}{A:Leonard Porter, Western Plaguelands}" },
