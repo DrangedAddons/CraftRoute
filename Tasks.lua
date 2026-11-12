@@ -582,53 +582,63 @@ local function LinePlace(npc)
   return Nearest(list, 1)[1]
 end
 
--- A specialization quest's checklist (spec.steps), in order. Each line is one of:
---   { quest = "Title" }           in your quest log
---   { quests = { "A", "B" } }     any of them in your quest log
---   { talk = true }               nothing the game shows - ticks once a later stage does
---   { recipes = { spell, ... } }  all learned
+-- A specialization quest's checklist (spec.steps), in order - short lines; the details of where
+-- things are go in the step's text. Each line is one of:
+--   { quest = "Title" }           "Complete <Title>": ticks once a later quest is in your log
+--   { quests = { "A", "B" } }     the same for a group of quests (text = the line)
+--   { talk = "line" }             nothing the game shows - ticks once a later quest is in your log
+--   { recipes = { spell, ... } }  all learned ("Pattern: X" / "Plans: X" / "Schematic: X")
 --   { item = id, count = n }      that many in your bags (verb = "Craft" / "Get")
--- with text = the line (quests/talk/recipes), npc = who to see (a Pin), optional = shown only,
--- faction = "Alliance" / "Horde". Quest and talk lines are stages: one reached ticks the stages
--- before it (handed-in quests leave the log). Learning the spec ticks everything.
+-- npc = who to see (the line's Pin; "|" separates alternatives, nearest wins), optional = shown
+-- only, faction = "Alliance" / "Horde". The last line is spec.final, the quest that teaches the
+-- spec: "Complete <final>" (pinned to spec.finalNpc), ticked once it's learned (which ticks all).
+local RECIPE_WORD = { Blacksmithing = "Plans", Leatherworking = "Pattern", Engineering = "Schematic",
+                      Tailoring = "Pattern", Alchemy = "Recipe", Enchanting = "Formula" }
 local function SpecChecklist(spec, known, rprofName, Cond, checks)
   local list = {}
   for _, e in ipairs(spec.steps or {}) do
     if CR.FactionOK(e) then table.insert(list, e) end
   end
-  local ok, labels = {}, {}
+  local p = CR.professions[rprofName]
+  local ok, labels, stage = {}, {}, {}
   for i, e in ipairs(list) do
     local own, label = false, e.text and CR.FactionText(e.text) or nil
     if e.quest then
-      own = QuestInLog(e.quest) == true
-      label = label or ("Pick up '" .. e.quest .. "'")
+      stage[i] = QuestInLog(e.quest) == true
+      label = label or ("Complete " .. e.quest)
     elseif e.quests then
-      for _, q in ipairs(e.quests) do if QuestInLog(q) == true then own = true end end
+      stage[i] = false
+      for _, q in ipairs(e.quests) do if QuestInLog(q) == true then stage[i] = true end end
+    elseif e.talk then
+      stage[i] = false
+      label = CR.FactionText(e.talk)
     elseif e.recipes then
       own = true
+      local names = {}
       for _, spell in ipairs(e.recipes) do
         if KnowsRecipe(rprofName, spell) ~= true then own = false end
+        local r = p and p.recipes[spell]
+        table.insert(names, r and r.name or ("recipe " .. spell))
       end
+      label = label or ((RECIPE_WORD[rprofName] or "Recipe") .. ": " .. table.concat(names, ", "))
     elseif e.item then
       local _, have = Owned(e.item)
       own = have >= e.count
       label = string.format("%s %d %s", e.verb or "Get", e.count, CR.ItemName(e.item))
-        .. (known and CR.ColorText("  (handed in)", "aaaaaa")
-            or CR.ColorText(string.format("  (%d/%d)", math.min(have, e.count), e.count), "aaaaaa"))
+        .. (known and "" or CR.ColorText(string.format("  (%d/%d)", math.min(have, e.count), e.count), "aaaaaa"))
     end
     ok[i], labels[i] = known or own, label or "?"
   end
-  -- stages: reaching a later one ticks the earlier ones (optional lines stay out of it)
-  local reached = known
+  -- a quest / talk line is complete once a later quest is in the log (handed-in ones leave it)
+  local reached = known or (spec.final and QuestInLog(spec.final) == true)
   for i = #list, 1, -1 do
-    local e = list[i]
-    if (e.quest or e.quests or e.talk) and not e.optional then
-      ok[i] = ok[i] or reached
-      reached = reached or ok[i]
+    if stage[i] ~= nil and not list[i].optional then
+      ok[i] = reached
+      reached = reached or stage[i]
     end
   end
   for i, e in ipairs(list) do
-    local label = e.optional and (CR.ColorText("Optional: ", "aaaaaa") .. labels[i]) or labels[i]
+    local label = e.optional and (labels[i] .. CR.ColorText("  (optional)", "aaaaaa")) or labels[i]
     if e.optional then table.insert(checks, Check(ok[i], label)) else Cond(ok[i], label) end
     checks[#checks].place = LinePlace(e.npc)
   end
@@ -777,7 +787,9 @@ function CR.StepTask(st, profName)
         table.insert(t.checks, Check(lvl >= st.spec.level or known, string.format("Level %d (you: %d)", st.spec.level, lvl)))
       end
       SpecChecklist(st.spec, known, rprofName, Cond, t.checks)
-      Cond(known, st.spec.done or (st.spec.name .. " learned"))
+      Cond(known, st.spec.final and ("Complete " .. st.spec.final) or (st.spec.name .. " learned"))
+      t.checks[#t.checks].place = LinePlace(st.spec.finalNpc)
+      t.pinColumn = true
     end
     -- a gathering step's target herbs / veins and the skill each needs (the card colours them)
     if st.nodes then
@@ -820,7 +832,7 @@ function CR.StepTask(st, profName)
       t.kind = "buy"
     end
     t.places = Nearest(NpcsInText(text))
-    -- a spec checklist pins each NPC on its own line
+    -- a spec checklist: its quest givers and recipe sellers
     if st.spec and st.spec.steps then t.places = {} end
     -- sold by supply vendors who stand next to these trainers - only when none of the vendors the
     -- step names has a known position (then the pins are the trainers, and say so)

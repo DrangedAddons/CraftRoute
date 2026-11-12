@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 1.10.1
+
+- Specialization checklists are tidier.
+- Each line is one short item: "Pattern: Tough Scorpid Breastplate", "Craft 2 Tough Scorpid Gloves (0/2)", "Complete Dragonscale Leatherworking". Where to get things is in the step's description.
+- A quest is one "Complete ..." line in place of separate pick-up and hand-in lines. It ticks once you've moved on to the next quest in the chain. The last one ticks when you learn the spec.
+- Pins sit on the lines that have someone to visit: quest givers and plan or schematic sellers. Hover a Pin to see who and where.
+- All lines line up in one column, and these steps no longer show an empty "Where" section.
+
 ## 1.10.0
 
 - Specialization steps are now a checklist that ticks itself as you go, like Nat Pagle's quest step.

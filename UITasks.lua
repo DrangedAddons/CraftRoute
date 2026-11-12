@@ -6,7 +6,7 @@ local _, CR = ...
 
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t "
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t "
-local MAX_CHECKS, MAX_PLACES = 20, 3
+local MAX_CHECKS, MAX_PLACES = 20, 4
 
 -- Book names, for "Bought ..." lines before the item is cached.
 CR.extraNames[16083] = "Expert Fishing - The Bass and You"
@@ -57,6 +57,10 @@ function CR.CreateTaskCard(parent, width)
     pin:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_TOP")
       GameTooltip:SetText("Map pin")
+      local pl = self.place
+      if pl and pl.name then
+        GameTooltip:AddLine(pl.name .. (pl.zone and (", " .. pl.zone) or ""), 1, 0.82, 0)
+      end
       GameTooltip:AddLine("Puts a pin on your map where to get this, and tracks it on screen.", 1, 1, 1, true)
       GameTooltip:Show()
     end)
@@ -165,7 +169,8 @@ function CR.CreateTaskCard(parent, width)
       pin.place = c and c.place
       pin:SetShown(c and c.place and true or false)
       if c then
-        local indent = c.place and 46 or 0
+        -- (a checklist with pins on its lines: every line in one column)
+        local indent = (c.place or task.pinColumn) and 46 or 0
         if c.place then
           pin:ClearAllPoints()
           pin:SetPoint("TOPLEFT", 0, y + 2)
@@ -219,8 +224,13 @@ function CR.CreateTaskCard(parent, width)
         row:Hide()
       end
     end
-    self.whereLabel:SetShown(true)
-    if shown == 0 then
+    -- a checklist that pins on its own lines has no Where list
+    local noWhere = shown == 0 and task.pinColumn
+    self.whereLabel:SetShown(not noWhere)
+    if noWhere then
+      self.noPlace:Hide()
+      y = y + 20
+    elseif shown == 0 then
       self.noPlace:ClearAllPoints()
       self.noPlace:SetPoint("TOPLEFT", 0, y)
       self.noPlace:SetWidth(w)

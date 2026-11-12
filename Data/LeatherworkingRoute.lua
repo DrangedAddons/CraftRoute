@@ -124,62 +124,48 @@ CR.RegisterRoute("Leatherworking", {
         .. "leather gear, and the Devilsaur set). Optional. Pick one under the 225 specialization choice for its "
         .. "quest steps." },
     { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale" }, title = "Become a Dragonscale Leatherworker",
-      text = "Shopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale.",
-      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40,
-        done = "Hand in Dragonscale Leatherworking: Dragonscale learned",
+      text = "Pattern: Tough Scorpid Breastplate drops from Wastewander Bandits and Pattern: Tough Scorpid Gloves "
+        .. "from Wastewander Thieves, both in Tanaris - or buy them on the AH. The quest is from {A:Peter Galen "
+        .. "at the Ruins of Eldarath, Azshara}{H:Thorkaf Dragoneye in the Badlands}."
+        .. "\n\nShopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale.",
+      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40, final = "Dragonscale Leatherworking",
+        finalNpc = "{A:Peter Galen}{H:Thorkaf Dragoneye}",
         steps = {
-          { recipes = { 10525 },
-            text = "Get Pattern: Tough Scorpid Breastplate - drops from Wastewander Bandits in Tanaris, or the AH" },
-          { recipes = { 10542 },
-            text = "Get Pattern: Tough Scorpid Gloves - drops from Wastewander Thieves in Tanaris, or the AH" },
+          { recipes = { 10525 } },
+          { recipes = { 10542 } },
           { item = 8203, count = 2, verb = "Craft" },
           { item = 8204, count = 2, verb = "Craft" },
           { item = 8165, count = 10, verb = "Get" },
-          { quest = "Dragonscale Leatherworking",
-            text = "Pick up Dragonscale Leatherworking from {A:Peter Galen, Ruins of Eldarath, Azshara}{H:Thorkaf "
-              .. "Dragoneye, Badlands}",
-            npc = "{A:Peter Galen}{H:Thorkaf Dragoneye}" },
         } } },
     { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, title = "Become an Elemental Leatherworker",
-      text = "Bring the four elementals to the Elemental Leatherworking trainer.",
-      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40,
-        done = "Hand in Elemental Leatherworking: Elemental learned",
+      text = "Bring the four elementals to {A:Sarah Tanner in Searing Gorge}{H:Brumn Winterhoof in Arathi "
+        .. "Highlands} for the quest.",
+      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40, final = "Elemental Leatherworking",
+        finalNpc = "{A:Sarah Tanner}{H:Brumn Winterhoof}",
         steps = {
           { item = 7079, count = 2, verb = "Get" },
           { item = 7077, count = 2, verb = "Get" },
           { item = 7075, count = 2, verb = "Get" },
           { item = 7081, count = 2, verb = "Get" },
-          { quest = "Elemental Leatherworking",
-            text = "Pick up Elemental Leatherworking from {A:Sarah Tanner, Searing Gorge}{H:Brumn Winterhoof, "
-              .. "Arathi Highlands}",
-            npc = "{A:Sarah Tanner}{H:Brumn Winterhoof}" },
         } } },
     { kind = "guide", from = 225, to = 225, when = { spec = "tribal" }, title = "Become a Tribal Leatherworker",
-      text = "The Wild Leather quests in Feralas first. Bring everything with you. Shopping: 214 Thick Leather, "
-        .. "112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide.",
-      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40,
-        done = "Hand in Tribal Leatherworking: Tribal learned",
+      text = "The Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor "
+        .. "Swiftstrider in Camp Mojache}, Feralas - Wild Leather Armor opens the other five. He also sells "
+        .. "Pattern: Turtle Scale Gloves, the only pattern to buy. Master of the Wild Leather goes to {A:Telonis "
+        .. "in Darnassus}{H:Una in Thunder Bluff}, then the Tribal Leatherworking quest is from {A:Caryssia "
+        .. "Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}. Bring all the materials with you."
+        .. "\n\nShopping: 214 Thick Leather, 112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide.",
+      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40, final = "Tribal Leatherworking",
+        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}",
         steps = {
-          { quest = "Wild Leather Armor",
-            text = "Pick up Wild Leather Armor from {A:Pratt McGrubben, Feathermoon Stronghold}{H:Jangdor "
-              .. "Swiftstrider, Camp Mojache}, Feralas",
-            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-          { recipes = { 10509 },
-            text = "Buy Pattern: Turtle Scale Gloves from {A:Pratt McGrubben}{H:Jangdor Swiftstrider} - the only "
-              .. "pattern to buy, your trainer teaches the rest",
-            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { quest = "Wild Leather Armor", npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { recipes = { 10509 }, npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
           { quests = { "Wild Leather Vest", "Wild Leather Shoulders", "Wild Leather Leggings", "Wild Leather Helmet",
                        "Wild Leather Boots" },
-            text = "Do the Wild Leather Vest, Shoulders, Leggings, Helmet and Boots quests",
-            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-          { quest = "Master of the Wild Leather",
-            text = "Take Master of the Wild Leather to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}",
-            npc = "{A:Telonis}{H:Una}" },
+            text = "Complete the 5 Wild Leather item quests", npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+          { quest = "Master of the Wild Leather", npc = "{A:Telonis}{H:Una}" },
           { item = 8211, count = 1, verb = "Craft" },
           { item = 8214, count = 1, verb = "Craft" },
-          { quest = "Tribal Leatherworking",
-            text = "Pick up Tribal Leatherworking from {A:Caryssia Moonhunter, Feralas}{H:Se'Jib, Stranglethorn Vale}",
-            npc = "{A:Caryssia Moonhunter}{H:Se'Jib}" },
         } } },
     { from = 225, to = 235, spell = 10558, crafts = 12 },
     { from = 235, to = 250, spell = 19049, crafts = 15,
