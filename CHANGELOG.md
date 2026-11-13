@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.11.4
+
+- Fix: reagent counts showed what you own, including your bank, mail and (with Count alts) alts, so "28/28" could sit next to "Not enough reagents in your bags". The count is now what's in your bags, with the rest after it in grey: "10/28 Thick Leather (+18 bank/alts)". The "Not enough reagents" line also says when some are in your bank / mail / on alts. Colours are unchanged.
+
 ## 1.11.3
 
 - Fix: the Profit line under To Craft on a route step now takes off the 5% AH cut, same as the recipe list and the profit sort. It also uses the item's AH price, or a vendor's sell price when it's never been on the AH. Before, it could use the price a merchant charges for the item.

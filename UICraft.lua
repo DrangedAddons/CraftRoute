@@ -683,6 +683,26 @@ function CR.ReagentColor(bags, elsewhere, need, perCraft)
   return "ff6060"
 end
 
+-- "have/need": what's in your bags. Short in bags with more in the bank / mail / alts, that
+-- comes after it in grey: "10/28  (+18 bank/alts)" - crafting only uses your bags.
+function CR.HaveNeedText(bags, elsewhere, need, color)
+  local have = bags >= need and bags or math.min(bags + elsewhere, need)
+  if bags >= need or elsewhere <= 0 then
+    return CR.ColorText(string.format("%d/%d", bags, need), color), ""
+  end
+  return CR.ColorText(string.format("%d/%d", bags, need), color),
+    CR.ColorText(string.format("  (+%d bank/alts)", have - bags), "aaaaaa")
+end
+
+-- True when a reagent for one craft is short in your bags but you have it elsewhere.
+function CR.ReagentsElsewhere(recipe)
+  for _, rg in ipairs(recipe and recipe.reagents or {}) do
+    local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+    if bags < (rg[2] or 1) and bags + elsewhere >= (rg[2] or 1) then return true end
+  end
+  return false
+end
+
 -- Components you can make yourself without a trade skill recipe: enchanting essences combine
 -- (3 lesser -> 1 greater) and split (1 greater -> 3 lesser) by using the item.
 -- [wanted item] = { use = item to use, uses = how many it takes, makes = how many you get }
@@ -861,8 +881,8 @@ local function FillReagents(box, rows, r, crafts, opts)
       local q = select(3, GetItemInfo(rg[1])) or 1
       row.btn:SetBackdropBorderColor(QualityRGB(q))
       local color = CR.ReagentColor(bags, elsewhere, need, opts.perCraft and rg[2] or nil)
-      local have = bags >= need and bags or (bags + elsewhere)
-      row.text:SetText(CR.ColorText(string.format("%d/%d", have, need), color) .. "  " .. CR.ItemName(rg[1]))
+      local count, aside = CR.HaveNeedText(bags, elsewhere, need, color)
+      row.text:SetText(count .. "  " .. CR.ItemName(rg[1]) .. aside)
       local id = rg[1]
       local open = opts.expanded == id
       local short = bags < (opts.needMult and rg[2] * opts.needMult or need)
@@ -2153,7 +2173,8 @@ function CR.CreateCraftPanel(parent)
     elseif learned == false then
       status:SetText(CR.ColorText("You haven't learned " .. r.name .. " yet - " .. CR.FactionText(r.pattern or r.src), "ff9966"))
     elseif available == 0 then
-      status:SetText(CR.ColorText("Not enough reagents in your bags.", "ff6060"))
+      status:SetText(CR.ColorText("Not enough reagents in your bags."
+        .. (CR.ReagentsElsewhere(r) and " Some are in your bank / mail / on alts." or ""), "ff6060"))
     else
       status:SetText(string.format("You can make %d now.", available))
     end

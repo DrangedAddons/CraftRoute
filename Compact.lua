@@ -604,16 +604,16 @@ local function RangeLabel(st)
   return CR.ColorText(text, "b0b0b0")
 end
 
--- Same rule as the Craft tab: the count is what you own (bags, plus bank / alts when bags are
--- short); green = the whole step is in your bags, yellow = at least one craft counting bank /
--- alts, red = not even one.
+-- Same rule as the Craft tab: the count is what's in your bags, with what's in the bank / alts
+-- after it in grey; green = the whole step is in your bags, yellow = at least one craft counting
+-- bank / alts, red = not even one.
 local function HaveNeed(itemID, per, crafts)
   per = per or 1
   local need = per * math.max(1, crafts or 1)
   local bags, elsewhere = CR.BagsAndElsewhere(itemID)
   local color = CR.ReagentColor(bags, elsewhere, need, per)
-  local have = bags >= need and bags or (bags + elsewhere)
-  return CR.ColorText(tostring(have), color) .. "/" .. need .. "  " .. CR.ItemName(itemID), bags, need
+  local count, aside = CR.HaveNeedText(bags, elsewhere, need, color)
+  return count .. "  " .. CR.ItemName(itemID) .. aside, bags, need
 end
 
 -- The tab already rebuilt the plan. Trackers hear about it on the throttled
@@ -2663,7 +2663,8 @@ local function FillSchematic(info)
       frame.status:SetText(string.format("Click the target or Enchant. %d possible now.", ready))
     end
   elseif ready <= 0 then
-    frame.status:SetText(CR.ColorText("Not enough reagents in your bags.", "ff6060"))
+    frame.status:SetText(CR.ColorText("Not enough reagents in your bags."
+      .. (CR.ReagentsElsewhere(recipe) and " Some are in your bank / mail / on alts." or ""), "ff6060"))
   else
     frame.status:SetText(string.format("You can make %d now.", ready))
   end
