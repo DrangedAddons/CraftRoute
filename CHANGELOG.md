@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.11.3
+
+- Fix: the Profit line under To Craft on a route step now takes off the 5% AH cut, same as the recipe list and the profit sort. It also uses the item's AH price, or a vendor's sell price when it's never been on the AH. Before, it could use the price a merchant charges for the item.
+
 ## 1.11.2
 
 - Fix: the profession picker in the Professions book. If the profession you learned first was the one you picked for Second Profession, the game shows it under First Profession. Your other pick was left on a section the game had filled, so you couldn't pick it for Second Profession ("Picked for your other profession"). Now a learned pick is cleared, and your remaining pick moves to the section still open.

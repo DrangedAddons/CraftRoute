@@ -2036,9 +2036,10 @@ local function CostLines(recipe, crafts)
     end
   end
   if recipe.item and recipe.item > 0 and onePriced and not unpricedOne then
-    local out = CR.GetUnitPrice(recipe.item)
+    -- what it sells for: the AH price less the 5% cut (or a vendor's), same as the recipe list
+    local out = SellValue(recipe)
     if out then
-      local profit = out * (recipe.makes or 1) - one
+      local profit = out - one
       local shown
       if profit < 0 then
         shown = CR.ColorText("-", "ff4040") .. CR.FormatMoney(-profit)
