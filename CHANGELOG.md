@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.7
+
+- Shopping dock (ShoppingDock 0.5.3): The plan has a scrollbar when it has more items than fit.
+
 ## 1.12.6
 
 - Shopping dock (ShoppingDock 0.5.2): the Shopping List button sits in the AH window's title bar on every tab, labelled, with the items left and an arrow toward the dock.
