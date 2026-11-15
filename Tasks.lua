@@ -18,6 +18,13 @@ local EXTRA_NPCS = {
   ["Nat Pagle"]      = { { uiMapID = 1445, x = 58.4, y = 60.2 } },
 }
 
+-- Profession trainers missing from TrainerSpells' Forever data (positions from its Classic Era
+-- data). Without them the Artisan recipe steps for that faction had no Pin.
+local EXTRA_TRAINERS = {
+  Leatherworking = { { name = "Drakk Stonehand", rank = 4, faction = "A", uiMapID = 1425, x = 13.39, y = 43.49 } },
+  Alchemy        = { { name = "Rogvar", rank = 4, faction = "H", uiMapID = 1435, x = 48.53, y = 55.85 } },
+}
+
 local npcIndex   -- [name] = { { name, uiMapID, x, y, faction }, ... }
 local indexedOn  -- which table Index last finished (ApplyTrainerSpells replaces CR.npcIndex)
 local function AddNpc(name, loc, faction)
@@ -44,6 +51,9 @@ local function AddTrainersAndExtras()
         for _, loc in ipairs(t.locations or {}) do AddNpc(t.names and t.names.enUS, loc, t.faction) end
       end
     end
+  end
+  for _, list in pairs(EXTRA_TRAINERS) do
+    for _, t in ipairs(list) do if not npcIndex[t.name] then AddNpc(t.name, t, t.faction) end end
   end
   for name, locs in pairs(EXTRA_NPCS) do
     if not npcIndex[name] then for _, l in ipairs(locs) do AddNpc(name, l, l.faction) end end
@@ -174,12 +184,19 @@ local function Trainers(profName, rank)
   if cached then return cached end
   local list = {}
   local trainers = type(TrainerSpellsProfessionTrainers) == "table" and TrainerSpellsProfessionTrainers[profName]
+  local listed = {}
   for _, t in ipairs(trainers or {}) do
+    if t.names and t.names.enUS then listed[t.names.enUS] = true end
     if (t.rank or 1) >= rank then
       for _, loc in ipairs(t.locations or {}) do
         table.insert(list, { name = t.names and t.names.enUS or "?", uiMapID = loc.uiMapID, x = loc.x, y = loc.y,
                              faction = t.faction })
       end
+    end
+  end
+  for _, t in ipairs(EXTRA_TRAINERS[profName] or {}) do
+    if trainers and not listed[t.name] and t.rank >= rank then
+      table.insert(list, { name = t.name, uiMapID = t.uiMapID, x = t.x, y = t.y, faction = t.faction })
     end
   end
   trainerCache[key] = list

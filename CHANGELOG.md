@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.11.5
+
+- Fix: recipes past 225 had no Pin for Alliance leatherworkers or Horde alchemists. TrainerSpells' Forever data is missing their Artisan trainers, so CraftRoute now adds them itself: Drakk Stonehand (Aerie Peak, The Hinterlands) and Rogvar (Stonard, Swamp of Sorrows).
+
 ## 1.11.4
 
 - Fix: reagent counts showed what you own, including your bank, mail and (with Count alts) alts, so "28/28" could sit next to "Not enough reagents in your bags". The count is now what's in your bags, with the rest after it in grey: "10/28 Thick Leather (+18 bank/alts)". The "Not enough reagents" line also says when some are in your bank / mail / on alts. Colours are unchanged.
