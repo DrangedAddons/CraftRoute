@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.10
+
+- Shopping dock (ShoppingDock 0.6.0): Forget list deletes the list, from the dock and from Auctionator, after asking. Lists forgotten earlier are deleted too.
+
 ## 1.12.9
 
 - A route's shopping list is in route order: each material where the route first uses it, so buying from the top of the list (and the shopping dock's plan) follows the route. It used to be alphabetical, the materials window's order, which stays as it was.
