@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.1
+
+- Shopping dock (ShoppingDock 0.3.0): the list picker is a solid dropdown grouped by the addon that made each list; Rescan list moved to the top right of the summary, Rescan item to the top right of the item; the dock no longer shows the AH through it.
+
 ## 1.12.0
 
 - New: the **shopping dock** beside the auction house (ShoppingDock, carried inside CraftRoute). A shopping list CraftRoute makes opens there with what each material was expected to cost. It works through the list one item at a time: the live price against that, **Buy now** then **Confirm** for a commodity's whole amount, a stack at a time for auctions, Skip, an amount box, **Rescan item**, **Rescan list**, and a menu on the list name to pick any Auctionator list. `/sdock` opens it. With CrateCost installed too, there's still one dock.
