@@ -154,6 +154,11 @@ local function Build()
       CraftRouteDB.minimap.hide = (not v) or nil
       if CR.UpdateMinimapButton then CR.UpdateMinimapButton() end
     end)
+  Check("Show shopping list dock",
+    "The Shopping list button beside the auction house, and the dock that works through your shopping lists "
+      .. "there one item at a time. Shared with every addon that carries ShoppingDock.",
+    function() return ShoppingDock and ShoppingDock.IsEnabled() end,
+    function(v) if ShoppingDock then ShoppingDock.SetEnabled(v) end end)
   -- the look (EllesmereUI's styles - only with it loaded)
   if CR.HasEllesmere and CR.HasEllesmere() and CR.LookOptions then
     y = y - 4

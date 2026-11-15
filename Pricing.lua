@@ -134,6 +134,15 @@ local function MakeShoppingList(listName, wanted, key)
       -- remembered so the next one of this kind replaces it - unless you named it yourself
       CraftRouteDB.shoppingLists[base] = (not custom) and name or nil
       CR.Print(string.format("Auctionator shopping list '%s' created with %d item%s.", name, #terms, #terms == 1 and "" or "s"))
+      -- what each item was expected to cost, for the shopping dock at the AH (ShoppingDock.lua)
+      if ShoppingDock then
+        local plan = {}
+        for _, it in ipairs(chosen) do
+          local price = CR.GetUnitPrice(it.id)
+          table.insert(plan, { id = it.id, name = it.name, qty = it.qty, planned = price and price * it.qty or nil })
+        end
+        ShoppingDock.SetListPlan(name, plan)
+      end
     else
       CR.Print("Couldn't create the shopping list: " .. tostring(err))
     end

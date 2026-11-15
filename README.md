@@ -29,6 +29,7 @@ CraftRoute turns the wow-professions.com Forever leveling guides into a live pla
 **Knows what you have and what it costs.**
 - Materials across your bags, bank, mail and (optionally) alts.
 - Auctionator prices, the total cost of what's missing, and a one-click shopping list.
+- A shopping dock beside the auction house ([ShoppingDock](https://github.com/DrangedAddons/ShoppingDock), carried inside CraftRoute): it works through a shopping list one item at a time, with the live price against what CraftRoute expected, Buy now / Confirm, Rescan item and Rescan list, and a menu to pick any Auctionator list. With CrateCost installed too, there's still one dock.
 - Buy vendor reagents straight from the profession window while a merchant is open.
 
 **Plan for the gear you want.** Tick target recipes (like the Wisdom's Leather set) and they slot into the route at the skill where you can make them.

@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 1.12.0
+
+- New: the **shopping dock** beside the auction house (ShoppingDock, carried inside CraftRoute). A shopping list CraftRoute makes opens there with what each material was expected to cost. It works through the list one item at a time: the live price against that, **Buy now** then **Confirm** for a commodity's whole amount, a stack at a time for auctions, Skip, an amount box, **Rescan item**, **Rescan list**, and a menu on the list name to pick any Auctionator list. `/sdock` opens it. With CrateCost installed too, there's still one dock.
+- Settings: **Show shopping list dock** (on by default).
+- New file (ShoppingDock.lua): restart the game client, /reload isn't enough.
+
 ## 1.11.5
 
 - Fix: recipes past 225 had no Pin for Alliance leatherworkers or Horde alchemists. TrainerSpells' Forever data is missing their Artisan trainers, so CraftRoute now adds them itself: Drakk Stonehand (Aerie Peak, The Hinterlands) and Rogvar (Stonard, Swamp of Sorrows).
