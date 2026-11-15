@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.9
+
+- A route's shopping list is in route order: each material where the route first uses it, so buying from the top of the list (and the shopping dock's plan) follows the route. It used to be alphabetical, the materials window's order, which stays as it was.
+
 ## 1.12.8
 
 - Shopping dock (ShoppingDock 0.5.5): the Shopping List button stays in the AH title bar while the dock is open, pressed in; click it to close the dock.

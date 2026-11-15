@@ -372,6 +372,20 @@ function CR.CreateShoppingList(plan)
     -- the wool is)
     table.insert(wanted, { id = m.id, missing = m.missing, name = m.name })
   end
+  -- in route order, not the materials window's A-Z: each material where the route first uses it
+  -- (a step's reagents, or a guide step's items), so buying from the top follows the route.
+  -- Anything no step names (a tracker's list) keeps its place after those.
+  local first, n = {}, 0
+  for _, st in ipairs(plan.steps or {}) do
+    for _, rg in ipairs(st.recipe and st.recipe.reagents or {}) do
+      if not first[rg[1]] then n = n + 1 first[rg[1]] = n end
+    end
+    for _, it in ipairs(st.items or {}) do
+      if not first[it[1]] then n = n + 1 first[it[1]] = n end
+    end
+  end
+  for i, w in ipairs(wanted) do w.order = first[w.id] or (n + i) end
+  table.sort(wanted, function(a, b) return a.order < b.order end)
   MakeShoppingList("CraftRoute: " .. plan.prof .. (plan.from and plan.goal and string.format(" route %d-%d", plan.from, plan.goal) or " route"),
     wanted, "route:" .. tostring(plan.prof))
 end
