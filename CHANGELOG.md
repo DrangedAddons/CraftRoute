@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.4
+
+- Shopping dock (ShoppingDock 0.5.0): opens with the auction house at once; closed, it folds into a bag button inside the AH window instead of the Shopping list tab sticking out, and the button only shows while there are shopping lists.
+
 ## 1.12.3
 
 - Shopping dock (ShoppingDock 0.4.1): the list arrows are gone; pick the list from the dropdown.
