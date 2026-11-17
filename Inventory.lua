@@ -72,14 +72,25 @@ CR.TOOLS = {
 }
 function CR.IsTool(itemID) return CR.TOOLS[itemID] or false end
 
--- Materials "have": this character's bags + bank + mail, and alts too if the setting is on
--- ("Count alts' materials" on the Plan tab, the Craft tab and the profession-window tab).
+-- Which of this character's stock counts as owned: "Count inventory" (bags) and "Count bank"
+-- (bank and mailbox). Both on by default; off, CraftRoute plans and shops as if it weren't there.
+function CR.CountBags() return not (CraftRouteCharDB and CraftRouteCharDB.countBags == false) end
+function CR.CountBank() return not (CraftRouteCharDB and CraftRouteCharDB.countBank == false) end
+
+-- What of this character's own stock counts (entry from GetLocations).
+local function MyCounted(e)
+  return (CR.CountBags() and e.bags or 0) + (CR.CountBank() and (e.bank + e.mail) or 0)
+end
+
+-- Materials "have": this character's bags + bank + mail (as the Count inventory / Count bank
+-- ticks say), and alts too if "Count alts' materials" is on.
 function CR.HaveCount(itemID)
   if CR.TOOLS[itemID] then return GetItemCount(itemID, false) or 0 end
   local list = CR.GetLocations(itemID)
   local n = 0
   for _, e in ipairs(list) do
-    if e.isMe or CraftRouteCharDB.includeAlts then n = n + e.total end
+    if e.isMe then n = n + MyCounted(e)
+    elseif CraftRouteCharDB.includeAlts then n = n + e.total end
   end
   return n
 end
@@ -93,9 +104,12 @@ function CR.AddLocationLines(tooltip, itemID)
   end
   for _, e in ipairs(list) do
     local parts = {}
-    if e.bags > 0 then table.insert(parts, e.bags .. " bags") end
-    if e.bank > 0 then table.insert(parts, e.bank .. " bank") end
-    if e.mail > 0 then table.insert(parts, e.mail .. " mail") end
+    local off = " |cff808080(not counted)|r"
+    local bagsOff = e.isMe and not CR.CountBags()
+    local bankOff = e.isMe and not CR.CountBank()
+    if e.bags > 0 then table.insert(parts, e.bags .. " bags" .. (bagsOff and off or "")) end
+    if e.bank > 0 then table.insert(parts, e.bank .. " bank" .. (bankOff and off or "")) end
+    if e.mail > 0 then table.insert(parts, e.mail .. " mail" .. (bankOff and off or "")) end
     local who = e.isMe and (e.name .. " (you)") or e.name
     local c = e.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class]
     local counted = e.isMe or CraftRouteCharDB.includeAlts

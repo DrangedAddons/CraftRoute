@@ -141,6 +141,19 @@ local function Build()
       if CR.InvalidateLocations then CR.InvalidateLocations() end
       CR.NotifyChanged()
     end)
+  local function CountSetting(key, text, tip)
+    Check(text, tip .. " Unticked, CraftRoute plans and shops as if you had none there - untick Count "
+        .. "inventory and Count bank (and alts) to buy everything from the Auction House. Crafting still uses your bags.",
+      function() return CraftRouteCharDB and CraftRouteCharDB[key] ~= false end,
+      function(v)
+        CraftRouteCharDB[key] = v
+        if CR.SyncAltsChecks then CR.SyncAltsChecks() end
+        if CR.InvalidateLocations then CR.InvalidateLocations() end
+        CR.NotifyChanged()
+      end)
+  end
+  CountSetting("countBags", "Count inventory", "Ticked: what's in this character's bags counts as owned.")
+  CountSetting("countBank", "Count bank", "Ticked: what's in this character's bank and mailbox counts as owned.")
   Check("Show professions I haven't learned",
     "Ticked, the profession pickers also offer professions this character doesn't have, so you can check "
       .. "their route and costs.",

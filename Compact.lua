@@ -2418,6 +2418,7 @@ local function FillSchematic(info)
   frame.cost:SetShown(recipe ~= nil)
   frame.buttons:SetShown(recipe ~= nil)
   if frame.altsCB then frame.altsCB:SetShown(recipe ~= nil) end
+  if frame.bagsCB then frame.bagsCB:SetShown(recipe ~= nil); frame.bankCB:SetShown(recipe ~= nil) end
   if not recipe then
     for i = 1, REAGENT_SLOTS do frame.reagents[i]:Hide() end
     if frame.rscroll then frame.rscroll:Hide() end
@@ -2582,15 +2583,21 @@ local function FillSchematic(info)
   frame.cost:ClearAllPoints()
   frame.cost:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8)
   frame.cost:SetPoint("RIGHT", rcontent, "RIGHT", -10, 0)
-  -- under the Profit line: this recipe's Shopping List, then Count alts (scrolling with the rest)
+  -- under the Profit line: this recipe's Shopping List, then Count inventory / bank / alts
+  -- (scrolling with the rest)
   local costH = tonumber(frame.cost:GetStringHeight()) or 48
   frame.shopBtn:SetParent(rcontent)
   frame.shopBtn:ClearAllPoints()
   frame.shopBtn:SetPoint("TOPLEFT", rcontent, "TOPLEFT", 0, y - 8 - costH - 10)
-  frame.altsCB:SetParent(rcontent)
-  frame.altsCB:ClearAllPoints()
-  frame.altsCB:SetPoint("TOPLEFT", frame.shopBtn, "BOTTOMLEFT", -2, -4)
-  rcontent:SetHeight(-(y - 8) + costH + 10 + 22 + 4 + 20 + 6)
+  local prev
+  for _, cb in ipairs({ frame.bagsCB, frame.bankCB, frame.altsCB }) do
+    cb:SetParent(rcontent)
+    cb:ClearAllPoints()
+    if prev then cb:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, 0)
+    else cb:SetPoint("TOPLEFT", frame.shopBtn, "BOTTOMLEFT", -2, -4) end
+    prev = cb
+  end
+  rcontent:SetHeight(-(y - 8) + costH + 10 + 22 + 4 + 20 * 3 + 6)
   if frame.lastSpell ~= recipe.spell then rscroll:SetVerticalScroll(0) end
   rscroll:Show()
   rscroll:UpdateBar()
@@ -3652,6 +3659,7 @@ local function DestRecipeRefresh(name)
   UpdateRankBar()
   if f.profDD then f.profDD:Sync() end
   if f.altsCB then f.altsCB:Sync() end
+  if f.bagsCB then f.bagsCB:Sync(); f.bankCB:Sync() end
   f.destFilterDD:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
@@ -3729,6 +3737,7 @@ local function DestRefresh(name)
   UpdateRankBar()
   if f.profDD then f.profDD:Sync() end
   if f.altsCB then f.altsCB:Sync() end
+  if f.bagsCB then f.bagsCB:Sync(); f.bankCB:Sync() end
   f.destFilterDD:Sync()
   if not f.destSearch:HasFocus() then f.destSearch:SetText(ui.destSearch or "") end
   f.destSearch.hint:SetShown((ui.destSearch or "") == "" and not f.destSearch:HasFocus())
@@ -4774,6 +4783,8 @@ local function BuildOverlay()
   CR.ThemeRegisterButton(frame.mainBtn)
   -- only this character's materials, or alts' too (the same setting as the main window's)
   frame.altsCB = CR.CreateAltsCheck(frame, "Count alts")
+  frame.bagsCB = CR.CreateCountCheck(frame, "bags")
+  frame.bankCB = CR.CreateCountCheck(frame, "bank")
   -- (placed above the Shopping List button once that exists, below)
   -- CraftRoute's version, small, just left of the button
   local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata

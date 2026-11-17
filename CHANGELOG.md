@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.13.0
+
+- New: "Count inventory" and "Count bank" ticks under the Shopping List on the Craft tab, beside Count alts (also in Settings). Per character, ticked by default. Untick them and CraftRoute treats that stock as not owned: the materials list, route cost, reagent counts and Shopping List buy as if it weren't there. Untick all three to price and shop everything from the Auction House. Crafting still uses your bags. Item tooltips mark the stock that isn't counted.
+
 ## 1.12.12
 
 - Shopping dock (ShoppingDock 0.7.1): **Reset list** also clears the rescan prices and the more/less-than-expected marks, and stops a rescan in progress.

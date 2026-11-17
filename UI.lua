@@ -70,6 +70,45 @@ function CR.CreateAltsCheck(parent, label)
   return cb
 end
 
+-- "Count inventory" / "Count bank" tickboxes (which = "bags" / "bank"): per-character settings
+-- beside Count alts. Unticked, that stock isn't owned anywhere in CraftRoute - the materials,
+-- route cost, reagent counts and Shopping List buy as if it weren't there. Crafting itself
+-- still uses your bags.
+local COUNT_CHECKS = {
+  bags = { key = "countBags", title = "Count inventory",
+           tip = "Ticked: what's in this character's bags counts as owned." },
+  bank = { key = "countBank", title = "Count bank",
+           tip = "Ticked: what's in this character's bank and mailbox counts as owned." },
+}
+function CR.CreateCountCheck(parent, which, label)
+  local def = COUNT_CHECKS[which]
+  local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+  table.insert(altsChecks, cb)
+  cb:SetSize(20, 20)
+  cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  cb.label:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+  cb.label:SetText(label or def.title)
+  cb:SetHitRectInsets(0, -(tonumber(cb.label:GetStringWidth()) or 80) - 4, 0, 0)
+  cb:SetScript("OnClick", function(self)
+    CraftRouteCharDB[def.key] = self:GetChecked() and true or false
+    CR.SyncAltsChecks()
+    CR.InvalidateLocations()
+    CR.NotifyChanged()
+  end)
+  cb:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(def.title)
+    GameTooltip:AddLine(def.tip .. " In the materials list, the route cost, reagent counts and the Shopping List.", 1, 1, 1, true)
+    GameTooltip:AddLine("Unticked: CraftRoute plans and shops as if you had none there - untick both "
+      .. "(and Count alts) to buy everything from the Auction House. Crafting still uses your bags.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  cb:SetScript("OnLeave", GameTooltip_Hide)
+  function cb:Sync() self:SetChecked(CraftRouteCharDB and CraftRouteCharDB[def.key] ~= false) end
+  cb:Sync()
+  return cb
+end
+
 -- A material line (Plan tab and the Craft tab's compact list): icon, name, have/need, cost.
 function CR.CreateMaterialRow(row, costW, countW)
   row.icon = row:CreateTexture(nil, "ARTWORK")

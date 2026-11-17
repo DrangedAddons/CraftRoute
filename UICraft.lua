@@ -670,7 +670,8 @@ end
 -- mailbox, and - with "Count alts' materials" ticked - alts (via Syndicator). You have them,
 -- they're just not on hand. (Tools only count on you - CR.HaveCount.)
 function CR.BagsAndElsewhere(itemID)
-  local bags = GetItemCount(itemID, false) or 0
+  local bags = CR.TOOLS[itemID] and (GetItemCount(itemID, false) or 0)
+    or (CR.CountBags() and GetItemCount(itemID, false) or 0)
   return bags, math.max(0, CR.HaveCount(itemID) - bags)
 end
 
