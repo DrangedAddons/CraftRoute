@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.12
+
+- Shopping dock (ShoppingDock 0.7.1): **Reset list** also clears the rescan prices and the more/less-than-expected marks, and stops a rescan in progress.
+
 ## 1.12.11
 
 - Shopping dock (ShoppingDock 0.7.0): **Reset list** starts a list over so you can buy it again; Forget list is now **Delete list**, bottom left with a trash icon.
