@@ -142,17 +142,34 @@ function CR.CreateTaskCard(parent, width)
   card.done:SetScript("OnLeave", GameTooltip_Hide)
 
   -- "Train": while a trainer that teaches this step is open, trains it there
+  local trainPin   -- no trainer open that has it: the place the button pins
   card.trainBtn = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
   card.trainBtn:SetSize(64, 20)
   card.trainBtn:SetText("Train")
   CR.ThemeRegisterButton(card.trainBtn)
-  card.trainBtn:SetScript("OnClick", function()
-    if card.task and card.task.train then CR.TrainService(card.task.train) end
+  -- no trainer open that has it: "Trainer", which pins the nearest one (like Vendor for reagents)
+  card.trainBtn:SetScript("OnClick", function(self)
+    local task = card.task
+    if not (task and task.train) then return end
+    if trainPin then CR.PinPlace(trainPin) else CR.TrainService(task.train) end
   end)
   card.trainBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    local svc, category, cost = CR.TrainerService(card.task and card.task.train)
+    if not svc then
+      GameTooltip:SetText("Trainer")
+      local pl = trainPin
+      if pl then
+        GameTooltip:AddLine("Click to pin the nearest trainer: " .. pl.name .. (pl.zone and (", " .. pl.zone) or "") .. ".",
+          1, 1, 1, true)
+      else
+        GameTooltip:AddLine("No trainer position known - see Where.", 1, 0.5, 0.3, true)
+      end
+      GameTooltip:AddLine("Talk to a trainer that teaches it and this becomes a Train button.", 1, 1, 1, true)
+      GameTooltip:Show()
+      return
+    end
     GameTooltip:SetText("Train")
-    local _, category, cost = CR.TrainerService(card.task and card.task.train)
     if category == "available" then
       GameTooltip:AddLine("Learn it from this trainer now" .. ((cost or 0) > 0 and (" for " .. CR.FormatMoney(cost)) or "") .. ".",
         1, 1, 1, true)
@@ -188,14 +205,18 @@ function CR.CreateTaskCard(parent, width)
     -- a trainer that teaches it is open: Train at the end of its "Learn ..." line
     local svc, category = nil, nil
     if task.train and not task.done and CR.TrainerService then svc, category = CR.TrainerService(task.train) end
-    local showTrain = svc ~= nil and category ~= "used"
+    -- open trainer has it: Train (grey until it can teach you). Otherwise: Trainer, pinning the
+    -- nearest place in Where (grey when there's none).
+    local showTrain = task.train ~= nil and not task.done and category ~= "used"
     local trainLine
     if showTrain then
       for i, c in ipairs(task.checks) do if c.train then trainLine = i end end
       trainLine = trainLine or #task.checks
     end
+    trainPin = (not svc) and task.places and task.places[1] or nil
+    self.trainBtn:SetText(svc and "Train" or "Trainer")
     self.trainBtn:SetShown(showTrain and trainLine ~= nil and trainLine > 0)
-    self.trainBtn:SetEnabled(category == "available")
+    self.trainBtn:SetEnabled((svc and category == "available") or (not svc and trainPin ~= nil))
 
     -- a checklist with a Pin on any line: a grid (Pins in their own column, text in the next)
     local grid = task.pinColumn

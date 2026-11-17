@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.15.1
+
+- The Train button shows on trainer steps all the time. With no trainer open that has it, it reads "Trainer" and pins the nearest trainer from Where (like Vendor for reagents). Greyed out when no trainer position is known, or while the open trainer can't teach you it yet.
+
 ## 1.15.0
 
 - New: talking to a trainer or vendor skips its chat page and opens the training or goods list. Only when the NPC has no quests for you to take or hand in, and no other service to pick (an inn, flight path, bank, unlearning talents). Hold Shift while talking to see the chat page. Setting: "Open trainer and vendor pages" (per character, on by default).
