@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.15.0
+
+- New: talking to a trainer or vendor skips its chat page and opens the training or goods list. Only when the NPC has no quests for you to take or hand in, and no other service to pick (an inn, flight path, bank, unlearning talents). Hold Shift while talking to see the chat page. Setting: "Open trainer and vendor pages" (per character, on by default).
+
 ## 1.14.1
 
 - The Train button sits at the end of the step's "Learn ..." line, next to what it ticks off, instead of beside Mark as done.

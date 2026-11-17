@@ -169,6 +169,7 @@ local CHAR_DEFAULTS = {
   includeAlts = false,      -- count materials sitting on alts (via Syndicator) as owned
   countBags = true,         -- count this character's bags as owned (off: buy as if you had none)
   countBank = true,         -- count this character's bank and mailbox as owned
+  autoGossip = true,        -- talking to a trainer / vendor opens its list (Gossip.lua)
   routeMode = {},           -- [prof] = route mode key (e.g. Cooking: "solo" or "combo")
   tasksDone = {},           -- [prof] = { [taskKey] = true } (steps ticked off with "Mark as done")
   showUnlearned = true,     -- list professions this character hasn't learned in the profession picker
