@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.12.11
+
+- Shopping dock (ShoppingDock 0.7.0): **Reset list** starts a list over so you can buy it again; Forget list is now **Delete list**, bottom left with a trash icon.
+
 ## 1.12.10
 
 - Shopping dock (ShoppingDock 0.6.0): Forget list deletes the list, from the dock and from Auctionator, after asking. Lists forgotten earlier are deleted too.
