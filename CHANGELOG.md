@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.13.1
+
+- Shopping dock (ShoppingDock 0.7.2): a purchase the AH answers with an error but still completes ("You won an auction for ..." in chat) now counts as bought instead of "didn't go through", so pressing Buy again no longer buys it twice.
+
 ## 1.13.0
 
 - New: "Count inventory" and "Count bank" ticks under the Shopping List on the Craft tab, beside Count alts (also in Settings). Per character, ticked by default. Untick them and CraftRoute treats that stock as not owned: the materials list, route cost, reagent counts and Shopping List buy as if it weren't there. Untick all three to price and shop everything from the Auction House. Crafting still uses your bags. Item tooltips mark the stock that isn't counted.
