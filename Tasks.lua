@@ -736,6 +736,7 @@ function CR.StepTask(st, profName)
     if st.apprentice or not st.cap then
       t.kind, t.title, t.icon = "train", "Learn " .. skillName, "Interface\\Icons\\INV_Misc_Book_09"
       t.text = "Find a " .. skillName .. " trainer and learn " .. skillName .. "."
+      t.train = { skill = skillName, rank = "Apprentice" }
       -- other ways to learn it, for the characters they're for (Skyborne: a quest on Zephras Isle).
       -- Its quest is an optional tick (a trainer teaches it as well); its quest giver gets a pin.
       local lroute = CR.Route(skillName)
@@ -782,6 +783,7 @@ function CR.StepTask(st, profName)
         t.places = Nearest(NpcsInText(text))
       else
         t.places = Nearest(Trainers(skillName, rank))
+        t.train = { skill = skillName, rank = st.tierName or RANK_NAMES[rank] }
         if t.text == "" then t.text = "Learn " .. t.title .. " from a " .. skillName .. " trainer." end
       end
       if st.book then
@@ -886,6 +888,7 @@ function CR.StepTask(st, profName)
         end
       end
       if #t.places == 0 and not st.quest and not st.book then t.places = Nearest(Trainers(skillName, RankOfCap(st.trainCap))) end
+      if not st.quest and not st.book then t.train = { skill = skillName, rank = RANK_NAMES[RankOfCap(st.trainCap)] } end
     end
     -- a tip with nothing to check and nobody to visit stays a note in the list - no stop
     if #conds == 0 and #t.places == 0 then return Finish(nil) end
@@ -939,6 +942,7 @@ function CR.RecipeTask(st, profName)
   if src:find("Trainer") then
     t.text = "Learn it from a " .. rprofName .. " trainer."
     t.cost = TrainerCost(rprofName, r.spell)
+    t.train = { recipe = r.name, spell = r.spell }   -- (a Train button while a trainer is open)
     t.places = Nearest(Trainers(rprofName, RankFor(learnAt)))
   else
     t.text = (r.pattern and ("Get " .. r.pattern .. ". ") or "") .. CR.FactionText(src) .. "."

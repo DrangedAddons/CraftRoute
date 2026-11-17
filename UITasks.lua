@@ -141,6 +141,28 @@ function CR.CreateTaskCard(parent, width)
   end)
   card.done:SetScript("OnLeave", GameTooltip_Hide)
 
+  -- "Train": while a trainer that teaches this step is open, trains it there
+  card.trainBtn = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+  card.trainBtn:SetSize(90, 22)
+  card.trainBtn:SetText("Train")
+  CR.ThemeRegisterButton(card.trainBtn)
+  card.trainBtn:SetScript("OnClick", function()
+    if card.task and card.task.train then CR.TrainService(card.task.train) end
+  end)
+  card.trainBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Train")
+    local _, category, cost = CR.TrainerService(card.task and card.task.train)
+    if category == "available" then
+      GameTooltip:AddLine("Learn it from this trainer now" .. ((cost or 0) > 0 and (" for " .. CR.FormatMoney(cost)) or "") .. ".",
+        1, 1, 1, true)
+    else
+      GameTooltip:AddLine("This trainer has it, but can't teach you it yet (skill or level).", 1, 0.5, 0.3, true)
+    end
+    GameTooltip:Show()
+  end)
+  card.trainBtn:SetScript("OnLeave", GameTooltip_Hide)
+
   local KIND_LABEL = { train = "TRAINING", book = "BOOK", quest = "QUEST", recipe = "LEARN A RECIPE", buy = "SHOPPING",
                        guide = "NEXT STEP" }
 
@@ -291,8 +313,16 @@ function CR.CreateTaskCard(parent, width)
     end
 
     -- done by the game: nothing to click; ticked by hand: can be undone
+    -- a trainer that teaches it is open: Train first, Mark as done beside it
+    local svc, category = nil, nil
+    if task.train and not task.done and CR.TrainerService then svc, category = CR.TrainerService(task.train) end
+    self.trainBtn:ClearAllPoints()
+    self.trainBtn:SetPoint("TOPLEFT", 0, y - 4)
+    self.trainBtn:SetShown(svc ~= nil and category ~= "used")
+    self.trainBtn:SetEnabled(category == "available")
     self.done:ClearAllPoints()
-    self.done:SetPoint("TOPLEFT", 0, y - 4)
+    if self.trainBtn:IsShown() then self.done:SetPoint("LEFT", self.trainBtn, "RIGHT", 6, 0)
+    else self.done:SetPoint("TOPLEFT", 0, y - 4) end
     self.done:SetText(task.manual and "Not done yet" or "Mark as done")
     self.done:SetShown(not task.done or task.manual)
     y = y - 30

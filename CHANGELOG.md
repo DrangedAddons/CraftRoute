@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.14.0
+
+- New: a Train button on route steps a trainer teaches - learning a recipe, learning a profession, and training a rank (Journeyman, Expert, Artisan). It shows while you're talking to a trainer that has it, beside Mark as done. Greyed out while that trainer can't teach you it yet (skill or level). Like the Buy button for vendor reagents.
+
 ## 1.13.1
 
 - Shopping dock (ShoppingDock 0.7.2): a purchase the AH answers with an error but still completes ("You won an auction for ..." in chat) now counts as bought instead of "didn't go through", so pressing Buy again no longer buys it twice.
