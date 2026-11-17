@@ -143,7 +143,7 @@ function CR.CreateTaskCard(parent, width)
 
   -- "Train": while a trainer that teaches this step is open, trains it there
   card.trainBtn = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
-  card.trainBtn:SetSize(90, 22)
+  card.trainBtn:SetSize(64, 20)
   card.trainBtn:SetText("Train")
   CR.ThemeRegisterButton(card.trainBtn)
   card.trainBtn:SetScript("OnClick", function()
@@ -185,6 +185,18 @@ function CR.CreateTaskCard(parent, width)
     self.text:SetText(task.text or "")
     y = y - (self.text:GetStringHeight() or 14) - 12
 
+    -- a trainer that teaches it is open: Train at the end of its "Learn ..." line
+    local svc, category = nil, nil
+    if task.train and not task.done and CR.TrainerService then svc, category = CR.TrainerService(task.train) end
+    local showTrain = svc ~= nil and category ~= "used"
+    local trainLine
+    if showTrain then
+      for i, c in ipairs(task.checks) do if c.train then trainLine = i end end
+      trainLine = trainLine or #task.checks
+    end
+    self.trainBtn:SetShown(showTrain and trainLine ~= nil and trainLine > 0)
+    self.trainBtn:SetEnabled(category == "available")
+
     -- a checklist with a Pin on any line: a grid (Pins in their own column, text in the next)
     local grid = task.pinColumn
     for _, c in ipairs(task.checks) do if c.place then grid = true end end
@@ -195,12 +207,18 @@ function CR.CreateTaskCard(parent, width)
       pin:SetShown(c and c.place and true or false)
       if c then
         local indent = (c.place or grid) and 46 or 0
+        local hasTrain = self.trainBtn:IsShown() and i == trainLine
         fs:ClearAllPoints()
-        fs:SetWidth(w - indent)
+        fs:SetWidth(w - indent - (hasTrain and 70 or 0))
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
         local textH = fs:GetStringHeight() or 14
+        if hasTrain then
+          self.trainBtn:ClearAllPoints()
+          self.trainBtn:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
+          textH = math.max(textH, grid and 17 or 18)
+        end
         if grid then
           -- a checklist with pins on its lines: a grid - the Pins in a column of their own on the
           -- left, every line's text in the next column, every row the same height (text centred
@@ -313,16 +331,8 @@ function CR.CreateTaskCard(parent, width)
     end
 
     -- done by the game: nothing to click; ticked by hand: can be undone
-    -- a trainer that teaches it is open: Train first, Mark as done beside it
-    local svc, category = nil, nil
-    if task.train and not task.done and CR.TrainerService then svc, category = CR.TrainerService(task.train) end
-    self.trainBtn:ClearAllPoints()
-    self.trainBtn:SetPoint("TOPLEFT", 0, y - 4)
-    self.trainBtn:SetShown(svc ~= nil and category ~= "used")
-    self.trainBtn:SetEnabled(category == "available")
     self.done:ClearAllPoints()
-    if self.trainBtn:IsShown() then self.done:SetPoint("LEFT", self.trainBtn, "RIGHT", 6, 0)
-    else self.done:SetPoint("TOPLEFT", 0, y - 4) end
+    self.done:SetPoint("TOPLEFT", 0, y - 4)
     self.done:SetText(task.manual and "Not done yet" or "Mark as done")
     self.done:SetShown(not task.done or task.manual)
     y = y - 30

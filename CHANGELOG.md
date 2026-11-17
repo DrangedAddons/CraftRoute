@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.14.1
+
+- The Train button sits at the end of the step's "Learn ..." line, next to what it ticks off, instead of beside Mark as done.
+
 ## 1.14.0
 
 - New: a Train button on route steps a trainer teaches - learning a recipe, learning a profession, and training a rank (Journeyman, Expert, Artisan). It shows while you're talking to a trainer that has it, beside Mark as done. Greyed out while that trainer can't teach you it yet (skill or level). Like the Buy button for vendor reagents.

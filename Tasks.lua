@@ -742,6 +742,7 @@ function CR.StepTask(st, profName)
       local lroute = CR.Route(skillName)
       local altPlaces = {}
       Cond(learned, skillName .. " learned")
+      t.checks[#t.checks].train = true
       for _, alt in ipairs(lroute and lroute.learnAlso or {}) do
         if CR.FactionOK(alt) then
           t.text = t.text .. "\n\n" .. CR.FactionText(alt.text)
@@ -779,6 +780,7 @@ function CR.StepTask(st, profName)
       QuestCheck(t.checks, st.quest, learned and maxRank >= st.cap, st.questNpc)
       Objectives(trained)
       Cond(learned and maxRank >= st.cap, string.format("Learn %s %s", st.tierName or "", skillName) .. Aside("max skill " .. st.cap))
+      t.checks[#t.checks].train = true
       if st.book or st.quest then
         t.places = Nearest(NpcsInText(text))
       else
@@ -829,6 +831,7 @@ function CR.StepTask(st, profName)
       local tier = RankTier(skillName, st.trainCap)
       need = tier and tier.skill
       Cond(trained, string.format("Train %s to %d", skillName, st.trainCap))
+      t.checks[#t.checks].train = true
       QuestCheck(t.checks, st.quest, trained, st.questNpc)
       if st.book then
         local _, bags = Owned(st.book)
@@ -950,6 +953,7 @@ function CR.RecipeTask(st, profName)
     if #t.places == 0 then t.places = Nearest(NpcsInText(CR.FactionText(src))) end
   end
   table.insert(t.checks, Check(false, "Learn " .. r.name))
+  t.checks[#t.checks].train = true   -- (the Train button sits at the end of this line)
   t.auto = true
   return t
 end
