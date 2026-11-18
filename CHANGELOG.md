@@ -1,6 +1,6 @@
 # CraftRoute changelog
 
-## 1.16.1
+## 1.17.2
 
 - "Open trainer and vendor pages" only skips the chat page when the trainer or vendor option is the NPC's one and only option. Most trainers have more than one, and those now wait for you to choose.
 - With EllesmereUI's "Auto Select Single Gossip" turned on, CraftRoute leaves gossip to EllesmereUI and greys out its own setting.
