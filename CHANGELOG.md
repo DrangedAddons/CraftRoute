@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 1.16.1
+
+- "Open trainer and vendor pages" only skips the chat page when the trainer or vendor option is the NPC's one and only option. Most trainers have more than one, and those now wait for you to choose.
+- With EllesmereUI's "Auto Select Single Gossip" turned on, CraftRoute leaves gossip to EllesmereUI and greys out its own setting.
+
 ## 1.17.1
 
 - The Shopping List button in the Craft view sends the recipe to the shopping dock as a craft list too, starting at the amount in its box (1.17.0 only did it from Craft (List)). Route steps still make the plain list.

@@ -154,12 +154,18 @@ local function Build()
   end
   CountSetting("countBags", "Count inventory", "Ticked: what's in this character's bags counts as owned.")
   CountSetting("countBank", "Count bank", "Ticked: what's in this character's bank and mailbox counts as owned.")
-  Check("Open trainer and vendor pages",
-    "Ticked: talking to a trainer or vendor skips its chat page and opens the training or goods list - when "
-      .. "it has no quests for you and nothing else to choose (an inn, flight path, bank). Hold Shift while "
-      .. "talking to see the chat page.",
+  local gossipCB = Check("Open trainer and vendor pages",
+    "Ticked: talking to a trainer or vendor skips its chat page and opens the training or goods list - only "
+      .. "when that's its one and only option and it has no quests for you. Hold Shift while talking to see "
+      .. "the chat page. Greyed out while EllesmereUI's \"Auto Select Single Gossip\" is on: EllesmereUI "
+      .. "handles it then.",
     function() return CraftRouteCharDB and CraftRouteCharDB.autoGossip ~= false end,
     function(v) CraftRouteCharDB.autoGossip = v end)
+  table.insert(syncs, function()
+    local eui = CR.EllesmereGossip and CR.EllesmereGossip()
+    gossipCB:SetEnabled(not eui)
+    gossipCB.label:SetTextColor(eui and 0.5 or 1, eui and 0.5 or 1, eui and 0.5 or 1)
+  end)
   Check("Show professions I haven't learned",
     "Ticked, the profession pickers also offer professions this character doesn't have, so you can check "
       .. "their route and costs.",
