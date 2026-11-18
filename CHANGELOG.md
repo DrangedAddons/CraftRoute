@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.16.0
+
+- New: a step progress bar on enchant steps, left of the Enchant button. It counts the skill-ups you make on the step against what the step had left when you opened the profession window, e.g. "Step 3/27 (24 to go)". Closing and reopening the window starts it over from 0 with the step's remaining levels.
+
 ## 1.15.1
 
 - The Train button shows on trainer steps all the time. With no trainer open that has it, it reads "Trainer" and pins the nearest trainer from Where (like Vendor for reagents). Greyed out when no trainer position is known, or while the open trainer can't teach you it yet.

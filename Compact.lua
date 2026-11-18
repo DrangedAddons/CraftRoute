@@ -10,6 +10,15 @@
 
 local _, CR = ...
 
+-- Step progress bar (enchant steps): per recipe spell, the skill when the profession window
+-- opened. Cleared when it closes, so reopening starts the bar over from 0.
+local stepRuns = {}
+do
+  local ev = CreateFrame("Frame")
+  pcall(ev.RegisterEvent, ev, "TRADE_SKILL_CLOSE")
+  ev:SetScript("OnEvent", function() stepRuns = {} end)
+end
+
 -- 32 leaves a dark gap around the 26px category bar so the planks stay separate.
 local ROW_H = 32
 local TAB_ICON = "Interface\\AddOns\\CraftRoute\\icon"   -- (icon.tga, the same image as icon.ico)
@@ -2617,6 +2626,31 @@ local function FillSchematic(info)
   frame.countBox:SetShown(canCraft)
   frame.prevBtn:SetShown(canCraft)
   frame.nextBtn:SetShown(canCraft)
+  -- step progress (enchants): skill-ups since the window opened, out of what was left then
+  local barShown = false
+  if enchantFits and open and learned ~= false and st.to and cur and recipe.spell then
+    local run = stepRuns[recipe.spell]
+    if not run then
+      run = { start = cur }
+      stepRuns[recipe.spell] = run
+    end
+    if cur < run.start then run.start = cur end
+    local total = st.to - run.start
+    if total > 0 then
+      local done = math.min(cur - run.start, total)
+      frame.stepBar:SetMinMaxValues(0, total)
+      frame.stepBar:SetValue(done)
+      if done >= total then
+        frame.stepBar:SetStatusBarColor(0.2, 0.9, 0.2)
+        frame.stepBar.text:SetText(string.format("Step done  %d/%d", done, total))
+      else
+        frame.stepBar:SetStatusBarColor(1, 0.7, 0)
+        frame.stepBar.text:SetText(string.format("Step  %d/%d  (%d to go)", done, total, total - done))
+      end
+      barShown = true
+    end
+  end
+  frame.stepBar:SetShown(barShown)
   -- (not in an empty window - nothing loaded at all: the CraftRoute tab or key loads your
   -- profession, so there's no "Open" to offer)
   local empty = CR.NoTradeSkillLoaded and CR.NoTradeSkillLoaded() and CR.FallbackProfession()
@@ -5956,6 +5990,30 @@ local function BuildOverlay()
   frame.openBtn:SetText("Open")
   frame.openBtn:Hide()
   CR.ThemeRegisterButton(frame.openBtn)
+
+  -- Enchant steps: skill-ups made on this step since the profession window opened, out of what
+  -- the step had left then. Left of Enchant, where Create All / the count sit for other recipes.
+  local stepBar = CreateFrame("StatusBar", nil, frame.buttons, "BackdropTemplate")
+  stepBar:SetPoint("LEFT", frame.buttons, "LEFT", 0, 0)
+  stepBar:SetPoint("RIGHT", frame.create, "LEFT", -8, 0)
+  stepBar:SetHeight(18)
+  stepBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  stepBar:SetStatusBarColor(1, 0.7, 0)
+  stepBar:SetMinMaxValues(0, 1)
+  CR.Backdrop(stepBar, 0, 0, 0, 0.6)
+  stepBar.text = stepBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  stepBar.text:SetPoint("CENTER")
+  stepBar:Hide()
+  frame.stepBar = stepBar
+  stepBar:EnableMouse(true)
+  stepBar:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Step progress")
+    GameTooltip:AddLine("Skill-ups made on this step since you opened the profession window, out of "
+      .. "what the step had left then. Starts over each time you open the window.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  stepBar:SetScript("OnLeave", GameTooltip_Hide)
 
   local enchant = CreateFrame("Frame", nil, schematic)
   enchant:SetHeight(54)
