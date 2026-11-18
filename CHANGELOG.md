@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.17.1
+
+- The Shopping List button in the Craft view sends the recipe to the shopping dock as a craft list too, starting at the amount in its box (1.17.0 only did it from Craft (List)). Route steps still make the plain list.
+
 ## 1.17.0
 
 - The shopping-list button on a recipe sends that craft to the shopping dock as a craft list, starting at the amount in the box. At the AH the dock shows the item, a **Crafts** count you change there (it remembers the last one), the cost, the profit, and each reagent's have/need, price each and total; what to buy and the Auctionator list follow the count. Vendor reagents are listed, not bought. With the dock turned off it makes the plain list as before. Route lists are unchanged.

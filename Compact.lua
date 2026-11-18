@@ -5962,6 +5962,12 @@ local function BuildOverlay()
     local covered = {}
     local e = CR.GetPlans(PlanProfession())
     local steps = e and e.plan and e.plan.steps or {}
+    -- a recipe picked in the Craft view (kind "dest", not a route step): a craft list in the
+    -- shopping dock, starting at the amount in the box; the crafts count is changed there
+    if st.kind == "dest" then
+      local n = math.max(1, math.floor(tonumber(frame.countBox:GetText()) or st.crafts or 1))
+      if CR.CreateCraftShoppingList(st.recipe, n, SellValue(st.recipe)) then return end
+    end
     local uses = {}
     for _, rg in ipairs(st.recipe.reagents or {}) do uses[rg[1]] = true end
     for _, o in ipairs(steps) do
