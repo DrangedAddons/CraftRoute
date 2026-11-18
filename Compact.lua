@@ -1057,7 +1057,9 @@ local function ApplyRow(row, item)
       row.crCart:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText("Shopping list")
-        GameTooltip:AddLine("Make an Auctionator shopping list of what you need for this many.", 1, 1, 1, true)
+        GameTooltip:AddLine("Send this craft to the shopping dock at the auction house, starting at this many. "
+        .. "Change the crafts count there and what to buy follows. With the dock off: an Auctionator "
+        .. "shopping list of what you need for this many.", 1, 1, 1, true)
         GameTooltip:Show()
       end)
       row.crCart:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1096,7 +1098,9 @@ local function ApplyRow(row, item)
       end
     end)
     row.crCart:SetScript("OnClick", function()
-      CR.CreateStepShoppingList(r, math.max(1, tonumber(row.crQty:GetText()) or item.qty))
+      local n = math.max(1, tonumber(row.crQty:GetText()) or item.qty)
+      -- a craft list in the shopping dock (crafts count changed there); without the dock, the plain list
+      if not CR.CreateCraftShoppingList(r, n, SellValue(r)) then CR.CreateStepShoppingList(r, n) end
     end)
     row.crCart:SetShown(CR.HasAuctionator() and true or false)
     for _, w in ipairs({ row.crQty, row.crCreate }) do w:Show() end

@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 1.17.0
+
+- The shopping-list button on a recipe sends that craft to the shopping dock as a craft list, starting at the amount in the box. At the AH the dock shows the item, a **Crafts** count you change there (it remembers the last one), the cost, the profit, and each reagent's have/need, price each and total; what to buy and the Auctionator list follow the count. Vendor reagents are listed, not bought. With the dock turned off it makes the plain list as before. Route lists are unchanged.
+- Shopping dock (ShoppingDock 0.8.0).
+
 ## 1.16.0
 
 - New: a step progress bar on enchant steps, left of the Enchant button. It counts the skill-ups you make on the step against what the step had left when you opened the profession window, e.g. "Step 3/27 (24 to go)". Closing and reopening the window starts it over from 0 with the step's remaining levels.

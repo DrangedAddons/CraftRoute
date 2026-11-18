@@ -441,3 +441,36 @@ function CR.CreateStepShoppingList(recipe, crafts, covered)
   CR.CreateMultiShoppingList({ { recipe = recipe, crafts = crafts, covered = covered } },
     string.format("CraftRoute: %s x%d", recipe.name, math.max(1, crafts or 1)), nil, "recipe:" .. tostring(recipe.spell))
 end
+
+-- One craft as a craft list in the shopping dock: the dock gets one craft's reagents (with what
+-- you have and their prices) and a crafts count you change there; it works out what to buy and
+-- writes the Auctionator list itself. sell: what one craft's items sell for (optional).
+-- False when there's no dock to take it (it's off, or Auctionator isn't there): the caller then
+-- makes the plain list.
+function CR.CreateCraftShoppingList(recipe, crafts, sell)
+  local sd = ShoppingDock
+  if not (sd and sd.SetCraftList and sd.IsEnabled and sd.IsEnabled() and CR.HasAuctionator()) then return false end
+  local reagents = {}
+  for _, rg in ipairs(recipe.reagents or {}) do
+    local price, src = CR.GetUnitPrice(rg[1])
+    local bags, elsewhere = CR.BagsAndElsewhere(rg[1])
+    table.insert(reagents, { id = rg[1], name = GetItemInfo(rg[1]) or CR.ItemName(rg[1]), per = rg[2],
+      have = (bags or 0) + (elsewhere or 0), price = price, vendor = src == "vendor" })
+  end
+  if #reagents == 0 then return false end
+  local name = "CraftRoute: " .. recipe.name
+  -- the list made for this recipe before (a plain one, or a craft list) goes
+  local key = "recipe:" .. tostring(recipe.spell)
+  CraftRouteDB.shoppingLists = CraftRouteDB.shoppingLists or {}
+  local old = CraftRouteDB.shoppingLists[key]
+  if type(old) == "string" and old ~= name then RemovePrevious(key) end
+  local ok = sd.SetCraftList(name, {
+    id = recipe.item and recipe.item > 0 and recipe.item or nil, name = recipe.name, icon = CR.RecipeIcon(recipe),
+    makes = recipe.makes or 1, count = math.max(1, crafts or 1), sell = sell, reagents = reagents,
+  }, "CraftRoute")
+  if not ok then return false end
+  CraftRouteDB.shoppingLists[key] = name
+  CR.Print(string.format("%s x%d sent to the shopping dock. Change the crafts count there.", recipe.name,
+    math.max(1, crafts or 1)))
+  return true
+end
