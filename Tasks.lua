@@ -348,7 +348,13 @@ local function VendorPlaces(itemID)
 end
 
 -- Does Questie know a vendor (for this faction) who sells itemID? false without Questie.
+-- Recipes only: Questie can't tell a limited-stock seller from a normal one, and only a recipe is
+-- worth sending you to a limited-stock vendor for (Thick Leather isn't). Other items get Vendor
+-- from CR.IsVendorItem (seen always in stock, or a vendor price).
 function CR.HasVendorPlaces(itemID)
+  local GetInstant = C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant
+  local classID = GetInstant and select(6, GetInstant(itemID))
+  if classID ~= (Enum and Enum.ItemClass and Enum.ItemClass.Recipe or 9) then return false end
   if not (itemID and LibQuestieDB and ItemDB and NpcDB and type(NpcDB.name) == "function"
     and type(NpcDB.friendlyToFaction) == "function" and type(NpcDB.spawns) == "function") then return false end
   local ok, places = pcall(VendorPlaces, itemID)

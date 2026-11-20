@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.20.1
+
+- Step card Vendor buttons no longer come from Questie's vendor lists for anything but recipes. Questie can't tell a limited-stock seller from a normal one, so Thick Leather was getting Vendor. Other items show Vendor only once CraftRoute has seen a vendor with them always in stock, or Auctionator has a vendor price for them, as everywhere else.
+
 ## 1.20.0
 
 - Specialization Prerequisites card: a **Buy All** cart button at the top. It opens the cart with everything on the card you still need (less what's in your bags), then makes one Auctionator shopping list named after the spec. Vendor-sold items stay off it, like Buy Route - use their Vendor buttons.
