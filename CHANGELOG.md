@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.18.1
+
+- Craft (List): an opened recipe shows the crafting station it needs ("Sewing Machine required") after Learned / Not Learned, red until you're at one, like the Craft view.
+
 ## 1.18.0
 
 - "Get N item" lines on step cards (e.g. "Get 7 Bright Baubles" on Fishing) have the Vendor / Buy button. Vendor pins the nearest vendor that sells it (needs Questie). With that vendor open it turns into Buy, which opens the buy box for what you still need.

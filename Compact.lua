@@ -955,10 +955,14 @@ local function ApplyRow(row, item)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
     row.name:SetPoint("RIGHT", b, "LEFT", -6, 0)
+    -- a crafting station it needs ("Sewing Machine required"), after the learned state
+    local structure = CR.StructureText and CR.StructureText(item.recipe)
+    structure = structure and ("  " .. structure) or ""
     if item.learned then
-      row.name:SetText(CR.ColorText("Learned", "40ff40"))
+      row.name:SetText(CR.ColorText("Learned", "40ff40") .. structure)
     else
-      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa"))
+      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa")
+        .. structure)
     end
     return
   end
