@@ -754,6 +754,7 @@ end
 -- Vendor: when a merchant window is open, reagents it sells get a Buy button.
 ---------------------------------------------------------------------------
 local merchantOpen, merchantIndex = false, {}   -- [itemID] = merchant slot
+local merchantNames = {}   -- [lower-case item name] = itemID (recipes are known by their pattern's name)
 
 -- price (for one purchase), how many one purchase gives, how many are left (-1 = unlimited)
 local function MerchantSlotInfo(i)
@@ -769,12 +770,16 @@ end
 
 local function ScanMerchant()
   wipe(merchantIndex)
+  wipe(merchantNames)
   if not merchantOpen or not GetMerchantNumItems or not GetMerchantItemID then return end
   for i = 1, GetMerchantNumItems() do
     local id = GetMerchantItemID(i)
     local price, _, avail, extended = MerchantSlotInfo(i)
     if id and price and price > 0 and not extended then
       merchantIndex[id] = i   -- gold only
+      local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id))
+        or (GetMerchantItemInfo and (GetMerchantItemInfo(i)))
+      if type(name) == "string" then merchantNames[name:lower()] = id end
       -- remembered (all characters): "Vendor" on reagents you're short of, away from a vendor -
       -- only what's always in stock (a limited-stock seller is too niche to send you to)
       if CraftRouteDB and not (avail and avail >= 0) then
@@ -786,6 +791,10 @@ local function ScanMerchant()
 end
 
 function CR.MerchantSells(itemID) return merchantOpen and merchantIndex[itemID] or nil end
+-- the open vendor's item of this name (a recipe's "Plans: ..."), or nil
+function CR.MerchantSellsNamed(name)
+  return merchantOpen and type(name) == "string" and merchantNames[name:lower()] or nil
+end
 
 -- Sold by vendors? (seen on a merchant, or Auctionator knows a vendor price for it). Something this
 -- character can make itself isn't one: making it beats hunting down the odd vendor that has it.
@@ -848,7 +857,9 @@ local function BuyPlan(itemID, count)
   return purchases, purchases * batch, purchases * (price or 0)
 end
 
-local function BuyFromMerchant(itemID, count)
+local BuyFromMerchant
+function CR.BuyFromMerchant(itemID, count) BuyFromMerchant(itemID, count) end
+BuyFromMerchant = function(itemID, count)
   local i = merchantIndex[itemID]
   local purchases = BuyPlan(itemID, count)
   if not i or purchases <= 0 then return end

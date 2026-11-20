@@ -3651,7 +3651,8 @@ local function FillDestDetail(info)
   local f = overlay
   for _, row in ipairs(f.destPins) do row:Hide() end
   f.destTrain:Hide()
-  f.destTrain.train, f.destTrain.place = nil, nil
+  f.destTrain.train, f.destTrain.place, f.destTrain.item, f.destTrain.mode = nil, nil, nil, nil
+  f.destInfo:SetPoint("RIGHT", f.schematic, "RIGHT", -8, 0)
   f.destBottom = f.destInfo
   local st = info and info.selected
   if not st then
@@ -3673,35 +3674,29 @@ local function FillDestDetail(info)
     .. CR.ColorText(string.format("  -  learn at %d%s", CR.LearnAt(r), (cur or 0) >= CR.LearnAt(r) and "" or
       string.format(" (you: %d)", cur or 0)), "aaaaaa")
     .. "\n" .. (text or "") .. (cost and ("  " .. CR.FormatMoney(cost)) or ""))
-  local anchor = f.destInfo
-  for i, pl in ipairs(places or {}) do
-    local row = f.destPins[i]
-    if not row then break end
-    row.place = pl
-    row:ClearAllPoints()
-    row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
-    row.text:SetText(pl.name .. CR.ColorText("  " .. (pl.zone or ""), "aaaaaa"))
-    row:Show()
-    anchor = row
-  end
-  -- a trainer teaches it: Train while a trainer that lists it is open (grey until it can teach
-  -- you), otherwise Trainer, pinning the nearest one - at the end of the first Pin line
+  -- one button at the end of the source line, for the nearest place (places come nearest first):
+  -- a trainer teaches it - Train while a trainer that lists it is open (grey until it can teach
+  -- you), else Trainer (pins it); a vendor sells the plans - Buy while that vendor is open, else
+  -- Vendor (pins it); anything else with a known place (a quest giver) - Pin
+  local btn = f.destTrain
+  btn.place = places and places[1]
   if CR.RecipeTrainerTaught and CR.RecipeTrainerTaught(info.profName, r) then
-    local btn = f.destTrain
-    btn.train = { recipe = r.name, spell = r.spell }
-    btn.place = places and places[1]
+    btn.mode, btn.train = "trainer", { recipe = r.name, spell = r.spell }
     local svc, category
     if CR.TrainerService then svc, category = CR.TrainerService(btn.train) end
     btn:SetText(svc and "Train" or "Trainer")
     btn:SetEnabled((svc and category == "available") or (not svc and btn.place ~= nil))
+  else
+    local sold = CR.MerchantSellsNamed and CR.MerchantSellsNamed(r.pattern)
+    btn.mode, btn.item = sold and "buy" or ((r.src or ""):find("Sold by") and "vendor" or "pin"), sold
+    btn:SetText(sold and "Buy" or (btn.mode == "vendor" and "Vendor" or "Pin"))
+    btn:SetEnabled(sold ~= nil or btn.place ~= nil)
+  end
+  if btn.mode == "buy" or btn.mode == "trainer" or btn.place then
+    btn:SetWidth(btn.mode == "pin" and 44 or 64)
+    f.destInfo:SetPoint("RIGHT", f.schematic, "RIGHT", -(btn:GetWidth() + 16), 0)
     btn:ClearAllPoints()
-    local row = f.destPins[1]
-    if row:IsShown() then
-      btn:SetPoint("LEFT", row.text, "RIGHT", 10, 0)
-    else
-      btn:SetPoint("TOPLEFT", f.destInfo, "BOTTOMLEFT", 0, -4)
-      f.destBottom = btn
-    end
+    btn:SetPoint("BOTTOMLEFT", f.destInfo, "BOTTOMRIGHT", 8, -3)
     btn:Show()
   end
 end
@@ -5817,15 +5812,30 @@ local function BuildOverlay()
   train:SetText("Trainer")
   CR.ThemeRegisterButton(train)
   train:SetScript("OnClick", function(self)
-    if not self.train then return end
-    if CR.TrainerService and CR.TrainerService(self.train) then
+    if self.mode == "trainer" and CR.TrainerService and CR.TrainerService(self.train) then
       CR.TrainService(self.train)
+    elseif self.mode == "buy" and self.item and CR.BuyFromMerchant then
+      CR.BuyFromMerchant(self.item, 1)
     elseif self.place and CR.PinPlace then
       CR.PinPlace(self.place)
     end
   end)
   train:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    if self.mode ~= "trainer" then
+      local pl = self.place
+      GameTooltip:SetText(self.mode == "buy" and "Buy" or (self.mode == "vendor" and "Vendor" or "Pin"))
+      if self.mode == "buy" then
+        GameTooltip:AddLine("Buy the plans from this vendor.", 1, 1, 1, true)
+      elseif pl then
+        GameTooltip:AddLine("Click to pin the nearest: " .. pl.name .. (pl.zone and (", " .. pl.zone) or "") .. ".", 1, 1, 1, true)
+        if self.mode == "vendor" then
+          GameTooltip:AddLine("Talk to a vendor that sells it and this becomes a Buy button.", 1, 1, 1, true)
+        end
+      end
+      GameTooltip:Show()
+      return
+    end
     local svc, category, cost
     if CR.TrainerService then svc, category, cost = CR.TrainerService(self.train) end
     if not svc then

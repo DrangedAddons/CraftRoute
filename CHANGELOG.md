@@ -1,5 +1,12 @@
 # CraftRoute changelog
 
+## 1.24.1
+
+- Craft view recipe detail: the Pin rows are gone (1.24.0 left them overlapping the reagents). One button sits at the end of the source line, for the nearest place:
+  - taught by trainers: Trainer (pins the nearest), Train while a trainer that lists it is open
+  - sold by vendors: Vendor (pins the nearest), Buy while a vendor that sells the plans is open
+  - anything else with a known place, like a quest giver: Pin
+
 ## 1.24.0
 
 - Craft view: a recipe a trainer teaches gets a Trainer button at the end of its first Pin line. It pins the nearest trainer, and turns into Train while a trainer that lists the recipe is open (grey until it can teach you). Recipes trainers don't teach (drops, quest rewards, vendor plans) don't get one.
