@@ -841,6 +841,18 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
     checks[#checks].place = LinePlace(npc)
     return checks[#checks]
   end
+  -- bag counts handed out to the quests in order, so 3 Wildvine covers the first quests that want
+  -- it, not every one of them
+  local avail = {}
+  local function Take(id, n)
+    if avail[id] == nil then
+      local _, bags = Owned(id)
+      avail[id] = bags
+    end
+    local got = math.min(avail[id], n)
+    avail[id] = avail[id] - got
+    return got
+  end
   for _, e in ipairs(spec.chain or {}) do
     if e.accept then
       -- "Accept these quests", then each quest on a line under it (in your log or handed in = ticked)
@@ -857,19 +869,31 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
         checks[#checks].sub = true
       end
     else
-      -- the quest on its own line, then what it wants underneath (one item per line)
+      -- the quest on its own line, then what it wants underneath (one item per line). Handed in,
+      -- or everything it wants in your bags ("ready"): just the quest line.
       local done = ChainEntryDone(spec, e, known)
+      local got, ready = {}, not done and e.items and #e.items > 0
+      if not done then
+        for i, it in ipairs(e.items or {}) do
+          got[i] = Take(it[1], it[2])
+          if got[i] < it[2] then ready = false end
+        end
+      end
       local label = e.final and spec.final or e.quest
-      if not done and not e.final and QuestInLog(e.quest) == true then label = label .. Aside("in your log") end
+      if ready then
+        label = label .. CR.ColorText("  (ready)", "40ff40")
+      elseif not done and not e.final and QuestInLog(e.quest) == true then
+        label = label .. Aside("in your log")
+      end
       Add(done, label, e.npc or (e.final and spec.finalNpc) or spec.giver)
-      if e.note then
+      if e.note and not done then
         Cond(done, CR.FactionText(e.note))
         checks[#checks].sub = true
       end
-      for _, it in ipairs(e.items or {}) do
-        local _, have = Owned(it[1])
-        local line = Add(done or have >= it[2], string.format("%d %s", it[2], CR.ItemName(it[1]))
-          .. (done and "" or Aside(string.format("%d/%d", math.min(have, it[2]), it[2]))))
+      for i, it in ipairs((done or ready) and {} or e.items or {}) do
+        local have = got[i]
+        local line = Add(have >= it[2], string.format("%d %s", it[2], CR.ItemName(it[1]))
+          .. Aside(string.format("%d/%d", have, it[2])))
         line.sub = true
         -- (items whose pattern the chain teaches - Wild Leather Vest / Helmet - are made here: Craft)
         local r = craft and RecipeFor(p, it[1])
