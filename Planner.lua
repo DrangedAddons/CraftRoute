@@ -736,6 +736,8 @@ function CR.BuildPlan(profName, cur, goal)
   -- Simulate: route-made intermediates feed later steps; shortfalls of craftable
   -- intermediates (cured hides, belts...) become extra crafts; everything else is a material.
   local pool, bagsLeft, need, crafted, usage, made = {}, {}, {}, {}, {}, {}
+  -- ore asked for as the alternative to bars you'd otherwise buy (in need, never priced or bought)
+  local alt = {}
   -- what the route's gathering steps say you'll catch (fish): still counted in a material's need,
   -- as "caught" - so the fish a cooking step uses show in full, not just what the catch won't cover
   local catchPool, caught = {}, {}
@@ -746,9 +748,25 @@ function CR.BuildPlan(profName, cur, goal)
     return bagsLeft[id]
   end
 
-  local function AddUsage(id, label, n, skillAt)
+  local function AddUsage(id, label, n, skillAt, isAlt)
     usage[id] = usage[id] or {}
-    table.insert(usage[id], { label = label, n = n, at = skillAt })
+    table.insert(usage[id], { label = label, n = n, at = skillAt, alt = isAlt or nil })
+  end
+
+  -- The ore that would smelt `qty` bars you're buying: down through bars smelted from bars
+  -- (Bronze from Copper and Tin) to the raw ore. Listed as the alternative, not bought.
+  local function AddAlt(id, qty, label, skillAt, depth)
+    local sm = depth < 3 and CR.Smelter(id)
+    if sm then
+      local n = ceil(qty / sm.makes)
+      for _, rg in ipairs(sm.reagents) do
+        AddAlt(rg[1], rg[2] * n, sm.name .. " (" .. label .. ")", skillAt, depth + 1)
+      end
+    elseif depth > 0 then
+      AddUsage(id, label .. " - instead of buying the bars", qty, skillAt, true)
+      need[id] = (need[id] or 0) + qty
+      alt[id] = (alt[id] or 0) + qty
+    end
   end
 
   local function Craft(r, crafts, label, skillAt, depth)
@@ -809,8 +827,10 @@ function CR.BuildPlan(profName, cur, goal)
       bagsLeft[id] = bagsLeft[id] - fromBags
       local short = qty - fromBags
       local n = short > 0 and min(ceil(short / smelter.makes), Smeltable(smelter, depth)) or 0
+      local got = n > 0 and min(short, n * smelter.makes) or 0
+      -- the bars still bought: the ore that would smelt them instead
+      if short - got > 0 then AddAlt(id, short - got, label, skillAt, depth) end
       if n > 0 then
-        local got = min(short, n * smelter.makes)
         crafted[id] = (crafted[id] or 0) + got
         -- Not a route step: the guide doesn't send you smelting, it just needs the bars. The ore
         -- still counts towards them in the materials, and the Craft tab offers "Smelt" on the
@@ -943,12 +963,12 @@ function CR.BuildPlan(profName, cur, goal)
   for id, n in pairs(need) do
     local have = CR.HaveCount(id)
     local m = { id = id, name = ItemName(prof, id), need = n, have = have, crafted = crafted[id] or 0,
-                caught = caught[id] or 0, usage = usage[id] }
-    m.missing = max(0, n - have - m.crafted - m.caught)
+                caught = caught[id] or 0, usage = usage[id], alt = alt[id] or 0 }
+    m.missing = max(0, n - m.alt - have - m.crafted - m.caught)
     if m.crafted == 0 then
       m.price, m.priceSrc = CR.GetUnitPrice(id)
       if m.price then
-        m.totalCost = m.price * (n - m.caught)
+        m.totalCost = m.price * max(0, n - m.alt - m.caught)
         m.missingCost = m.price * m.missing
         plan.totalCost = plan.totalCost + m.totalCost
         plan.missingCost = plan.missingCost + m.missingCost

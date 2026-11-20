@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 1.23.1
+
+- With Mining, the ore line now asks for enough ore to smelt every bar you're short of, so Copper Ore reads 16/547 instead of a green 16/16. Before, it only counted the ore already in your bags. Bars made from other bars count down to the raw ore (Bronze Bar asks for Copper Ore and Tin Ore).
+  - That extra ore is the alternative to buying the bars: it isn't in the cost or the shopping lists, the bars are. The materials window says "or buy bars" on it, and the trackers' tooltips say how much of it is for that.
+
 ## 1.23.0
 
 - Gnomish and Goblin Engineering use the Prerequisites / quest card layout, each with a craft or buy choice.

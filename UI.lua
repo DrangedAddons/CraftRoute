@@ -189,6 +189,8 @@ function CR.UpdateMaterialRow(row, m)
     row.cost:SetText(CR.ColorText("make " .. m.crafted, "33ccff"))
   elseif caught > 0 and m.missing == 0 and m.have < m.need then
     row.cost:SetText(CR.ColorText("catch " .. (m.need - m.have), "33ccff"))
+  elseif (m.alt or 0) > 0 and m.have < m.need then
+    row.cost:SetText(CR.ColorText("or buy bars", "aaaaaa"))
   elseif m.missing == 0 then
     row.cost:SetText(CR.ColorText("done", "40ff40"))
   else

@@ -215,6 +215,10 @@ local function NewTracker(PROF)
         (self.m.crafted or 0) > 0 and string.format(", %d made on the way", self.m.crafted) or "",
         (self.m.caught or 0) > 0 and string.format(", about %d caught on the way", self.m.caught) or ""),
         0.4, 0.8, 1, true)
+      if (self.m.alt or 0) > 0 then
+        GameTooltip:AddLine(string.format("%d of it would smelt the bars you'd otherwise buy - mine it, or buy the bars.",
+          self.m.alt), 0.6, 0.6, 0.6, true)
+      end
       if editing then GameTooltip:AddLine("Untick to hide it from this list.", 0.6, 0.6, 0.6, true) end
       GameTooltip:Show()
     end)

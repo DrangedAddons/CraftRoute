@@ -223,7 +223,7 @@ local function Gather()
         any = true
         local it = byId[m.id]
         if not it then
-          it = { id = m.id, name = m.name or CR.ItemName(m.id), per = {}, need = 0, have = 0, crafted = 0, caught = 0,
+          it = { id = m.id, name = m.name or CR.ItemName(m.id), per = {}, need = 0, have = 0, crafted = 0, caught = 0, alt = 0,
                  price = m.price, first = math.huge, band = {}, order = {} }
           byId[m.id] = it
           table.insert(items, it)
@@ -233,6 +233,7 @@ local function Gather()
         it.have = math.max(it.have, m.have or 0)   -- (what you have is the same stock for each)
         it.crafted = it.crafted + (m.crafted or 0)
         it.caught = it.caught + (m.caught or 0)   -- (fish a route's fishing steps catch for its cooking)
+        it.alt = it.alt + (m.alt or 0)   -- (ore that would smelt bars you'd otherwise buy: never bought)
         it.price = it.price or m.price
         -- (where it comes in this column's route; never seen in its steps: after the rest)
         it.order[name] = pos[m.id] or (100000 + (m.usage and m.usage[1] and m.usage[1].at or 0))
@@ -242,9 +243,10 @@ local function Gather()
         for _, u in ipairs(uses) do
           local at = u.at or e.cur or 1
           local b = it.band[BandOf(at)]
-          if not b then b = { per = {}, need = 0, first = math.huge } it.band[BandOf(at)] = b end
+          if not b then b = { per = {}, need = 0, alt = 0, first = math.huge } it.band[BandOf(at)] = b end
           b.per[name] = (b.per[name] or 0) + (u.n or 0)
           b.need = b.need + (u.n or 0)
+          if u.alt then b.alt = b.alt + (u.n or 0) end
           b.first = math.min(b.first, at)
           it.first = math.min(it.first, at)
         end
@@ -266,7 +268,7 @@ end
 local function ToBuy(lines, label)
   local mats, cost, unpriced = {}, 0, 0
   for _, l in ipairs(lines) do
-    local missing = l.need - l.have - (l.it and l.it.caught or 0)
+    local missing = l.need - (l.alt or 0) - l.have - (l.it and l.it.caught or 0)
     if l.it and missing > 0 and l.it.crafted == 0 then
       table.insert(mats, { id = l.it.id, missing = missing, name = l.it.name })
       if l.it.price then cost = cost + l.it.price * missing else unpriced = unpriced + 1 end
@@ -296,14 +298,14 @@ end
 -- the lines to show: { head = "1-75" } and { it = item, per, need, have } in display order
 local function Lines(items, profs)
   local out = {}
-  local function Line(it, per, need, have)
-    return { it = it, per = per, need = need, have = have }
+  local function Line(it, per, need, have, alt)
+    return { it = it, per = per, need = need, have = have, alt = alt or 0 }
   end
   local sort = Settings().sort
   if sort ~= "milestone" then
     -- one list: still-needed first, then by where the routes first use it (route order) or by name
     local list = {}
-    for _, it in ipairs(items) do table.insert(list, Line(it, it.per, it.need, it.have)) end
+    for _, it in ipairs(items) do table.insert(list, Line(it, it.per, it.need, it.have, it.alt)) end
     table.sort(list, function(a, b)
       local da, db = a.have >= a.need, b.have >= b.need
       if da ~= db then return not da end
@@ -322,7 +324,7 @@ local function Lines(items, profs)
       if b and b.need > 0 then
         local have = math.min(b.need, left[it])
         left[it] = left[it] - have
-        local l = Line(it, b.per, b.need, have)
+        local l = Line(it, b.per, b.need, have, b.alt)
         l.first = b.first
         table.insert(list, l)
       end
@@ -421,6 +423,10 @@ local function Row(i)
     GameTooltip:AddLine(string.format("Together %d - you have %d%s%s.", l.it.need, l.it.have,
       l.it.crafted > 0 and string.format(", %d made on the way", l.it.crafted) or "",
       l.it.caught > 0 and string.format(", about %d caught on the way", l.it.caught) or ""), 0.4, 0.8, 1, true)
+    if l.it.alt > 0 then
+      GameTooltip:AddLine(string.format("%d of it would smelt the bars you'd otherwise buy - mine it, or buy the bars.",
+        l.it.alt), 0.6, 0.6, 0.6, true)
+    end
     GameTooltip:Show()
   end)
   r:SetScript("OnLeave", GameTooltip_Hide)
@@ -1085,7 +1091,7 @@ function Refresh(moveOnly)
   -- what's still to buy (not what a route makes itself), as the trackers count it
   local cost, unpriced = 0, 0
   for _, it in ipairs(items) do
-    local missing = it.need - it.have - it.caught
+    local missing = it.need - it.alt - it.have - it.caught
     if missing > 0 and it.crafted == 0 then
       if it.price then cost = cost + it.price * missing else unpriced = unpriced + 1 end
     end

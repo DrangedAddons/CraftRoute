@@ -24,7 +24,7 @@ function CR.AddTooltipLines(tooltip, itemID)
 
   tooltip:AddLine(" ")
   tooltip:AddLine("|cff33ccffCraftRoute|r")
-  local need, have, crafted, price = 0, 0, 0, nil   -- (crafted: made or caught on the way)
+  local need, have, crafted, altOre, price = 0, 0, 0, 0, nil   -- (crafted: made or caught on the way)
   for _, b in ipairs(blocks) do
     local c, m = b.col, b.m
     -- named when there's more than one, or it's another character's
@@ -49,13 +49,14 @@ function CR.AddTooltipLines(tooltip, itemID)
     need = need + m.need
     have = math.max(have, m.have or 0)   -- (the same stock for each)
     crafted = crafted + (m.crafted or 0) + (m.caught or 0)
+    altOre = altOre + (m.alt or 0)   -- (ore that would smelt bars bought instead: not bought)
     if not price and m.price and (m.crafted or 0) == 0 then price = m end
   end
   if #blocks > 1 then
     tooltip:AddDoubleLine("Together:", Count(have + crafted, need), 1, 0.82, 0)
   end
   if price then
-    local missing = math.max(0, need - have - crafted)
+    local missing = math.max(0, need - altOre - have - crafted)
     tooltip:AddDoubleLine(price.priceSrc == "vendor" and "  Vendor price" or "  AH price (Auctionator)",
       CR.FormatMoney(price.price) .. (missing > 0 and ("  |cffaaaaaa(buy " .. missing .. ": "
         .. CR.FormatMoney(price.price * missing) .. ")|r") or ""),
