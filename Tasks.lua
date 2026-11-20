@@ -676,6 +676,150 @@ local function SpecChecklist(spec, known, rprofName, Cond, checks)
   end
 end
 
+-- A specialization quest chain where you bring the quest giver items (Tribal's Wild Leather
+-- quests). spec.path = "craft" (make the items: learn the patterns, buy the materials) or "buy"
+-- (buy the finished items). spec.chain, in order:
+--   { quest = "Title", ids = { A = id, H = id }, items = { {itemID, n}, ... } }  bring these
+--   { accept = { "Title", ... }, text = "line" }   pick up these quests (ticks once in the log)
+--   { final = true, items = { ... } }              spec.final, done once the spec is learned
+-- text = the line instead of "<quest>: bring ...", npc = its Pin (default spec.giver).
+-- spec.patterns = { { spells = { ... }, where = "who teaches them", npc = Pin }, ... } (craft only).
+local function FactionKey()
+  return (UnitFactionGroup and UnitFactionGroup("player") == "Horde") and "H" or "A"
+end
+local function ChainQuestDone(e)
+  local id = e.ids and e.ids[FactionKey()]
+  if id and C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
+    return C_QuestLog.IsQuestFlaggedCompleted(id) and true or false
+  end
+  return false
+end
+local itemRecipe = {}   -- [prof name] = { [itemID] = recipe }
+local function RecipeFor(prof, itemID)
+  if not prof then return nil end
+  local map = itemRecipe[prof.name or prof]
+  if not map then
+    map = {}
+    for _, r in pairs(prof.recipes or {}) do
+      -- (materials like Thick Leather are bought, not made from the hide before them)
+      if type(r) == "table" and r.item and r.item > 0 and r.cat ~= "Reagents" and not map[r.item] then map[r.item] = r end
+    end
+    itemRecipe[prof.name or prof] = map
+  end
+  return map[itemID]
+end
+local function ChainEntryDone(spec, e, known)
+  if known then return true end
+  if e.final then return false end
+  return e.quest and ChainQuestDone(e) or false
+end
+
+-- What the quests not handed in yet still need, in order: { {itemID, n}, ... }. Craft path: the
+-- reagents of turn-in items you can make (less the ones already made), plus the rest as-is.
+-- Buy path: the turn-in items. (Bags aren't taken off - the shopping list does that.)
+function CR.SpecChainNeeds(spec, prof)
+  local known = CR.KnowsSpec(spec)
+  local out, at = {}, {}
+  local function Add(id, n)
+    if n <= 0 then return end
+    if not at[id] then table.insert(out, { id, 0 }); at[id] = #out end
+    out[at[id]][2] = out[at[id]][2] + n
+  end
+  if known then return out end
+  for _, e in ipairs(spec.chain or {}) do
+    if e.items and not ChainEntryDone(spec, e, known) then
+      for _, it in ipairs(e.items) do
+        local r = spec.path == "craft" and RecipeFor(prof, it[1])
+        if r then
+          local made = CR.BagsAndElsewhere and CR.BagsAndElsewhere(it[1]) or 0
+          local crafts = math.ceil(math.max(0, it[2] - made) / (r.makes or 1))
+          for _, rg in ipairs(r.reagents or {}) do Add(rg[1], rg[2] * crafts) end
+        else
+          Add(it[1], it[2])
+        end
+      end
+    end
+  end
+  return out
+end
+
+local function SpecChain(spec, known, rprofName, Cond, checks)
+  local p = CR.professions[rprofName]
+  local craft = spec.path == "craft"
+  local cur = CR.GetSkill(rprofName) or 0
+  local function Add(ok, label, npc)
+    Cond(ok, label)
+    checks[#checks].place = LinePlace(npc)
+    return checks[#checks]
+  end
+  local function ItemList(items)
+    local parts = {}
+    for _, it in ipairs(items) do table.insert(parts, it[2] .. " " .. CR.ItemName(it[1])) end
+    return table.concat(parts, ", ")
+  end
+  -- the patterns (craft path)
+  if craft then
+    for _, g in ipairs(spec.patterns or {}) do
+      local ok, names, later = true, {}, {}
+      for _, spell in ipairs(g.spells) do
+        local r = p and p.recipes[spell]
+        local name = r and r.name or ("recipe " .. spell)
+        table.insert(names, name)
+        if KnowsRecipe(rprofName, spell) ~= true then
+          ok = false
+          if r and r.learn and r.learn > cur then table.insert(later, name .. " at " .. r.learn) end
+        end
+      end
+      local label = string.format("%s from %s: %s", (RECIPE_WORD[rprofName] or "Recipe") .. (#names > 1 and "s" or ""),
+        CR.FactionText(g.where), table.concat(names, ", "))
+      if not ok and #later > 0 then label = label .. Aside(table.concat(later, ", ")) end
+      Add(known or ok, label, g.npc)
+    end
+  end
+  -- everything to bring, for the quests still to do (Vendor / Buy on each)
+  for _, it in ipairs(CR.SpecChainNeeds(spec, p)) do
+    local _, have = Owned(it[1])
+    local line = Add(known or have >= it[2], string.format("%s %d %s", craft and "Get" or "Buy", it[2], CR.ItemName(it[1]))
+      .. Aside(string.format("%d/%d", math.min(have, it[2]), it[2])))
+    line.buy = { item = it[1], need = it[2] }
+  end
+  -- the quests, in order; the items you make get a line each with Craft
+  for _, e in ipairs(spec.chain or {}) do
+    if e.accept then
+      local ok = known
+      if not ok then
+        ok = true
+        for _, title in ipairs(e.accept) do
+          local done = false
+          for _, q in ipairs(spec.chain) do if q.quest == title then done = ChainQuestDone(q) end end
+          if not done and QuestInLog(title) ~= true then ok = false end
+        end
+      end
+      Add(ok, e.text and CR.FactionText(e.text) or ("Accept " .. table.concat(e.accept, ", ")), e.npc or spec.giver)
+    else
+      local done = ChainEntryDone(spec, e, known)
+      local title = e.final and spec.final or e.quest
+      local label = e.text and CR.FactionText(e.text)
+        or (title .. ((e.items and #e.items > 0) and (": bring " .. ItemList(e.items)) or ""))
+      if not done and not e.final and QuestInLog(e.quest) == true then label = label .. Aside("in your log") end
+      Add(done, label, e.npc or (e.final and spec.finalNpc) or spec.giver)
+      if craft then
+        for _, it in ipairs(e.items or {}) do
+          local r = RecipeFor(p, it[1])
+          if r then
+            local _, have = Owned(it[1])
+            local line = Add(done or have >= it[2], string.format("Craft %d %s", it[2], CR.ItemName(it[1]))
+              .. (done and "" or Aside(string.format("%d/%d", math.min(have, it[2]), it[2]))))
+            line.sub = true
+            line.craft = { spell = r.spell or nil, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
+                           learned = KnowsRecipe(rprofName, r.spell) }
+          end
+        end
+      end
+    end
+  end
+end
+
 -- The task for a train / guide step, or nil.
 function CR.StepTask(st, profName)
   -- One task object per plan step. The step table is new on every plan build, so bag
@@ -824,9 +968,13 @@ function CR.StepTask(st, profName)
       if st.spec.level then
         table.insert(t.checks, Check(lvl >= st.spec.level or known, NeedLine("Level", st.spec.level, lvl)))
       end
-      SpecChecklist(st.spec, known, rprofName, Cond, t.checks)
-      Cond(known, st.spec.final and ("Complete " .. st.spec.final) or (st.spec.name .. " learned"))
-      t.checks[#t.checks].place = LinePlace(st.spec.finalNpc)
+      if st.spec.chain then
+        SpecChain(st.spec, known, rprofName, Cond, t.checks)
+      else
+        SpecChecklist(st.spec, known, rprofName, Cond, t.checks)
+        Cond(known, st.spec.final and ("Complete " .. st.spec.final) or (st.spec.name .. " learned"))
+        t.checks[#t.checks].place = LinePlace(st.spec.finalNpc)
+      end
       t.pinColumn = true
     end
     -- a gathering step's target herbs / veins and the skill each needs (the card colours them)
@@ -855,7 +1003,8 @@ function CR.StepTask(st, profName)
       local _, bmax = CR.GetSkill(b[2])
       Prep(bags > 0 or (bmax or 0) >= b[3], "Buy " .. CR.ItemName(b[1]) .. ((bmax or 0) >= b[3] and Aside("read") or ""))
     end
-    Objectives(trained)
+    -- (a spec quest chain lists its own materials, before the quests)
+    if not (st.spec and st.spec.chain) then Objectives(trained) end
     -- leveling that isn't crafting (fishing): done at the skill
     -- (a training / learning step's range only says when it applies - it's done once trained)
     -- (the solo Fishing guide's tips and shopping steps sit beside a "fish here" step over the

@@ -517,6 +517,8 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     local scale = out.train and 1 or frac
     out.items, out.yields = {}, {}
     for _, it in ipairs(st.items or {}) do table.insert(out.items, { it[1], ceil(it[2] * scale - 0.01) }) end
+    -- a spec quest chain: what the quests not handed in yet still need (Tasks.lua)
+    if st.spec and st.spec.chain and CR.SpecChainNeeds then out.items = CR.SpecChainNeeds(st.spec, rprof) end
     for _, it in ipairs(st.yields or {}) do table.insert(out.yields, { it[1], floor(it[2] * scale) }) end
   end
   return out

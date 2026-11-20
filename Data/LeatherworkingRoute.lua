@@ -5,6 +5,22 @@
 -- 225-300 is the guide's untested draft from the game data.
 local _, CR = ...
 
+-- Tribal's Wild Leather quests (Wowhead, Nov 2026): what each wants, in order. Both paths share it.
+local TRIBAL_CHAIN = {
+  { quest = "Wild Leather Armor", ids = { A = 2847, H = 2854 }, items = { { 4304, 10 } } },
+  { accept = { "Wild Leather Shoulders", "Wild Leather Vest", "Wild Leather Helmet", "Wild Leather Boots",
+               "Wild Leather Leggings" },
+    text = "Accept Wild Leather Shoulders, Vest, Helmet, Boots and Leggings" },
+  { quest = "Wild Leather Shoulders", ids = { A = 2848, H = 2855 }, items = { { 8173, 6 }, { 8153, 1 } } },
+  { quest = "Wild Leather Vest", ids = { A = 2849, H = 2856 }, items = { { 8189, 2 }, { 8187, 2 }, { 8153, 1 } } },
+  { quest = "Wild Leather Helmet", ids = { A = 2850, H = 2857 }, items = { { 8175, 2 }, { 8176, 2 }, { 8153, 1 } } },
+  { quest = "Wild Leather Boots", ids = { A = 2851, H = 2858 }, items = { { 8193, 2 }, { 8197, 2 }, { 8153, 2 } } },
+  { quest = "Wild Leather Leggings", ids = { A = 2852, H = 2859 }, items = { { 8191, 2 }, { 8198, 2 }, { 8153, 2 } } },
+  { quest = "Master of the Wild Leather", ids = { A = 2853, H = 2860 }, npc = "{A:Telonis}{H:Una}",
+    text = "Master of the Wild Leather: take the letter to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}" },
+  { final = true, items = { { 8211, 1 }, { 8214, 1 } } },
+}
+
 CR.RegisterRoute("Leatherworking", {
   -- Change Specialisation, at the end once you have one
   specChange = { at = 300,
@@ -66,6 +82,10 @@ CR.RegisterRoute("Leatherworking", {
       { key = "dragonscale", label = "Dragonscale" },
       { key = "elemental", label = "Elemental" },
       { key = "tribal", label = "Tribal" },
+    }},
+    { key = "tribal", label = "Tribal quest items", options = {
+      { key = "craft", label = "Craft them (learn the patterns, buy the materials)" },
+      { key = "buy", label = "Buy the finished items on the AH" },
     }},
     { key = "a285", label = "285-300", options = {
       { key = "headband", label = "Runic Leather Headband" },
@@ -153,25 +173,32 @@ CR.RegisterRoute("Leatherworking", {
           { item = 7075, count = 2, verb = "Get" },
           { item = 7081, count = 2, verb = "Get" },
         } } },
-    { kind = "guide", from = 225, to = 225, when = { spec = "tribal" }, title = "Become a Tribal Leatherworker",
-      text = "The Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor "
-        .. "Swiftstrider in Camp Mojache}, Feralas - Wild Leather Armor opens the other five. He also sells "
-        .. "Pattern: Turtle Scale Gloves, the only pattern to buy. Master of the Wild Leather goes to {A:Telonis "
-        .. "in Darnassus}{H:Una in Thunder Bluff}, then the Tribal Leatherworking quest is from {A:Caryssia "
-        .. "Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}. Bring all the materials with you."
-        .. "\n\nShopping: 214 Thick Leather, 112 Turtle Scale, 11 Wildvine, 2 Cured Thick Hide.",
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "craft" }, title = "Become a Tribal Leatherworker",
+      text = "You make every item the quests want. Learn the patterns and get the materials below first, then "
+        .. "the Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor Swiftstrider "
+        .. "in Camp Mojache}, Feralas - he also sells Pattern: Turtle Scale Gloves. Wild Leather Armor opens the "
+        .. "other five. The Vest and Helmet quests teach the Wild Leather Vest and Helmet you hand in at the end. "
+        .. "Master of the Wild Leather goes to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}, then the Tribal "
+        .. "Leatherworking quest is from {A:Caryssia Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}.",
       spec = { spell = 10660, name = "Tribal Leatherworking", level = 40, final = "Tribal Leatherworking",
-        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}",
-        steps = {
-          { quest = "Wild Leather Armor", npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-          { recipes = { 10509 }, npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-          { quests = { "Wild Leather Vest", "Wild Leather Shoulders", "Wild Leather Leggings", "Wild Leather Helmet",
-                       "Wild Leather Boots" },
-            text = "Complete the 5 Wild Leather item quests", npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-          { quest = "Master of the Wild Leather", npc = "{A:Telonis}{H:Una}" },
-          { item = 8211, count = 1, verb = "Craft" },
-          { item = 8214, count = 1, verb = "Craft" },
-        } } },
+        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}", path = "craft",
+        giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
+        patterns = {
+          { spells = { 10487, 10511, 10518, 10552, 10499, 10507, 10548, 10558 }, where = "an Artisan trainer" },
+          { spells = { 10509 }, where = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
+            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
+        },
+        chain = TRIBAL_CHAIN } },
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "buy" }, title = "Become a Tribal Leatherworker",
+      text = "You buy every item the quests want on the Auction House - no patterns needed. Then the Wild "
+        .. "Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor Swiftstrider in Camp "
+        .. "Mojache}, Feralas. Wild Leather Armor opens the other five. Master of the Wild Leather goes to "
+        .. "{A:Telonis in Darnassus}{H:Una in Thunder Bluff}, then the Tribal Leatherworking quest is from "
+        .. "{A:Caryssia Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}.",
+      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40, final = "Tribal Leatherworking",
+        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}", path = "buy",
+        giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
+        chain = TRIBAL_CHAIN } },
     { from = 225, to = 235, spell = 10558, crafts = 12 },
     { from = 235, to = 250, spell = 19049, crafts = 15,
       note = "Pattern from {H:Werg Thickblade, Tirisfal Glades}{A:Leonard Porter, Western Plaguelands}" },

@@ -6,7 +6,7 @@ local _, CR = ...
 
 local TICK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t "
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t "
-local MAX_CHECKS, MAX_PLACES = 20, 4
+local MAX_CHECKS, MAX_PLACES = 40, 4
 
 -- Book names, for "Bought ..." lines before the item is cached.
 CR.extraNames[16083] = "Expert Fishing - The Bass and You"
@@ -42,7 +42,7 @@ function CR.CreateTaskCard(parent, width)
   card.text:SetWordWrap(true)
   if card.text.SetSpacing then card.text:SetSpacing(2) end
 
-  card.checks, card.checkPins = {}, {}
+  card.checks, card.checkPins, card.checkBuys, card.checkCrafts = {}, {}, {}, {}
   for i = 1, MAX_CHECKS do
     local fs = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetJustifyH("LEFT")
@@ -72,8 +72,31 @@ function CR.CreateTaskCard(parent, width)
     buy:SetSize(40, 20)
     CR.ThemeRegisterButton(buy)
     buy:Hide()
-    card.checkBuys = card.checkBuys or {}
     card.checkBuys[i] = buy
+    -- an item a spec quest wants that you make ("Craft 2 Turtle Scale Helm"): Craft the rest
+    local craft = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+    craft:SetSize(46, 20)
+    craft:SetText("Craft")
+    CR.ThemeRegisterButton(craft)
+    craft:SetScript("OnClick", function(self)
+      local c = self.craft
+      if c and c.spell then CR.CraftSpell(c.spell, math.max(1, c.need or 1), c.prof) end
+    end)
+    craft:SetScript("OnEnter", function(self)
+      local c = self.craft
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText("Craft")
+      if c and c.learned == false then
+        GameTooltip:AddLine("You haven't learned " .. ((c.recipe and c.recipe.name) or "this recipe") .. " yet.", 1, 0.5, 0.3, true)
+      else
+        GameTooltip:AddLine(string.format("Crafts the %d still needed. Open %s first.", math.max(1, c and c.need or 1),
+          c and c.prof or "the profession"), 1, 1, 1, true)
+      end
+      GameTooltip:Show()
+    end)
+    craft:SetScript("OnLeave", GameTooltip_Hide)
+    craft:Hide()
+    card.checkCrafts[i] = craft
   end
 
   -- skill progress for leveling steps (fishing)
@@ -243,8 +266,18 @@ function CR.CreateTaskCard(parent, width)
       else
         buy:Hide()
       end
+      local craft = self.checkCrafts[i]
+      if c and c.craft and not c.ok and not task.done then
+        craft.craft = c.craft
+        craft:SetEnabled(c.craft.learned ~= false)
+        craft:Show()
+        buyW = math.max(buyW, 46)
+      else
+        craft.craft = nil
+        craft:Hide()
+      end
       if c then
-        local indent = (c.place or grid) and 46 or 0
+        local indent = ((c.place or grid) and 46 or 0) + (c.sub and 16 or 0)
         local hasTrain = self.trainBtn:IsShown() and i == trainLine
         fs:ClearAllPoints()
         fs:SetWidth(w - indent - (hasTrain and 70 or 0) - (buyW > 0 and buyW + 6 or 0))
@@ -258,8 +291,9 @@ function CR.CreateTaskCard(parent, width)
           textH = math.max(textH, grid and 17 or 18)
         end
         if buyW > 0 then
-          buy:ClearAllPoints()
-          buy:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
+          local btn = craft:IsShown() and craft or buy
+          btn:ClearAllPoints()
+          btn:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
           textH = math.max(textH, grid and 17 or 18)
         end
         if grid then

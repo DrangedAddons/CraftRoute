@@ -110,14 +110,19 @@ function CR.AddSpecChange(route)
       for _, o in ipairs(c.options) do labels[o.key] = o.label end
     end
   end
-  local options, copies = { { key = "none", label = "Not now" } }, {}
+  local options, copies, offered = { { key = "none", label = "Not now" } }, {}, {}
   for _, st in ipairs(route.steps) do
     if st.spec and st.when and st.when.spec then
       local key = st.when.spec
-      table.insert(options, { key = key, label = labels[key] or key, spec = st.spec })
+      -- (a spec with two paths - Tribal's craft / buy - is one option, its steps keep the path pick)
+      if not offered[key] then
+        offered[key] = true
+        table.insert(options, { key = key, label = labels[key] or key, spec = st.spec })
+      end
       local copy = {}
       for k, v in pairs(st) do copy[k] = v end
       copy.when = { specChange = key }
+      for k, v in pairs(st.when) do if k ~= "spec" then copy.when[k] = v end end
       copy.from, copy.to, copy.changeSpec = sc.at, sc.at, true
       copy.text = sc.text .. "\n\n" .. (st.text or "")
       table.insert(copies, copy)

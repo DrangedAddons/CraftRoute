@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 1.19.0
+
+- Tribal Leatherworking walkthrough. After picking Tribal you pick once whether to craft the quest items or buy them finished on the AH. The step card then lists everything in order:
+  - Craft: the 8 trainer patterns (with the skill each one needs, if you're not there yet) and Pattern: Turtle Scale Gloves from the quest giver. Then every material for all the quests (214 Thick Leather, 112 Turtle Scale, 22 Silken Thread, 12 Heavy Silken Thread, 11 Wildvine, 2 Cured Thick Hide), each with Vendor / Buy. Then each Wild Leather quest with what it wants, and a Craft line with a Craft button for each item you make.
+  - Buy: every finished item the quests want, each with Buy. Then the quests.
+- Quests tick off as you hand them in. The materials list only counts the quests you have left, and items you've already made take their materials off it. The shopping list and the route's choice rows use the same numbers.
+- Change Specialisation offers Tribal once and keeps your craft / buy pick.
+
 ## 1.18.2
 
 - Craft (List): the crafting station moves next to the recipe's name in Your crafts, as just its name ("Sewing Machine"), red until you're at one. It's off the Learned line again.
