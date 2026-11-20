@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.20.3
+
+- Vendor buttons: back to Questie's vendor lists for every item, with Thick Leather on a blacklist (it's only sold in limited stock). The limited-stock tracking from 1.20.2 is gone.
+
 ## 1.20.2
 
 - Vendor buttons use Questie's vendor lists for every item again (thread, salt, vials and so on), as before 1.20.1. Items only limited-stock vendors sell are left out: Thick Leather, plus anything CraftRoute sees a vendor selling in limited stock and has never seen always in stock. Recipes still get Vendor from limited-stock sellers.
