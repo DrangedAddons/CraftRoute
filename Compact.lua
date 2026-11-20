@@ -710,6 +710,7 @@ local function ResetRow(row)
   row.buy:SetScript("OnClick", nil)
   if row.crSub then row.crSub:Hide() end
   if row.crSub2 then row.crSub2:Hide() end
+  if row.crStation then row.crStation:Hide() end
   row.right:SetWidth(78)
   row.right:ClearAllPoints()
   row.right:SetPoint("RIGHT", row.chevron, "LEFT", -2, 0)
@@ -955,15 +956,10 @@ local function ApplyRow(row, item)
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row, "LEFT", 32, 0)
     row.name:SetPoint("RIGHT", b, "LEFT", -6, 0)
-    -- a crafting station it needs ("Sewing Machine required"), after the learned state
-    local structure = CR.StructureText and CR.StructureText(item.recipe)
-    structure = structure and ("  " .. structure) or ""
     if item.learned then
-      row.name:SetText(CR.ColorText("Learned", "40ff40") .. structure)
+      row.name:SetText(CR.ColorText("Learned", "40ff40"))
     else
-      -- (the station before "learn at", which can run long and be cut off)
-      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. structure
-        .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa"))
+      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa"))
     end
     return
   end
@@ -1264,6 +1260,24 @@ local function ApplyRow(row, item)
       row.crSub2:Hide()
     end
     FitName(row.name, name)
+    -- your list: the crafting station it needs, right of the name (green when you're at one)
+    local station = item.kind == "destFav" and CR.StructureNames and CR.StructureNames(r)
+    if station then
+      if not row.crStation then
+        row.crStation = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        row.crStation:SetJustifyH("LEFT")
+        row.crStation:SetWordWrap(false)
+        if CR.NoteThemeFonts then CR.NoteThemeFonts(row.crStation) end
+      end
+      local fs = row.crStation
+      fs:ClearAllPoints()
+      fs:SetPoint("LEFT", row.name, "LEFT", (tonumber(row.name:GetStringWidth()) or 0) + 8, 0)
+      fs:SetPoint("RIGHT", row, "RIGHT", stop, 0)
+      fs:SetText(station)
+      fs:Show()
+    elseif row.crStation then
+      row.crStation:Hide()
+    end
     -- the star: in your destinations or not
     local star = row.crStar
     if not star then

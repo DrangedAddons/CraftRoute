@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.18.2
+
+- Craft (List): the crafting station moves next to the recipe's name in Your crafts, as just its name ("Sewing Machine"), red until you're at one. It's off the Learned line again.
+
 ## 1.18.1
 
 - Craft (List): an opened recipe shows the crafting station it needs ("Sewing Machine required") after Learned / Not Learned, red until you're at one, like the Craft view.

@@ -60,6 +60,19 @@ function CR.StructureText(r)
     .. CR.ColorText(" required", all and "40ff40" or "ff4040")
 end
 
+-- Just the station names, each green when you're at one and red when not ("Sewing Machine").
+-- nil when it needs none.
+function CR.StructureNames(r)
+  local list = CR.RequiredStructures(r)
+  if #list == 0 then return nil end
+  local met = StructuresMet(r) or {}
+  local parts = {}
+  for _, name in ipairs(list) do
+    table.insert(parts, CR.ColorText(name, met[name] == true and "40ff40" or "ff4040"))
+  end
+  return table.concat(parts, ", ")
+end
+
 -- Stations the Route tab can pin, and the Questie object names that satisfy them.
 -- "Cooking Fire" is the requirement; the objects are the fires and cooking stations whose names
 -- can only mean one. Generic names (Fire, Brazier, Cauldron, Stove, Mighty Blaze) are left out:
