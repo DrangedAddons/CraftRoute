@@ -777,7 +777,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
         local ok = known or KnowsRecipe(rprofName, spell) == true
         local learnAt = CR.LearnAt(r)
         local label = (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. r.name
-          .. ((not ok and cur < learnAt) and Aside("skill " .. learnAt) or "")
+          .. CR.ColorText("  (" .. learnAt .. ")", cur >= learnAt and "40ff40" or "ff4040")   -- skill it needs
         Cond(ok, label)
         checks[#checks].place = PatternPlace(rprofName, r)
         local item = spec.patternItems and spec.patternItems[spell]

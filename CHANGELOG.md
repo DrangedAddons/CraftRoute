@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.19.2
+
+- Tribal Prerequisites: every pattern line shows the skill it needs as a number, "(230)". Green if you're at or above it, red if you're below.
+
 ## 1.19.1
 
 - Tribal Leatherworking gets its own **Prerequisites** card before the quest card. It covers everything to sort out before you visit the quest giver, with nothing tied to a quest yet:
