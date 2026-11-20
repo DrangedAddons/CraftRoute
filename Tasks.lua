@@ -347,14 +347,25 @@ local function VendorPlaces(itemID)
   return places
 end
 
--- Does Questie know a vendor (for this faction) who sells itemID? false without Questie.
--- Recipes only: Questie can't tell a limited-stock seller from a normal one, and only a recipe is
--- worth sending you to a limited-stock vendor for (Thick Leather isn't). Other items get Vendor
--- from CR.IsVendorItem (seen always in stock, or a vendor price).
+-- Items only limited-stock vendors sell. Questie lists those sellers like any other, and a
+-- limited-stock vendor is only worth the trip for a recipe.
+local LIMITED_ONLY = {
+  [4304] = true,   -- Thick Leather
+}
+
+-- Does Questie know a vendor (for this faction) who sells itemID? false without Questie, and
+-- false for an item only sold in limited stock (LIMITED_ONLY, or seen on a vendor in limited stock
+-- and never always in stock) - unless it's a recipe.
 function CR.HasVendorPlaces(itemID)
   local GetInstant = C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant
   local classID = GetInstant and select(6, GetInstant(itemID))
-  if classID ~= (Enum and Enum.ItemClass and Enum.ItemClass.Recipe or 9) then return false end
+  if classID ~= (Enum and Enum.ItemClass and Enum.ItemClass.Recipe or 9) then
+    local db = CraftRouteDB or {}
+    if LIMITED_ONLY[itemID] then return false end
+    if db.limitedItems and db.limitedItems[itemID] and not (db.vendorItems and db.vendorItems[itemID]) then
+      return false
+    end
+  end
   if not (itemID and LibQuestieDB and ItemDB and NpcDB and type(NpcDB.name) == "function"
     and type(NpcDB.friendlyToFaction) == "function" and type(NpcDB.spawns) == "function") then return false end
   local ok, places = pcall(VendorPlaces, itemID)

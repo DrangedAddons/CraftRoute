@@ -780,6 +780,10 @@ local function ScanMerchant()
       if CraftRouteDB and not (avail and avail >= 0) then
         CraftRouteDB.vendorItems = CraftRouteDB.vendorItems or {}
         CraftRouteDB.vendorItems[id] = true
+      elseif CraftRouteDB then
+        -- (limited stock: Questie's sellers for it don't get a Vendor button - CR.HasVendorPlaces)
+        CraftRouteDB.limitedItems = CraftRouteDB.limitedItems or {}
+        CraftRouteDB.limitedItems[id] = true
       end
     end
   end
