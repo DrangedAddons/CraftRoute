@@ -696,7 +696,8 @@ end
 -- Any entry: faction = "Alliance" / "Horde", npc = its Pin (default spec.giver), note = a line under
 -- it ("Take the letter to Una"). Titles and text can be faction-tagged ("{A:...}{H:...}").
 -- spec.patterns = { spell, ... } the patterns to get first (craft); { spell = n, optional = true }
--- for one that's only recommended. spec.patternItems / patternNpcs = { [spell] = item / npc }: the
+-- for one that's only recommended, faction = for one faction's. spec.taught = { spell, ... }: recipes
+-- a quest in the chain teaches that the recipe data doesn't say are quest rewards. spec.patternItems / patternNpcs = { [spell] = item / npc }: the
 -- pattern's item (for Buy) and who sells it when the recipe data doesn't say.
 local function FactionKey()
   return (UnitFactionGroup and UnitFactionGroup("player") == "Horde") and "H" or "A"
@@ -781,8 +782,15 @@ function CR.SpecChainNeeds(spec, prof)
   return out
 end
 
--- A recipe the chain itself teaches (a quest reward): not something to get ahead.
-local function FromChain(r) return r and (r.src or ""):find("^Quest reward") ~= nil end
+-- A recipe the chain itself teaches (a quest reward, or listed in spec.taught): not something to
+-- get ahead - it's made on the quest card once the quest has taught it.
+local function FromChain(spec, r)
+  if not r then return false end
+  if spec.taught then
+    for _, spell in ipairs(spec.taught) do if spell == r.spell then return true end end
+  end
+  return (r.src or ""):find("^Quest reward") ~= nil
+end
 
 -- Where to get a pattern: the nearest trainer, else a vendor that sells it, else npc (the spec's
 -- spec.patternNpcs entry: who sells it when the recipe data doesn't say).
@@ -823,7 +831,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
       local spell = type(pe) == "table" and pe.spell or pe
       local optional = type(pe) == "table" and pe.optional
       local r = p and p.recipes[spell]
-      if r then
+      if r and (type(pe) ~= "table" or CR.FactionOK(pe)) then
         local ok = known or KnowsRecipe(rprofName, spell) == true
         local learnAt = CR.LearnAt(r)
         local label = (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. r.name
@@ -856,7 +864,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
       if e.items and not done[i] then
         for _, it in ipairs(e.items) do
           local r = RecipeFor(p, it[1])
-          if r and not FromChain(r) then
+          if r and not FromChain(spec, r) then
             local have, aside = Count(it[1], it[2])
             Cond(known or have >= it[2], CR.ItemName(it[1]) .. aside)
             checks[#checks].craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
@@ -948,7 +956,7 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
         line.sub = true
         -- (items whose pattern the chain teaches - Wild Leather Vest / Helmet - are made here: Craft)
         local r = craft and RecipeFor(p, it[1])
-        if r and FromChain(r) then
+        if r and FromChain(spec, r) then
           line.craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
                          learned = KnowsRecipe(rprofName, r.spell) }
         end

@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.22.0
+
+- Armorsmith and Weaponsmith use the Prerequisites / quest card layout, each with a craft or buy choice.
+  - Armorsmith, craft: the plans to get (Golden Scale Bracers for Alliance, Steel Breastplate and Steel Plate Helm for Horde, Mithril Coif, Heavy Mithril Boots and Breastplate), every material for the whole chain, then the pieces to make. The quest card walks The Mithril Order: Hank the Hammer (Alliance) or Aturk the Anvil (Horde), McGavan in Booty Bay, Galvan the Ancient's three quests, Trenton Lighthammer's three, then choosing Armorsmith at the trainer and The Art of the Armorsmith. The Ornate Mithril pieces get Craft on the quest card, since the chain teaches their plans.
+  - Weaponsmith, craft: Plans: Moonsteel Broadsword and Massive Iron Axe (Buy, Pins to their vendors), Heavy Mithril Axe and Big Black Mace from the trainer, the materials, then the four weapons with Craft.
+  - Buy: the finished pieces, then choosing the spec at the trainer and the quest.
+- Fixed the spec quest IDs: Armorsmith 5283 (Alliance) / 5301 (Horde), Weaponsmith 5284 / 5302.
+- Step cards can show up to 60 lines.
+
 ## 1.21.0
 
 - Dragonscale and Elemental Leatherworking use the Tribal layout: a Prerequisites card (level, skill, patterns, materials, items, Buy All), then the quest card.

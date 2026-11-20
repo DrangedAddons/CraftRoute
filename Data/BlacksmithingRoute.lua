@@ -9,6 +9,77 @@ local _, CR = ...
 local HAMMER = 5956
 local THORIUM = 12359
 
+-- Armorsmith / Weaponsmith (Wowhead Forever, Nov 2026). Tell the Blacksmithing trainer which you want
+-- first - without it the spec quest doesn't show - then the quest is from the smith next to them.
+local CHOOSE_ARMOR = { talk = "Tell {A:Myolor Sunderfury}{H:Krathok Moltenfist} \"I wish to become an armorsmith\"",
+  npc = "{A:Myolor Sunderfury}{H:Krathok Moltenfist}" }
+local CHOOSE_WEAPON = { talk = "Tell {A:Myolor Sunderfury}{H:Krathok Moltenfist} \"I wish to become a weaponsmith\"",
+  npc = "{A:Myolor Sunderfury}{H:Krathok Moltenfist}" }
+local ARMOR_FINAL_TEXT = "Tell {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} you wish to "
+  .. "become an armorsmith, then The Art of the Armorsmith is from {A:Grumnus Steelshaper}{H:Okothos Ironrager} "
+  .. "next to them."
+local WEAPON_FINAL_TEXT = "Tell {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} you wish to "
+  .. "become a weaponsmith, then The Way of the Weaponsmith is from {A:Ironus Coldsteel}{H:Borgosh Corebender} "
+  .. "next to them. Afterwards you can become a Master Axesmith, Hammersmith or Swordsmith in Everlook, Winterspring."
+local ARMOR_ITEMS = { { 7937, 4 }, { 7936, 2 }, { 7935, 1 } }   -- Ornate Mithril Helm, Boots, Breastplate
+local function ArmorSpec(path, chain)
+  return { spell = 9788, name = "Armorsmith", level = 40, skill = 200, final = "The Art of the Armorsmith",
+    finalNpc = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}", path = path,
+    giver = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}",
+    patterns = {
+      { spell = 7223, faction = "Alliance" },   -- Golden Scale Bracers (The Origins of Smithing)
+      { spell = 9916, faction = "Horde" },      -- Steel Breastplate (The Old Ways)
+      { spell = 9935, faction = "Horde" },      -- Steel Plate Helm
+      9961, 9968, 9959,                         -- Mithril Coif, Heavy Mithril Boots / Breastplate (Trenton)
+    },
+    taught = { 9980, 9979, 9972 },   -- Ornate Mithril Helm / Boots / Breastplate: Trenton Lighthammer's quests
+    chain = chain }
+end
+local ARMOR_CRAFT = ArmorSpec("craft", {
+  { quest = "The Origins of Smithing", faction = "Alliance", ids = { A = 2758 }, items = { { 6040, 6 } },
+    npc = "Hank the Hammer" },
+  { quest = "The Old Ways", faction = "Horde", ids = { H = 2756 }, items = { { 7963, 4 }, { 7922, 4 } },
+    npc = "Aturk the Anvil" },
+  { quest = "In Search of Galvan", faction = "Alliance", ids = { A = 2759 }, npc = "Hank the Hammer",
+    note = "Take it to McGavan in Booty Bay" },
+  { quest = "Booty Bay or Bust!", faction = "Horde", ids = { H = 2757 }, npc = "Ox",
+    note = "Take it to McGavan in Booty Bay" },
+  { quest = "The Mithril Order", ids = { A = 2760, H = 2760 }, npc = "McGavan",
+    note = "Take it to Galvan the Ancient in northern Stranglethorn Vale" },
+  { accept = { "Smelt On, Smelt Off", "The Art of the Imbue", "The Great Silver Deceiver" }, npc = "Galvan the Ancient" },
+  { quest = "Smelt On, Smelt Off", ids = { A = 2761, H = 2761 }, items = { { 3575, 40 }, { 3860, 40 } },
+    npc = "Galvan the Ancient" },
+  { quest = "The Art of the Imbue", ids = { A = 2763, H = 2763 }, items = { { 3860, 40 }, { 3864, 4 } },
+    npc = "Galvan the Ancient" },
+  { quest = "The Great Silver Deceiver", ids = { A = 2762, H = 2762 }, items = { { 3860, 40 }, { 6037, 5 } },
+    npc = "Galvan the Ancient" },
+  { quest = "Galvan's Finest Pupil", ids = { A = 2764, H = 2764 }, npc = "Galvan the Ancient",
+    note = "Take it to Trenton Lighthammer in Gadgetzan, Tanaris" },
+  { accept = { "A Good Head On Your Shoulders", "The World At Your Feet", "The Mithril Kid" },
+    npc = "Trenton Lighthammer" },
+  { quest = "A Good Head On Your Shoulders", ids = { A = 2771, H = 2771 }, items = { { 7931, 2 }, { 7928, 1 } },
+    npc = "Trenton Lighthammer" },
+  { quest = "The World At Your Feet", ids = { A = 2772, H = 2772 }, items = { { 7933, 2 }, { 7926, 1 } },
+    npc = "Trenton Lighthammer" },
+  { quest = "The Mithril Kid", ids = { A = 2773, H = 2773 }, items = { { 7930, 2 }, { 7927, 1 } },
+    npc = "Trenton Lighthammer" },
+  CHOOSE_ARMOR,
+  { final = true, ids = { A = 5283, H = 5301 }, items = ARMOR_ITEMS },
+})
+local ARMOR_BUY = ArmorSpec("buy", { CHOOSE_ARMOR, { final = true, ids = { A = 5283, H = 5301 }, items = ARMOR_ITEMS } })
+
+local WEAPON_ITEMS = { { 3853, 4 }, { 3855, 4 }, { 7941, 2 }, { 7945, 2 } }   -- Moonsteel, Massive Iron Axe, HM Axe, BB Mace
+local function WeaponSpec(path)
+  return { spell = 9787, name = "Weaponsmith", level = 40, skill = 200, final = "The Way of the Weaponsmith",
+    finalNpc = "{A:Ironus Coldsteel}{H:Borgosh Corebender}", path = path,
+    giver = "{A:Ironus Coldsteel}{H:Borgosh Corebender}",
+    patterns = { 3496, 3498, 9993, 10001 },
+    patternItems = { [3496] = 12163, [3498] = 12164 },
+    patternNpcs = { [3496] = "Zarena Cromwind", [3498] = "Jaquilina Dramet{H:|Vharr}" },
+    chain = { CHOOSE_WEAPON, { final = true, ids = { A = 5284, H = 5302 }, items = WEAPON_ITEMS } } }
+end
+local WEAPON_CRAFT, WEAPON_BUY = WeaponSpec("craft"), WeaponSpec("buy")
+
 CR.RegisterRoute("Blacksmithing", {
   -- Change Specialisation, at the end once you have one
   specChange = { at = 300,
@@ -57,6 +128,14 @@ CR.RegisterRoute("Blacksmithing", {
       { key = "none", label = "Not now" },
       { key = "armor", label = "Armorsmith" },
       { key = "weapon", label = "Weaponsmith" },
+    }},
+    { key = "armor", label = "Armorsmith quest items", options = {
+      { key = "craft", label = "Craft them (The Mithril Order chain teaches the Ornate Mithril plans)" },
+      { key = "buy", label = "Buy the finished items on the AH" },
+    }},
+    { key = "weapon", label = "Weaponsmith quest items", options = {
+      { key = "craft", label = "Craft them (get the plans, buy the materials)" },
+      { key = "buy", label = "Buy the finished weapons on the AH" },
     }},
     { key = "e215", label = "215-225", options = {
       { key = "breastplate", label = "Heavy Mithril Breastplate" },
@@ -118,49 +197,41 @@ CR.RegisterRoute("Blacksmithing", {
       text = "Blacksmithing specialization: at Blacksmithing 200 and level 40 you can become an Armorsmith or a "
         .. "Weaponsmith. Optional - you don't need one to level, and you can choose later. Pick one under the "
         .. "215 specialization choice for its quest steps." },
-    { kind = "guide", from = 215, to = 215, when = { spec = "armor" }, title = "Become an Armorsmith",
-      text = "Tell {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} \"I wish to become an "
-        .. "armorsmith\", then take The Art of the Armorsmith from {A:Grumnus Steelshaper}{H:Okothos Ironrager} "
-        .. "next to them. The pieces only have to be in your bags - buy them or have someone craft them."
-        .. "\n\nThe plans (optional) come from The Mithril Order chain, Blacksmithing 210: {A:The Origins of "
-        .. "Smithing from Hank the Hammer in Stormwind (6 Golden Scale Bracers)}{H:The Old Ways from Aturk the "
-        .. "Anvil in Orgrimmar (4 Steel Breastplate, 4 Steel Plate Helm)}, McGavan in Booty Bay, Galvan the "
-        .. "Ancient's three quests in northern Stranglethorn Vale, then Trenton Lighthammer's three in Gadgetzan "
-        .. "(Blacksmithing 235; 2 each of Mithril Coif, Heavy Mithril Boots and Heavy Mithril Breastplate).",
-      spec = { spell = 9788, name = "Armorsmith", level = 40, final = "The Art of the Armorsmith",
-        finalNpc = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}",
-        steps = {
-          { talk = "Choose Armorsmith ({A:Myolor Sunderfury}{H:Krathok Moltenfist})",
-            npc = "{A:Grumnus Steelshaper}{H:Okothos Ironrager}" },   -- (they stand next to the trainer)
-          { optional = true, recipes = { 9945, 9952, 9950 }, text = "Plans: Ornate Mithril Pants, Shoulders, Gloves",
-            npc = "Galvan the Ancient" },
-          { optional = true, recipes = { 9980, 9979, 9972 }, text = "Plans: Ornate Mithril Helm, Boots, Breastplate",
-            npc = "Trenton Lighthammer" },
-          { item = 7937, count = 4, verb = "Craft or buy" },
-          { item = 7936, count = 2, verb = "Craft or buy" },
-          { item = 7935, count = 1, verb = "Craft or buy" },
-        } } },
-    { kind = "guide", from = 215, to = 215, when = { spec = "weapon" }, title = "Become a Weaponsmith",
-      text = "Tell {A:Myolor Sunderfury in Ironforge}{H:Krathok Moltenfist in Orgrimmar} \"I wish to become a "
-        .. "weaponsmith\" - without it the quest doesn't show - then take The Way of the Weaponsmith from "
-        .. "{A:Ironus Coldsteel}{H:Borgosh Corebender} next to them. The weapons only have to be in your bags."
-        .. "\n\nPlans: Moonsteel Broadsword is sold by Zarena Cromwind in Booty Bay, Plans: Massive Iron Axe by "
-        .. "Jaquilina Dramet at Nesingwary's Camp{H: or Vharr in Grom'gol}. Brikk Keencraft in Booty Bay teaches "
-        .. "Big Black Mace at 205. Afterwards you can become a Master Axesmith, Hammersmith or Swordsmith in "
-        .. "Everlook, Winterspring.",
-      spec = { spell = 9787, name = "Weaponsmith", level = 40, final = "The Way of the Weaponsmith",
-        finalNpc = "{A:Ironus Coldsteel}{H:Borgosh Corebender}",
-        steps = {
-          { talk = "Choose Weaponsmith ({A:Myolor Sunderfury}{H:Krathok Moltenfist})",
-            npc = "{A:Ironus Coldsteel}{H:Borgosh Corebender}" },   -- (they stand next to the trainer)
-          { optional = true, recipes = { 3496 }, npc = "Zarena Cromwind" },
-          { optional = true, recipes = { 3498 }, npc = "Jaquilina Dramet{H:|Vharr}" },
-          { optional = true, recipes = { 10001 }, npc = "Brikk Keencraft" },
-          { item = 3853, count = 4, verb = "Craft or buy" },
-          { item = 3855, count = 4, verb = "Craft or buy" },
-          { item = 7941, count = 2, verb = "Craft or buy" },
-          { item = 7945, count = 2, verb = "Craft or buy" },
-        } } },
+    -- Armorsmith / Weaponsmith: a Prerequisites card, then the quest card - crafting the pieces or
+    -- buying them. Crafting Armorsmith's goes through The Mithril Order chain (it teaches the plans).
+    { kind = "guide", from = 215, to = 215, when = { spec = "armor", armor = "craft" }, specPart = "prep",
+      title = "Armorsmith: Prerequisites",
+      text = "Get all of this before you start The Mithril Order chain. The chain teaches the Ornate Mithril "
+        .. "plans - Galvan the Ancient's quests the Pants, Shoulders and Gloves, Trenton Lighthammer's the Helm, "
+        .. "Boots and Breastplate. Mithril Coif, Heavy Mithril Boots and Heavy Mithril Breastplate are also "
+        .. "taught by Brikk Keencraft in Booty Bay.",
+      spec = ARMOR_CRAFT },
+    { kind = "guide", from = 215, to = 215, when = { spec = "armor", armor = "craft" }, specPart = "quests",
+      title = "Become an Armorsmith",
+      text = "The Mithril Order starts with {A:Hank the Hammer in Stormwind}{H:Aturk the Anvil in Orgrimmar}, "
+        .. "then McGavan in Booty Bay, Galvan the Ancient in northern Stranglethorn Vale and Trenton Lighthammer "
+        .. "in Gadgetzan. Do all three of Galvan's quests before you leave him. " .. ARMOR_FINAL_TEXT,
+      spec = ARMOR_CRAFT },
+    { kind = "guide", from = 215, to = 215, when = { spec = "armor", armor = "buy" }, specPart = "prep",
+      title = "Armorsmith: Prerequisites",
+      text = "Buy all of this before you go to the quest. The pieces only have to be in your bags.",
+      spec = ARMOR_BUY },
+    { kind = "guide", from = 215, to = 215, when = { spec = "armor", armor = "buy" }, specPart = "quests",
+      title = "Become an Armorsmith", text = ARMOR_FINAL_TEXT, spec = ARMOR_BUY },
+    { kind = "guide", from = 215, to = 215, when = { spec = "weapon", weapon = "craft" }, specPart = "prep",
+      title = "Weaponsmith: Prerequisites",
+      text = "Get all of this before you go to the quest. Plans: Moonsteel Broadsword is sold by Zarena Cromwind "
+        .. "in Booty Bay, Plans: Massive Iron Axe by Jaquilina Dramet at Nesingwary's Camp{H: or Vharr in "
+        .. "Grom'gol}. Brikk Keencraft in Booty Bay teaches Big Black Mace.",
+      spec = WEAPON_CRAFT },
+    { kind = "guide", from = 215, to = 215, when = { spec = "weapon", weapon = "craft" }, specPart = "quests",
+      title = "Become a Weaponsmith", text = WEAPON_FINAL_TEXT, spec = WEAPON_CRAFT },
+    { kind = "guide", from = 215, to = 215, when = { spec = "weapon", weapon = "buy" }, specPart = "prep",
+      title = "Weaponsmith: Prerequisites",
+      text = "Buy all of this before you go to the quest. The weapons only have to be in your bags.",
+      spec = WEAPON_BUY },
+    { kind = "guide", from = 215, to = 215, when = { spec = "weapon", weapon = "buy" }, specPart = "quests",
+      title = "Become a Weaponsmith", text = WEAPON_FINAL_TEXT, spec = WEAPON_BUY },
     { from = 215, to = 225, spell = 9959, crafts = 10, when = { e215 = "breastplate" },
       note = "Keep 2 - you might need them for Armorsmithing" },
     { from = 215, to = 225, spell = 9964, crafts = 10, when = { e215 = "spurs" },
