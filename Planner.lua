@@ -486,7 +486,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
                 train = (st.trainCap or st.learnStep) and true or nil,
                 -- for the task cards (Tasks.lua)
                 trainCap = st.trainCap, learnStep = st.learnStep, book = st.book, quest = st.quest, questNpc = st.questNpc,
-                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has, learns = st.learns, books = st.books, gather = st.gather, spec = st.spec,
+                chosen = st.when ~= nil, ownSkill = st.skill, nearTrainer = st.nearTrainer, recipes = st.recipes, has = st.has, learns = st.learns, books = st.books, gather = st.gather, spec = st.spec, specPart = st.specPart,
                 nodes = st.nodes }
   if out.kind == "craft" then
     local r = rprof.recipes[st.spell]
@@ -517,8 +517,8 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     local scale = out.train and 1 or frac
     out.items, out.yields = {}, {}
     for _, it in ipairs(st.items or {}) do table.insert(out.items, { it[1], ceil(it[2] * scale - 0.01) }) end
-    -- a spec quest chain: what the quests not handed in yet still need (Tasks.lua)
-    if st.spec and st.spec.chain and CR.SpecChainNeeds then out.items = CR.SpecChainNeeds(st.spec, rprof) end
+    -- a spec quest chain's Prerequisites: what the quests not handed in yet still need (Tasks.lua)
+    if st.specPart == "prep" and CR.SpecChainNeeds then out.items = CR.SpecChainNeeds(st.spec, rprof) end
     for _, it in ipairs(st.yields or {}) do table.insert(out.yields, { it[1], floor(it[2] * scale) }) end
   end
   return out

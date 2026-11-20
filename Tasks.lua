@@ -720,9 +720,10 @@ end
 function CR.SpecChainNeeds(spec, prof)
   local known = CR.KnowsSpec(spec)
   local out, at = {}, {}
-  local function Add(id, n)
+  -- (a third field true = a finished item, not a material)
+  local function Add(id, n, finished)
     if n <= 0 then return end
-    if not at[id] then table.insert(out, { id, 0 }); at[id] = #out end
+    if not at[id] then table.insert(out, { id, 0, finished or nil }); at[id] = #out end
     out[at[id]][2] = out[at[id]][2] + n
   end
   if known then return out end
@@ -735,7 +736,7 @@ function CR.SpecChainNeeds(spec, prof)
           local crafts = math.ceil(math.max(0, it[2] - made) / (r.makes or 1))
           for _, rg in ipairs(r.reagents or {}) do Add(rg[1], rg[2] * crafts) end
         else
-          Add(it[1], it[2])
+          Add(it[1], it[2], RecipeFor(prof, it[1]) ~= nil)
         end
       end
     end
@@ -743,10 +744,87 @@ function CR.SpecChainNeeds(spec, prof)
   return out
 end
 
-local function SpecChain(spec, known, rprofName, Cond, checks)
+-- A recipe the chain itself teaches (a quest reward): not something to get ahead.
+local function FromChain(r) return r and (r.src or ""):find("^Quest reward") ~= nil end
+
+-- Where to get a pattern: the nearest trainer, else a vendor that sells it.
+local function PatternPlace(rprofName, r)
+  if (r.src or ""):find("Trainer") then return Nearest(Trainers(rprofName, RankFor(CR.LearnAt(r))), 1)[1] end
+  local places = Nearest(RecipeVendors(rprofName, r.spell), 1)
+  if #places == 0 then places = Nearest(NpcsInText(CR.FactionText(r.src or "")), 1) end
+  return places[1]
+end
+
+-- The specialization's Prerequisites card (specPart = "prep"): everything to sort out before the
+-- quests, with nothing tied to a quest yet - level, skill, the patterns to get (not the ones the
+-- quests teach), the materials, then the items to make (craft) or buy (buy).
+local function SpecPrep(spec, known, rprofName, Cond, checks)
   local p = CR.professions[rprofName]
   local craft = spec.path == "craft"
   local cur = CR.GetSkill(rprofName) or 0
+  local lvl = UnitLevel and UnitLevel("player") or 1
+  if spec.level then Cond(known or lvl >= spec.level, NeedLine("Level", spec.level, lvl)) end
+  if spec.skill then Cond(known or cur >= spec.skill, NeedLine(rprofName, spec.skill, cur)) end
+  local function Count(id, n)
+    local _, have = Owned(id)
+    return have, Aside(string.format("%d/%d", math.min(have, n), n))
+  end
+  -- one line per pattern: Pin to its trainer / vendor, Vendor / Buy if it's sold
+  if craft then
+    for _, spell in ipairs(spec.patterns or {}) do
+      local r = p and p.recipes[spell]
+      if r then
+        local ok = known or KnowsRecipe(rprofName, spell) == true
+        local learnAt = CR.LearnAt(r)
+        local label = (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. r.name
+          .. ((not ok and cur < learnAt) and Aside("skill " .. learnAt) or "")
+        Cond(ok, label)
+        checks[#checks].place = PatternPlace(rprofName, r)
+        local item = spec.patternItems and spec.patternItems[spell]
+        if item then checks[#checks].buy = { item = item, need = 1 } end
+      end
+    end
+  end
+  -- materials, then items: what the quests not handed in yet still need
+  local items = {}
+  for _, it in ipairs(CR.SpecChainNeeds(spec, p)) do
+    if it[3] then
+      table.insert(items, it)
+    else
+      local have, aside = Count(it[1], it[2])
+      Cond(known or have >= it[2], CR.ItemName(it[1]) .. aside)
+      checks[#checks].buy = { item = it[1], need = it[2] }
+    end
+  end
+  if craft then
+    -- the items you make (not the ones whose pattern a quest gives you), each with Craft
+    for _, e in ipairs(spec.chain or {}) do
+      if e.items and not e.final and not ChainEntryDone(spec, e, known) then
+        for _, it in ipairs(e.items) do
+          local r = RecipeFor(p, it[1])
+          if r and not FromChain(r) then
+            local have, aside = Count(it[1], it[2])
+            Cond(known or have >= it[2], CR.ItemName(it[1]) .. aside)
+            checks[#checks].craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
+                                      learned = KnowsRecipe(rprofName, r.spell) }
+          end
+        end
+      end
+    end
+  else
+    for _, it in ipairs(items) do
+      local have, aside = Count(it[1], it[2])
+      Cond(known or have >= it[2], CR.ItemName(it[1]) .. aside)
+      checks[#checks].buy = { item = it[1], need = it[2] }
+    end
+  end
+end
+
+-- The quest card: the chain in order, each quest with what it wants. Items whose pattern a quest
+-- teaches (Wild Leather Vest / Helmet) get a Craft line under their quest.
+local function SpecChain(spec, known, rprofName, Cond, checks)
+  local p = CR.professions[rprofName]
+  local craft = spec.path == "craft"
   local function Add(ok, label, npc)
     Cond(ok, label)
     checks[#checks].place = LinePlace(npc)
@@ -757,33 +835,6 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
     for _, it in ipairs(items) do table.insert(parts, it[2] .. " " .. CR.ItemName(it[1])) end
     return table.concat(parts, ", ")
   end
-  -- the patterns (craft path)
-  if craft then
-    for _, g in ipairs(spec.patterns or {}) do
-      local ok, names, later = true, {}, {}
-      for _, spell in ipairs(g.spells) do
-        local r = p and p.recipes[spell]
-        local name = r and r.name or ("recipe " .. spell)
-        table.insert(names, name)
-        if KnowsRecipe(rprofName, spell) ~= true then
-          ok = false
-          if r and r.learn and r.learn > cur then table.insert(later, name .. " at " .. r.learn) end
-        end
-      end
-      local label = string.format("%s from %s: %s", (RECIPE_WORD[rprofName] or "Recipe") .. (#names > 1 and "s" or ""),
-        CR.FactionText(g.where), table.concat(names, ", "))
-      if not ok and #later > 0 then label = label .. Aside(table.concat(later, ", ")) end
-      Add(known or ok, label, g.npc)
-    end
-  end
-  -- everything to bring, for the quests still to do (Vendor / Buy on each)
-  for _, it in ipairs(CR.SpecChainNeeds(spec, p)) do
-    local _, have = Owned(it[1])
-    local line = Add(known or have >= it[2], string.format("%s %d %s", craft and "Get" or "Buy", it[2], CR.ItemName(it[1]))
-      .. Aside(string.format("%d/%d", math.min(have, it[2]), it[2])))
-    line.buy = { item = it[1], need = it[2] }
-  end
-  -- the quests, in order; the items you make get a line each with Craft
   for _, e in ipairs(spec.chain or {}) do
     if e.accept then
       local ok = known
@@ -806,12 +857,12 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
       if craft then
         for _, it in ipairs(e.items or {}) do
           local r = RecipeFor(p, it[1])
-          if r then
+          if r and FromChain(r) then
             local _, have = Owned(it[1])
             local line = Add(done or have >= it[2], string.format("Craft %d %s", it[2], CR.ItemName(it[1]))
               .. (done and "" or Aside(string.format("%d/%d", math.min(have, it[2]), it[2]))))
             line.sub = true
-            line.craft = { spell = r.spell or nil, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
+            line.craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
                            learned = KnowsRecipe(rprofName, r.spell) }
           end
         end
@@ -965,12 +1016,14 @@ function CR.StepTask(st, profName)
     if st.spec then
       local lvl = UnitLevel and UnitLevel("player") or 1
       local known = CR.KnowsSpec(st.spec)
-      if st.spec.level then
-        table.insert(t.checks, Check(lvl >= st.spec.level or known, NeedLine("Level", st.spec.level, lvl)))
-      end
-      if st.spec.chain then
+      if st.specPart == "prep" then
+        SpecPrep(st.spec, known, rprofName, Cond, t.checks)
+      elseif st.spec.chain then
         SpecChain(st.spec, known, rprofName, Cond, t.checks)
       else
+        if st.spec.level then
+          table.insert(t.checks, Check(lvl >= st.spec.level or known, NeedLine("Level", st.spec.level, lvl)))
+        end
         SpecChecklist(st.spec, known, rprofName, Cond, t.checks)
         Cond(known, st.spec.final and ("Complete " .. st.spec.final) or (st.spec.name .. " learned"))
         t.checks[#t.checks].place = LinePlace(st.spec.finalNpc)

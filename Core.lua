@@ -124,7 +124,8 @@ function CR.AddSpecChange(route)
       copy.when = { specChange = key }
       for k, v in pairs(st.when) do if k ~= "spec" then copy.when[k] = v end end
       copy.from, copy.to, copy.changeSpec = sc.at, sc.at, true
-      copy.text = sc.text .. "\n\n" .. (st.text or "")
+      -- (how to switch goes on the spec's first card, not its quest card)
+      if st.specPart ~= "quests" then copy.text = sc.text .. "\n\n" .. (st.text or "") end
       table.insert(copies, copy)
     end
   end

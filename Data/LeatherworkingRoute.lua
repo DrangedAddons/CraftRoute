@@ -20,6 +20,19 @@ local TRIBAL_CHAIN = {
     text = "Master of the Wild Leather: take the letter to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}" },
   { final = true, items = { { 8211, 1 }, { 8214, 1 } } },
 }
+local TRIBAL_QUEST_TEXT = "The Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}"
+  .. "{H:Jangdor Swiftstrider in Camp Mojache}, Feralas. Master of the Wild Leather goes to {A:Telonis in "
+  .. "Darnassus}{H:Una in Thunder Bluff}, then Tribal Leatherworking is from {A:Caryssia Moonhunter in Feralas}"
+  .. "{H:Se'Jib in Stranglethorn Vale}."
+local function TribalSpec(path)
+  return { spell = 10660, name = "Tribal Leatherworking", level = 40, skill = 225, final = "Tribal Leatherworking",
+    finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}", path = path,
+    giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
+    patterns = { 10487, 10511, 10509, 10518, 10552, 10499, 10507, 10548, 10558 },
+    patternItems = { [10509] = 8385 },   -- Pattern: Turtle Scale Gloves (sold by the quest giver)
+    chain = TRIBAL_CHAIN }
+end
+local TRIBAL_CRAFT, TRIBAL_BUY = TribalSpec("craft"), TribalSpec("buy")
 
 CR.RegisterRoute("Leatherworking", {
   -- Change Specialisation, at the end once you have one
@@ -173,32 +186,21 @@ CR.RegisterRoute("Leatherworking", {
           { item = 7075, count = 2, verb = "Get" },
           { item = 7081, count = 2, verb = "Get" },
         } } },
-    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "craft" }, title = "Become a Tribal Leatherworker",
-      text = "You make every item the quests want. Learn the patterns and get the materials below first, then "
-        .. "the Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor Swiftstrider "
-        .. "in Camp Mojache}, Feralas - he also sells Pattern: Turtle Scale Gloves. Wild Leather Armor opens the "
-        .. "other five. The Vest and Helmet quests teach the Wild Leather Vest and Helmet you hand in at the end. "
-        .. "Master of the Wild Leather goes to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}, then the Tribal "
-        .. "Leatherworking quest is from {A:Caryssia Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}.",
-      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40, final = "Tribal Leatherworking",
-        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}", path = "craft",
-        giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
-        patterns = {
-          { spells = { 10487, 10511, 10518, 10552, 10499, 10507, 10548, 10558 }, where = "an Artisan trainer" },
-          { spells = { 10509 }, where = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
-            npc = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
-        },
-        chain = TRIBAL_CHAIN } },
-    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "buy" }, title = "Become a Tribal Leatherworker",
-      text = "You buy every item the quests want on the Auction House - no patterns needed. Then the Wild "
-        .. "Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}{H:Jangdor Swiftstrider in Camp "
-        .. "Mojache}, Feralas. Wild Leather Armor opens the other five. Master of the Wild Leather goes to "
-        .. "{A:Telonis in Darnassus}{H:Una in Thunder Bluff}, then the Tribal Leatherworking quest is from "
-        .. "{A:Caryssia Moonhunter in Feralas}{H:Se'Jib in Stranglethorn Vale}.",
-      spec = { spell = 10660, name = "Tribal Leatherworking", level = 40, final = "Tribal Leatherworking",
-        finalNpc = "{A:Caryssia Moonhunter}{H:Se'Jib}", path = "buy",
-        giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
-        chain = TRIBAL_CHAIN } },
+    -- Tribal: a Prerequisites card (specPart = "prep"), then the quest card - each for crafting the
+    -- quest items or buying them
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "craft" }, specPart = "prep",
+      title = "Tribal Leatherworking: Prerequisites",
+      text = "Get all of this before you start the quests. The quests teach the Wild Leather Vest and Helmet "
+        .. "patterns themselves.",
+      spec = TRIBAL_CRAFT },
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "craft" }, specPart = "quests",
+      title = "Become a Tribal Leatherworker", text = TRIBAL_QUEST_TEXT, spec = TRIBAL_CRAFT },
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "buy" }, specPart = "prep",
+      title = "Tribal Leatherworking: Prerequisites",
+      text = "Buy all of this before you start the quests.",
+      spec = TRIBAL_BUY },
+    { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "buy" }, specPart = "quests",
+      title = "Become a Tribal Leatherworker", text = TRIBAL_QUEST_TEXT, spec = TRIBAL_BUY },
     { from = 225, to = 235, spell = 10558, crafts = 12 },
     { from = 235, to = 250, spell = 19049, crafts = 15,
       note = "Pattern from {H:Werg Thickblade, Tirisfal Glades}{A:Leonard Porter, Western Plaguelands}" },

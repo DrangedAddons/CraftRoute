@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.19.1
+
+- Tribal Leatherworking gets its own **Prerequisites** card before the quest card. It covers everything to sort out before you visit the quest giver, with nothing tied to a quest yet:
+  - Level 40 and Leatherworking 225.
+  - Craft path: one line per pattern, with Pin (trainer or vendor) and Vendor / Buy for Pattern: Turtle Scale Gloves. The skill a pattern needs shows only if you're below it. The Wild Leather Vest and Helmet patterns aren't listed, since the quests teach them.
+  - The materials, as name and count ("Thick Leather  0/214"), each with Vendor / Buy.
+  - Then the items: craft path, each with Craft; buy path, each with Buy.
+- The quest card now only has the quests, plus Craft lines for the Wild Leather Vest and Helmet.
+
 ## 1.19.0
 
 - Tribal Leatherworking walkthrough. After picking Tribal you pick once whether to craft the quest items or buy them finished on the AH. The step card then lists everything in order:
