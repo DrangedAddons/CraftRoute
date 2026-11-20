@@ -961,8 +961,9 @@ local function ApplyRow(row, item)
     if item.learned then
       row.name:SetText(CR.ColorText("Learned", "40ff40") .. structure)
     else
-      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa")
-        .. structure)
+      -- (the station before "learn at", which can run long and be cut off)
+      row.name:SetText(CR.ColorText("Not Learned", "ff6060") .. structure
+        .. CR.ColorText("  learn at " .. CR.LearnAt(item.recipe), "aaaaaa"))
     end
     return
   end
