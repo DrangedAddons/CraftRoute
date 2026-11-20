@@ -1,5 +1,14 @@
 # CraftRoute changelog
 
+## 1.23.0
+
+- Gnomish and Goblin Engineering use the Prerequisites / quest card layout, each with a craft or buy choice.
+  - Craft lists every schematic, including the parts (Bronze Tube, Iron Strut, Gyrochronatom, blasting powders and so on), with Schematic: Accurate Scope to Buy and Pin at Mazk Snipeshot. Then the raw materials for everything, then every item to make with Craft, parts first. Gnomish also lists the Gyromatic Micro-Adjustor the Accurate Scope needs.
+  - Buy lists the finished items.
+  - The quest card: the first quest (any of its givers - Tinkerwiz in Ratchet works for both factions) with where to take the manual, The Pledge of Secrecy (right-click the pledge to sign it), then Show Your Work.
+- Spec Prerequisites cards make the parts an item needs when the profession has a recipe for them, not only the item itself. Parts already in your bags are counted.
+- Craft buttons cast the right number of crafts for recipes that make more than one (Big Iron Bomb, Silver Contact, Gold Power Core).
+
 ## 1.22.0
 
 - Armorsmith and Weaponsmith use the Prerequisites / quest card layout, each with a craft or buy choice.

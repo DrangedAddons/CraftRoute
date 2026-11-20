@@ -702,10 +702,12 @@ end
 local function FactionKey()
   return (UnitFactionGroup and UnitFactionGroup("player") == "Horde") and "H" or "A"
 end
+-- (ids[A / H] is one quest ID, or a list - Gnome Engineering has one per quest giver)
 local function ChainQuestDone(e)
   local id = e.ids and e.ids[FactionKey()]
-  if id and C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-    return C_QuestLog.IsQuestFlaggedCompleted(id) and true or false
+  if not (id and C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then return false end
+  for _, q in ipairs(type(id) == "table" and id or { id }) do
+    if C_QuestLog.IsQuestFlaggedCompleted(q) then return true end
   end
   return false
 end
@@ -751,36 +753,8 @@ local function ChainState(spec, known)
   return list, done
 end
 
--- What the quests not handed in yet still need, in order: { {itemID, n}, ... }. Craft path: the
--- reagents of turn-in items you can make (less the ones already made), plus the rest as-is.
--- Buy path: the turn-in items. (Bags aren't taken off - the shopping list does that.)
-function CR.SpecChainNeeds(spec, prof)
-  local known = CR.KnowsSpec(spec)
-  local out, at = {}, {}
-  -- (a third field true = a finished item, not a material)
-  local function Add(id, n, finished)
-    if n <= 0 then return end
-    if not at[id] then table.insert(out, { id, 0, finished or nil }); at[id] = #out end
-    out[at[id]][2] = out[at[id]][2] + n
-  end
-  if known then return out end
-  local list, done = ChainState(spec, known)
-  for i, e in ipairs(list) do
-    if e.items and not done[i] then
-      for _, it in ipairs(e.items) do
-        local r = spec.path == "craft" and RecipeFor(prof, it[1])
-        if r then
-          local made = CR.BagsAndElsewhere and CR.BagsAndElsewhere(it[1]) or 0
-          local crafts = math.ceil(math.max(0, it[2] - made) / (r.makes or 1))
-          for _, rg in ipairs(r.reagents or {}) do Add(rg[1], rg[2] * crafts) end
-        else
-          Add(it[1], it[2], RecipeFor(prof, it[1]) ~= nil)
-        end
-      end
-    end
-  end
-  return out
-end
+-- Crafts to make `short` more items (Big Iron Bomb makes 2 a craft): what Craft casts.
+local function CraftsFor(r, short) return math.ceil(math.max(0, short) / (r.makes or 1)) end
 
 -- A recipe the chain itself teaches (a quest reward, or listed in spec.taught): not something to
 -- get ahead - it's made on the quest card once the quest has taught it.
@@ -790,6 +764,55 @@ local function FromChain(spec, r)
     for _, spell in ipairs(spec.taught) do if spell == r.spell then return true end end
   end
   return (r.src or ""):find("^Quest reward") ~= nil
+end
+
+-- What the quests not handed in yet still need. Returns
+--   mats   { {itemID, n, finished}, ... } in order - to buy or gather (finished = a turn-in item
+--          bought made, on the buy path). Gross: bags aren't taken off (the shopping list does that).
+--   crafts { {id, recipe, n}, ... } the craft path's items to make, parts before what they go into
+--          (Bronze Tube before Accurate Scope): n of each wanted, those in your bags counted.
+-- Craft path: turn-in items you can make are made, and so are their parts that have a recipe in
+-- the profession (materials like Thick Leather or grinding stones are bought - RecipeFor), with
+-- spec.tools (Gyromatic Micro-Adjustor) made once if you don't have one. Buy path: the turn-in items.
+function CR.SpecChainNeeds(spec, prof)
+  local known = CR.KnowsSpec(spec)
+  local craft = spec.path == "craft"
+  local mats, matAt, crafts, craftAt, stock = {}, {}, {}, {}, {}
+  if known then return mats, crafts end
+  local function AddMat(id, n, finished)
+    if n <= 0 then return end
+    if not matAt[id] then table.insert(mats, { id, 0, finished or nil }); matAt[id] = #mats end
+    mats[matAt[id]][2] = mats[matAt[id]][2] + n
+  end
+  -- made items in your bags are used up once (two parents wanting the same part share the stock)
+  local function Use(id, n)
+    if stock[id] == nil then stock[id] = CR.BagsAndElsewhere and CR.BagsAndElsewhere(id) or 0 end
+    local used = math.min(stock[id], n)
+    stock[id] = stock[id] - used
+    return used
+  end
+  local function Need(id, n, depth)
+    local r = craft and depth < 6 and RecipeFor(prof, id)
+    if not r then AddMat(id, n, not craft and RecipeFor(prof, id) ~= nil) return end
+    local short = n - Use(id, n)
+    if short > 0 then
+      local times = math.ceil(short / (r.makes or 1))
+      for _, rg in ipairs(r.reagents or {}) do Need(rg[1], rg[2] * times, depth + 1) end
+    end
+    -- (added after its parts, so parts come first)
+    if not craftAt[id] then table.insert(crafts, { id, r, 0 }); craftAt[id] = #crafts end
+    crafts[craftAt[id]][3] = crafts[craftAt[id]][3] + n
+  end
+  if craft then
+    for _, id in ipairs(spec.tools or {}) do Need(id, 1, 0) end
+  end
+  local list, done = ChainState(spec, known)
+  for i, e in ipairs(list) do
+    if e.items and not done[i] then
+      for _, it in ipairs(e.items) do Need(it[1], it[2], 0) end
+    end
+  end
+  return mats, crafts
 end
 
 -- Where to get a pattern: the nearest trainer, else a vendor that sells it, else npc (the spec's
@@ -845,9 +868,10 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
     end
   end
   -- materials, then items: what the quests not handed in yet still need
+  local mats, crafts = CR.SpecChainNeeds(spec, p)
   local items = {}
   startGroup = true
-  for _, it in ipairs(CR.SpecChainNeeds(spec, p)) do
+  for _, it in ipairs(mats) do
     if it[3] then
       table.insert(items, it)
     else
@@ -858,19 +882,15 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   end
   startGroup = true
   if craft then
-    -- the items you make (not the ones whose pattern a quest gives you), each with Craft
-    local list, done = ChainState(spec, known)
-    for i, e in ipairs(list) do
-      if e.items and not done[i] then
-        for _, it in ipairs(e.items) do
-          local r = RecipeFor(p, it[1])
-          if r and not FromChain(spec, r) then
-            local have, aside = Count(it[1], it[2])
-            Cond(known or have >= it[2], CR.ItemName(it[1]) .. aside)
-            checks[#checks].craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
-                                      learned = KnowsRecipe(rprofName, r.spell) }
-          end
-        end
+    -- the items you make, parts first, each with Craft (not the ones whose pattern a quest gives
+    -- you - those are made on the quest card)
+    for _, c in ipairs(crafts) do
+      local id, r, n = c[1], c[2], c[3]
+      if not FromChain(spec, r) then
+        local have, aside = Count(id, n)
+        Cond(known or have >= n, CR.ItemName(id) .. aside)
+        checks[#checks].craft = { spell = r.spell, recipe = r, need = CraftsFor(r, n - have), prof = rprofName,
+                                  learned = KnowsRecipe(rprofName, r.spell) }
       end
     end
   else
@@ -957,7 +977,7 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
         -- (items whose pattern the chain teaches - Wild Leather Vest / Helmet - are made here: Craft)
         local r = craft and RecipeFor(p, it[1])
         if r and FromChain(spec, r) then
-          line.craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
+          line.craft = { spell = r.spell, recipe = r, need = CraftsFor(r, it[2] - have), prof = rprofName,
                          learned = KnowsRecipe(rprofName, r.spell) }
         end
       end

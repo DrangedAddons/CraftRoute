@@ -89,7 +89,8 @@ function CR.CreateTaskCard(parent, width)
       if c and c.learned == false then
         GameTooltip:AddLine("You haven't learned " .. ((c.recipe and c.recipe.name) or "this recipe") .. " yet.", 1, 0.5, 0.3, true)
       else
-        GameTooltip:AddLine(string.format("Crafts the %d still needed. Open %s first.", math.max(1, c and c.need or 1),
+        local n = math.max(1, c and c.need or 1)
+        GameTooltip:AddLine(string.format("Crafts %d more (what's still needed). Open %s first.", n,
           c and c.prof or "the profession"), 1, 1, 1, true)
       end
       GameTooltip:Show()

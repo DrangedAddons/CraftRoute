@@ -7,6 +7,58 @@ local _, CR = ...
 
 local HAMMER = 5956
 
+-- Gnomish / Goblin (quest IDs from the vanilla database, the same in Forever; Nov 2026). The first
+-- quest has an ID per quest giver. The Pledge of Secrecy: right-click the pledge to sign it.
+local ENG_GIVERS = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle|Tinkerwiz}{H:Tinkerwiz|Graham Van Talen}"
+local GNOMISH_TEXT = "Gnome Engineering is from {A:Springspindle Fizzlegear in Ironforge, Lilliam Sparkspindle in "
+  .. "Stormwind or Tinkerwiz in Ratchet; hand it in to Tinkmaster Overspark in Tinker Town, Ironforge}{H:Tinkerwiz "
+  .. "in Ratchet or Graham Van Talen in Undercity; take the boat from Ratchet to Booty Bay and hand it in to "
+  .. "Oglethorpe Obnoticus}. He gives The Pledge of Secrecy and Show Your Work."
+  .. "\n\nYou get the Ultrasafe Transporter - Gadgetzan (Gnomish only), and can make the Gnomish Death Ray "
+  .. "and Gnomish Battle Chicken (bind on pickup)."
+  .. "\n\nSwitching from Goblin? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first."
+local GOBLIN_TEXT = "Goblin Engineering is from {A:Springspindle Fizzlegear in Ironforge, Lilliam Sparkspindle in "
+  .. "Stormwind or Tinkerwiz in Ratchet}{H:Tinkerwiz in Ratchet or Graham Van Talen in Undercity}. Hand it in to "
+  .. "Nixx Sprocketspring in Gadgetzan, Tanaris: he gives The Pledge of Secrecy and Show Your Work."
+  .. "\n\nYou get the Dimensional Ripper - Everlook (Goblin only), and can make Goblin Sapper Charges and "
+  .. "Goblin Rocket Boots."
+  .. "\n\nSwitching from Gnomish? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first."
+local function GnomishSpec(path)
+  return { spell = 20219, name = "Gnomish Engineer", level = 30, skill = 200, card = 10790, final = "Show Your Work",
+    finalNpc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}", path = path,
+    giver = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}",
+    -- Mithril Tube, Accurate Scope (schematic), Bronze Tube, Gyromatic Micro-Adjustor, Advanced Target
+    -- Dummy and its parts: Iron Strut, Bronze Framework, Gyrochronatom, Gold Power Core
+    patterns = { 12589, 3979, 3938, 12590, 3965, 3958, 3953, 3961, 12584 },
+    patternItems = { [3979] = 13310 },
+    patternNpcs = { [3979] = "Mazk Snipeshot" },
+    tools = { 10498 },   -- Gyromatic Micro-Adjustor (the Accurate Scope needs it)
+    chain = {
+      { quest = "Gnome Engineering", ids = { A = { 3630, 3632, 3634 }, H = { 3635, 3637 } }, npc = ENG_GIVERS,
+        note = "{A:Take the manual to Tinkmaster Overspark in Tinker Town, Ironforge}"
+          .. "{H:Take the manual to Oglethorpe Obnoticus in Booty Bay}" },
+      { quest = "The Pledge of Secrecy", ids = { A = 3640, H = 3642 },
+        note = "Right-click the pledge in your bags to sign it, then hand it in" },
+      { final = true, ids = { A = 3641, H = 3643 }, items = { { 10559, 6 }, { 4407, 1 }, { 4392, 2 } } },
+    } }
+end
+local GNOMISH_CRAFT, GNOMISH_BUY = GnomishSpec("craft"), GnomishSpec("buy")
+local function GoblinSpec(path)
+  return { spell = 20222, name = "Goblin Engineer", level = 30, skill = 200, card = 10791, final = "Show Your Work",
+    finalNpc = "Nixx Sprocketspring", path = path, giver = "Nixx Sprocketspring",
+    -- Big Iron Bomb, Solid Dynamite, Explosive Sheep and their parts: Heavy Blasting Powder, Silver
+    -- Contact, Solid Blasting Powder, Whirring Bronze Gizmo, Bronze Framework
+    patterns = { 3967, 12586, 3955, 3945, 3973, 12585, 3942, 3953 },
+    chain = {
+      { quest = "Goblin Engineering", ids = { A = { 3629, 4181, 3633 }, H = { 3526, 3633 } }, npc = ENG_GIVERS,
+        note = "Take the manual to Nixx Sprocketspring in Gadgetzan, Tanaris" },
+      { quest = "The Pledge of Secrecy", ids = { A = 3638, H = 3638 },
+        note = "Right-click the pledge in your bags to sign it, then hand it in" },
+      { final = true, ids = { A = 3639, H = 3639 }, items = { { 4394, 20 }, { 10507, 20 }, { 4384, 5 } } },
+    } }
+end
+local GOBLIN_CRAFT, GOBLIN_BUY = GoblinSpec("craft"), GoblinSpec("buy")
+
 CR.RegisterRoute("Engineering", {
   -- Change Specialisation, at the end once you have one (wow-professions.com's Gnomish vs Goblin guide)
   specChange = { at = 300,
@@ -49,6 +101,14 @@ CR.RegisterRoute("Engineering", {
       { key = "gnomish", label = "Gnomish Engineering" },
       { key = "goblin", label = "Goblin Engineering" },
     }},
+    { key = "gnomish", label = "Gnomish quest items", options = {
+      { key = "craft", label = "Craft them (get the schematics, buy the materials)" },
+      { key = "buy", label = "Buy the finished items on the AH" },
+    }},
+    { key = "goblin", label = "Goblin quest items", options = {
+      { key = "craft", label = "Craft them (buy the materials)" },
+      { key = "buy", label = "Buy the finished items on the AH" },
+    }},
   },
 
   steps = {
@@ -87,41 +147,33 @@ CR.RegisterRoute("Engineering", {
         .. "can be used by either, so the choice mostly comes down to the teleporter and a few bind on pickup "
         .. "trinkets. Pick one under the 200 specialization choice for its quest steps. Switching later: see "
         .. "Change Specialisation at the end of the route." },
-    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish" }, title = "Become a Gnomish Engineer",
-      text = "Gnome Engineering is from {A:Springspindle Fizzlegear in Ironforge or Lilliam Sparkspindle in "
-        .. "Stormwind; hand it in to Tinkmaster Overspark in Tinker Town}{H:Tinkerwiz in Ratchet or Graham Van "
-        .. "Talen in Undercity; take the boat to Booty Bay and hand it in to Oglethorpe Obnoticus}. He gives The "
-        .. "Pledge of Secrecy (right-click it in your bags) and Show Your Work. Schematic: Accurate Scope is sold "
-        .. "by Mazk Snipeshot in Booty Bay."
-        .. "\n\nYou get the Ultrasafe Transporter - Gadgetzan (Gnomish only), and can make the Gnomish Death Ray "
-        .. "and Gnomish Battle Chicken (bind on pickup)."
-        .. "\n\nSwitching from Goblin? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first.",
-      spec = { spell = 20219, name = "Gnomish Engineer", level = 30, card = 10790, final = "Show Your Work",
-        finalNpc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}",
-        steps = {
-          { quest = "Gnome Engineering", npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
-          { quest = "The Pledge of Secrecy", npc = "{A:Tinkmaster Overspark}{H:Oglethorpe Obnoticus}" },
-          { recipes = { 3979 }, npc = "Mazk Snipeshot" },
-          { item = 10559, count = 6, verb = "Craft" },
-          { item = 4407, count = 1, verb = "Craft" },
-          { item = 4392, count = 2, verb = "Craft" },
-        } } },
-    { kind = "guide", from = 200, to = 200, when = { spec = "goblin" }, title = "Become a Goblin Engineer",
-      text = "Goblin Engineering is from {A:Springspindle Fizzlegear in Ironforge or Lilliam Sparkspindle in "
-        .. "Stormwind}{H:Tinkerwiz in Ratchet or Graham Van Talen in Undercity}. Hand it in to Nixx Sprocketspring "
-        .. "in Gadgetzan, Tanaris: he gives The Pledge of Secrecy (right-click it in your bags) and Show Your Work."
-        .. "\n\nYou get the Dimensional Ripper - Everlook (Goblin only), and can make Goblin Sapper Charges and "
-        .. "Goblin Rocket Boots."
-        .. "\n\nSwitching from Gnomish? Read Soothsaying for Dummies at Steamwheedle Port, Tanaris first.",
-      spec = { spell = 20222, name = "Goblin Engineer", level = 30, card = 10791, final = "Show Your Work",
-        finalNpc = "Nixx Sprocketspring",
-        steps = {
-          { quest = "Goblin Engineering", npc = "{A:Springspindle Fizzlegear|Lilliam Sparkspindle}{H:Tinkerwiz|Graham Van Talen}" },
-          { quest = "The Pledge of Secrecy", npc = "Nixx Sprocketspring" },
-          { item = 4394, count = 20, verb = "Craft" },
-          { item = 10507, count = 20, verb = "Craft" },
-          { item = 4384, count = 5, verb = "Craft" },
-        } } },
+    -- Gnomish / Goblin: a Prerequisites card, then the quest card - crafting the items or buying them
+    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish", gnomish = "craft" }, specPart = "prep",
+      title = "Gnomish Engineering: Prerequisites",
+      text = "Get all of this before you start the quests. Schematic: Accurate Scope is sold by Mazk Snipeshot "
+        .. "in the Old Port Authority, Booty Bay. The Accurate Scope also needs a Gyromatic Micro-Adjustor (a "
+        .. "tool - it isn't used up) and your Arclight Spanner.",
+      spec = GNOMISH_CRAFT },
+    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish", gnomish = "craft" }, specPart = "quests",
+      title = "Become a Gnomish Engineer", text = GNOMISH_TEXT, spec = GNOMISH_CRAFT },
+    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish", gnomish = "buy" }, specPart = "prep",
+      title = "Gnomish Engineering: Prerequisites",
+      text = "Buy all of this before you start the quests.",
+      spec = GNOMISH_BUY },
+    { kind = "guide", from = 200, to = 200, when = { spec = "gnomish", gnomish = "buy" }, specPart = "quests",
+      title = "Become a Gnomish Engineer", text = GNOMISH_TEXT, spec = GNOMISH_BUY },
+    { kind = "guide", from = 200, to = 200, when = { spec = "goblin", goblin = "craft" }, specPart = "prep",
+      title = "Goblin Engineering: Prerequisites",
+      text = "Get all of this before you start the quests. Every recipe is from the trainer.",
+      spec = GOBLIN_CRAFT },
+    { kind = "guide", from = 200, to = 200, when = { spec = "goblin", goblin = "craft" }, specPart = "quests",
+      title = "Become a Goblin Engineer", text = GOBLIN_TEXT, spec = GOBLIN_CRAFT },
+    { kind = "guide", from = 200, to = 200, when = { spec = "goblin", goblin = "buy" }, specPart = "prep",
+      title = "Goblin Engineering: Prerequisites",
+      text = "Buy all of this before you start the quests.",
+      spec = GOBLIN_BUY },
+    { kind = "guide", from = 200, to = 200, when = { spec = "goblin", goblin = "buy" }, specPart = "quests",
+      title = "Become a Goblin Engineer", text = GOBLIN_TEXT, spec = GOBLIN_BUY },
     { from = 200, to = 215, spell = 12591, crafts = 20, note = "Keep all 20 for the bombs at 238" },
     { from = 215, to = 238, spell = 12599, crafts = 40,
       note = "Keep 40 for the bombs. Past 225 is untested in Forever (Classic route)" },
