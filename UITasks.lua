@@ -42,7 +42,7 @@ function CR.CreateTaskCard(parent, width)
   card.text:SetWordWrap(true)
   if card.text.SetSpacing then card.text:SetSpacing(2) end
 
-  card.checks, card.checkPins, card.checkBuys, card.checkCrafts = {}, {}, {}, {}
+  card.checks, card.checkPins, card.checkBuys, card.checkCrafts, card.checkSeps = {}, {}, {}, {}, {}
   for i = 1, MAX_CHECKS do
     local fs = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetJustifyH("LEFT")
@@ -97,6 +97,12 @@ function CR.CreateTaskCard(parent, width)
     craft:SetScript("OnLeave", GameTooltip_Hide)
     craft:Hide()
     card.checkCrafts[i] = craft
+    -- a thin line above a line that starts a new group (c.sep)
+    local sep = card:CreateTexture(nil, "ARTWORK")
+    sep:SetHeight(1)
+    sep:SetColorTexture(1, 1, 1, 0.15)
+    sep:Hide()
+    card.checkSeps[i] = sep
   end
 
   -- skill progress for leveling steps (fishing)
@@ -275,6 +281,17 @@ function CR.CreateTaskCard(parent, width)
       else
         craft.craft = nil
         craft:Hide()
+      end
+      local sep = self.checkSeps[i]
+      if c and c.sep then
+        y = y - 3
+        sep:ClearAllPoints()
+        sep:SetPoint("TOPLEFT", self, "TOPLEFT", 0, y)
+        sep:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y)
+        sep:Show()
+        y = y - 6
+      else
+        sep:Hide()
       end
       if c then
         local indent = ((c.place or grid) and 46 or 0) + (c.sub and 16 or 0)

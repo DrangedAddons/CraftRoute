@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.19.3
+
+- Tribal Prerequisites: a thin line separates the groups (level and skill, patterns, materials, finished items).
+
 ## 1.19.2
 
 - Tribal Prerequisites: every pattern line shows the skill it needs as a number, "(230)". Green if you're at or above it, red if you're below.

@@ -763,6 +763,14 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   local craft = spec.path == "craft"
   local cur = CR.GetSkill(rprofName) or 0
   local lvl = UnitLevel and UnitLevel("player") or 1
+  -- groups (level and skill / patterns / materials / items), a line between them
+  local startGroup = false
+  local Cond0 = Cond
+  Cond = function(ok, label)
+    Cond0(ok, label)
+    if startGroup and #checks > 1 then checks[#checks].sep = true end
+    startGroup = false
+  end
   if spec.level then Cond(known or lvl >= spec.level, NeedLine("Level", spec.level, lvl)) end
   if spec.skill then Cond(known or cur >= spec.skill, NeedLine(rprofName, spec.skill, cur)) end
   local function Count(id, n)
@@ -770,6 +778,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
     return have, Aside(string.format("%d/%d", math.min(have, n), n))
   end
   -- one line per pattern: Pin to its trainer / vendor, Vendor / Buy if it's sold
+  startGroup = true
   if craft then
     for _, spell in ipairs(spec.patterns or {}) do
       local r = p and p.recipes[spell]
@@ -787,6 +796,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   end
   -- materials, then items: what the quests not handed in yet still need
   local items = {}
+  startGroup = true
   for _, it in ipairs(CR.SpecChainNeeds(spec, p)) do
     if it[3] then
       table.insert(items, it)
@@ -796,6 +806,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
       checks[#checks].buy = { item = it[1], need = it[2] }
     end
   end
+  startGroup = true
   if craft then
     -- the items you make (not the ones whose pattern a quest gives you), each with Craft
     for _, e in ipairs(spec.chain or {}) do
