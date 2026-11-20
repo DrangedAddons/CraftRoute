@@ -34,6 +34,29 @@ local function TribalSpec(path)
 end
 local TRIBAL_CRAFT, TRIBAL_BUY = TribalSpec("craft"), TribalSpec("buy")
 
+-- Dragonscale (quests 5141 / 5145, Wowhead Nov 2026): one quest, from the trainer it's handed to.
+local DRAGONSCALE_QUEST_TEXT = "Dragonscale Leatherworking is from {A:Peter Galen at the Ruins of Eldarath, "
+  .. "Azshara}{H:Thorkaf Dragoneye south of Dustwind Gulch, Badlands}."
+local function DragonscaleSpec(path)
+  return { spell = 10656, name = "Dragonscale Leatherworking", level = 40, skill = 225,
+    final = "Dragonscale Leatherworking", finalNpc = "{A:Peter Galen}{H:Thorkaf Dragoneye}", path = path,
+    giver = "{A:Peter Galen}{H:Thorkaf Dragoneye}",
+    patterns = { 10525, 10542 },
+    patternItems = { [10525] = 8395, [10542] = 8398 },   -- world drops (Wastewander Bandit / Thief, Tanaris)
+    chain = {
+      { final = true, ids = { A = 5141, H = 5145 }, items = { { 8203, 2 }, { 8204, 2 }, { 8165, 10 } } },
+    } }
+end
+local DRAGONSCALE_CRAFT, DRAGONSCALE_BUY = DragonscaleSpec("craft"), DragonscaleSpec("buy")
+
+-- Elemental (quests 5144 / 5146): the four elementals, nothing to make.
+local ELEMENTAL = { spell = 10658, name = "Elemental Leatherworking", level = 40, skill = 225,
+  final = "Elemental Leatherworking", finalNpc = "{A:Sarah Tanner}{H:Brumn Winterhoof}",
+  giver = "{A:Sarah Tanner}{H:Brumn Winterhoof}",
+  chain = {
+    { final = true, ids = { A = 5144, H = 5146 }, items = { { 7077, 2 }, { 7079, 2 }, { 7075, 2 }, { 7081, 2 } } },
+  } }
+
 CR.RegisterRoute("Leatherworking", {
   -- Change Specialisation, at the end once you have one
   specChange = { at = 300,
@@ -95,6 +118,10 @@ CR.RegisterRoute("Leatherworking", {
       { key = "dragonscale", label = "Dragonscale" },
       { key = "elemental", label = "Elemental" },
       { key = "tribal", label = "Tribal" },
+    }},
+    { key = "dragonscale", label = "Dragonscale quest items", options = {
+      { key = "craft", label = "Craft them (get the patterns, buy the materials)" },
+      { key = "buy", label = "Buy the finished items on the AH" },
     }},
     { key = "tribal", label = "Tribal quest items", options = {
       { key = "craft", label = "Craft them (learn the patterns, buy the materials)" },
@@ -161,31 +188,31 @@ CR.RegisterRoute("Leatherworking", {
         .. "gear), Elemental (elemental resistance and agility leather gear) or Tribal (intellect and agility "
         .. "leather gear, and the Devilsaur set). Optional. Pick one under the 225 specialization choice for its "
         .. "quest steps." },
-    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale" }, title = "Become a Dragonscale Leatherworker",
-      text = "Pattern: Tough Scorpid Breastplate drops from Wastewander Bandits and Pattern: Tough Scorpid Gloves "
-        .. "from Wastewander Thieves, both in Tanaris - or buy them on the AH. The quest is from {A:Peter Galen "
-        .. "at the Ruins of Eldarath, Azshara}{H:Thorkaf Dragoneye in the Badlands}."
-        .. "\n\nShopping: 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale.",
-      spec = { spell = 10656, name = "Dragonscale Leatherworking", level = 40, final = "Dragonscale Leatherworking",
-        finalNpc = "{A:Peter Galen}{H:Thorkaf Dragoneye}",
-        steps = {
-          { recipes = { 10525 } },
-          { recipes = { 10542 } },
-          { item = 8203, count = 2, verb = "Craft" },
-          { item = 8204, count = 2, verb = "Craft" },
-          { item = 8165, count = 10, verb = "Get" },
-        } } },
-    { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, title = "Become an Elemental Leatherworker",
-      text = "Bring the four elementals to {A:Sarah Tanner in Searing Gorge}{H:Brumn Winterhoof in Arathi "
-        .. "Highlands} for the quest.",
-      spec = { spell = 10658, name = "Elemental Leatherworking", level = 40, final = "Elemental Leatherworking",
-        finalNpc = "{A:Sarah Tanner}{H:Brumn Winterhoof}",
-        steps = {
-          { item = 7079, count = 2, verb = "Get" },
-          { item = 7077, count = 2, verb = "Get" },
-          { item = 7075, count = 2, verb = "Get" },
-          { item = 7081, count = 2, verb = "Get" },
-        } } },
+    -- Dragonscale: Prerequisites, then the quest - crafting the two Tough Scorpid pieces or buying them
+    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale", dragonscale = "craft" }, specPart = "prep",
+      title = "Dragonscale Leatherworking: Prerequisites",
+      text = "Get all of this before you go to the quest. Pattern: Tough Scorpid Breastplate drops from "
+        .. "Wastewander Bandits and Pattern: Tough Scorpid Gloves from Wastewander Thieves, both in Tanaris - or "
+        .. "buy them on the AH. Worn Dragonscale is on the AH.",
+      spec = DRAGONSCALE_CRAFT },
+    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale", dragonscale = "craft" }, specPart = "quests",
+      title = "Become a Dragonscale Leatherworker", text = DRAGONSCALE_QUEST_TEXT, spec = DRAGONSCALE_CRAFT },
+    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale", dragonscale = "buy" }, specPart = "prep",
+      title = "Dragonscale Leatherworking: Prerequisites",
+      text = "Buy all of this before you go to the quest.",
+      spec = DRAGONSCALE_BUY },
+    { kind = "guide", from = 225, to = 225, when = { spec = "dragonscale", dragonscale = "buy" }, specPart = "quests",
+      title = "Become a Dragonscale Leatherworker", text = DRAGONSCALE_QUEST_TEXT, spec = DRAGONSCALE_BUY },
+    -- Elemental: nothing to make - the four elementals, then the quest
+    { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, specPart = "prep",
+      title = "Elemental Leatherworking: Prerequisites",
+      text = "Get all of this before you go to the quest. The elementals are on the AH.",
+      spec = ELEMENTAL },
+    { kind = "guide", from = 225, to = 225, when = { spec = "elemental" }, specPart = "quests",
+      title = "Become an Elemental Leatherworker",
+      text = "Elemental Leatherworking is from {A:Sarah Tanner at the Tanner Camp, Searing Gorge}{H:Brumn "
+        .. "Winterhoof in Arathi Highlands, on the hill west of Boulder'gor}.",
+      spec = ELEMENTAL },
     -- Tribal: a Prerequisites card (specPart = "prep"), then the quest card - each for crafting the
     -- quest items or buying them
     { kind = "guide", from = 225, to = 225, when = { spec = "tribal", tribal = "craft" }, specPart = "prep",

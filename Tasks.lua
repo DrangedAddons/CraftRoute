@@ -682,14 +682,22 @@ local function SpecChecklist(spec, known, rprofName, Cond, checks)
   end
 end
 
--- A specialization quest chain where you bring the quest giver items (Tribal's Wild Leather
--- quests). spec.path = "craft" (make the items: learn the patterns, buy the materials) or "buy"
--- (buy the finished items). spec.chain, in order:
---   { quest = "Title", ids = { A = id, H = id }, items = { {itemID, n}, ... } }  bring these
---   { accept = { "Title", ... } }   "Accept these quests", each on a line under it (ticks once in the log)
---   { final = true, items = { ... } }              spec.final, done once the spec is learned
--- note = a line under the quest ("Take the letter to Una"), npc = its Pin (default spec.giver).
--- spec.patterns = { { spells = { ... }, where = "who teaches them", npc = Pin }, ... } (craft only).
+-- A specialization quest chain (Tribal's Wild Leather quests, The Art of the Armorsmith...): a
+-- Prerequisites card (specPart = "prep") and a quest card (specPart = "quests") built from one spec
+-- table. spec.path = "craft" (make the turn-in items: get the patterns, buy the materials), "buy"
+-- (buy them finished) or nil (nothing to make - Elemental's elementals). spec.chain, in order:
+--   { talk = "line" }              something to do the game can't check ("Tell Krathok Moltenfist
+--                                  you wish to become an armorsmith"): ticks once a later quest is
+--                                  in your log or handed in
+--   { quest = "Title", ids = { A = id, H = id }, items = { {itemID, n}, ... } }  bring these;
+--                                  done once handed in (without ids: once a later quest is reached)
+--   { accept = { "Title", ... } }  "Accept these quests", each on a line under it
+--   { final = true, items = { ... } }   spec.final, done once the spec is learned
+-- Any entry: faction = "Alliance" / "Horde", npc = its Pin (default spec.giver), note = a line under
+-- it ("Take the letter to Una"). Titles and text can be faction-tagged ("{A:...}{H:...}").
+-- spec.patterns = { spell, ... } the patterns to get first (craft); { spell = n, optional = true }
+-- for one that's only recommended. spec.patternItems / patternNpcs = { [spell] = item / npc }: the
+-- pattern's item (for Buy) and who sells it when the recipe data doesn't say.
 local function FactionKey()
   return (UnitFactionGroup and UnitFactionGroup("player") == "Horde") and "H" or "A"
 end
@@ -700,6 +708,7 @@ local function ChainQuestDone(e)
   end
   return false
 end
+local function QuestTitle(e) return e.quest and CR.FactionText(e.quest) end
 local itemRecipe = {}   -- [prof name] = { [itemID] = recipe }
 local function RecipeFor(prof, itemID)
   if not prof then return nil end
@@ -714,10 +723,31 @@ local function RecipeFor(prof, itemID)
   end
   return map[itemID]
 end
-local function ChainEntryDone(spec, e, known)
-  if known then return true end
-  if e.final then return false end
-  return e.quest and ChainQuestDone(e) or false
+
+-- This character's part of the chain (faction entries dropped) and which entries are done.
+local function ChainState(spec, known)
+  local list, done = {}, {}
+  for _, e in ipairs(spec.chain or {}) do
+    if CR.FactionOK(e) then table.insert(list, e) end
+  end
+  local later = known   -- a later quest reached (in your log or handed in)
+  for i = #list, 1, -1 do
+    local e = list[i]
+    if known then
+      done[i] = true
+    elseif e.final then
+      done[i] = false
+    elseif e.quest then
+      done[i] = (e.ids and ChainQuestDone(e)) or (not e.ids and later) or false
+    elseif e.talk then
+      done[i] = later
+    end
+    local reached = done[i]
+      or (e.quest and QuestInLog(QuestTitle(e)) == true)
+      or (e.final and spec.final and QuestInLog(CR.FactionText(spec.final)) == true)
+    later = later or reached or false
+  end
+  return list, done
 end
 
 -- What the quests not handed in yet still need, in order: { {itemID, n}, ... }. Craft path: the
@@ -733,8 +763,9 @@ function CR.SpecChainNeeds(spec, prof)
     out[at[id]][2] = out[at[id]][2] + n
   end
   if known then return out end
-  for _, e in ipairs(spec.chain or {}) do
-    if e.items and not ChainEntryDone(spec, e, known) then
+  local list, done = ChainState(spec, known)
+  for i, e in ipairs(list) do
+    if e.items and not done[i] then
       for _, it in ipairs(e.items) do
         local r = spec.path == "craft" and RecipeFor(prof, it[1])
         if r then
@@ -772,12 +803,13 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   local lvl = UnitLevel and UnitLevel("player") or 1
   -- groups (level and skill / patterns / materials / items), a line between them
   local startGroup = false
-  local Cond0 = Cond
-  Cond = function(ok, label)
-    Cond0(ok, label)
+  local function Mark()
     if startGroup and #checks > 1 then checks[#checks].sep = true end
     startGroup = false
   end
+  local Cond0 = Cond
+  Cond = function(ok, label) Cond0(ok, label); Mark() end
+  local function Shown(ok, label) table.insert(checks, Check(ok, label)); Mark() end   -- (doesn't hold the card)
   if spec.level then Cond(known or lvl >= spec.level, NeedLine("Level", spec.level, lvl)) end
   if spec.skill then Cond(known or cur >= spec.skill, NeedLine(rprofName, spec.skill, cur)) end
   local function Count(id, n)
@@ -787,14 +819,17 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   -- one line per pattern: Pin to its trainer / vendor, Vendor / Buy if it's sold
   startGroup = true
   if craft then
-    for _, spell in ipairs(spec.patterns or {}) do
+    for _, pe in ipairs(spec.patterns or {}) do
+      local spell = type(pe) == "table" and pe.spell or pe
+      local optional = type(pe) == "table" and pe.optional
       local r = p and p.recipes[spell]
       if r then
         local ok = known or KnowsRecipe(rprofName, spell) == true
         local learnAt = CR.LearnAt(r)
         local label = (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. r.name
           .. CR.ColorText("  (" .. learnAt .. ")", cur >= learnAt and "40ff40" or "ff4040")   -- skill it needs
-        Cond(ok, label)
+          .. (optional and Aside("optional") or "")
+        if optional then Shown(ok, label) else Cond(ok, label) end
         checks[#checks].place = PatternPlace(rprofName, r, spec.patternNpcs and spec.patternNpcs[spell])
         local item = spec.patternItems and spec.patternItems[spell]
         if item then checks[#checks].buy = { item = item, need = 1 } end
@@ -816,8 +851,9 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   startGroup = true
   if craft then
     -- the items you make (not the ones whose pattern a quest gives you), each with Craft
-    for _, e in ipairs(spec.chain or {}) do
-      if e.items and not e.final and not ChainEntryDone(spec, e, known) then
+    local list, done = ChainState(spec, known)
+    for i, e in ipairs(list) do
+      if e.items and not done[i] then
         for _, it in ipairs(e.items) do
           local r = RecipeFor(p, it[1])
           if r and not FromChain(r) then
@@ -848,6 +884,12 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
     checks[#checks].place = LinePlace(npc)
     return checks[#checks]
   end
+  local function Note(e, done)
+    if e.note and not done then
+      Cond(done, CR.FactionText(e.note))
+      checks[#checks].sub = true
+    end
+  end
   -- bag counts handed out to the quests in order, so 3 Wildvine covers the first quests that want
   -- it, not every one of them
   local avail = {}
@@ -860,45 +902,47 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
     avail[id] = avail[id] - got
     return got
   end
-  for _, e in ipairs(spec.chain or {}) do
+  local list, done = ChainState(spec, known)
+  local doneByTitle = {}
+  for i, e in ipairs(list) do if e.quest then doneByTitle[QuestTitle(e)] = done[i] end end
+  for i, e in ipairs(list) do
     if e.accept then
       -- "Accept these quests", then each quest on a line under it (in your log or handed in = ticked)
       local ok, each = true, {}
-      for i, title in ipairs(e.accept) do
-        local done = known
-        for _, q in ipairs(spec.chain) do if q.quest == title and ChainQuestDone(q) then done = true end end
-        each[i] = done or QuestInLog(title) == true
-        if not each[i] then ok = false end
+      for j, t in ipairs(e.accept) do
+        local title = CR.FactionText(t)
+        each[j] = known or doneByTitle[title] or QuestInLog(title) == true
+        if not each[j] then ok = false end
       end
       Add(ok, e.text and CR.FactionText(e.text) or "Accept these quests", e.npc or spec.giver)
-      for i, title in ipairs(e.accept) do
-        Cond(each[i], title)
+      for j, t in ipairs(e.accept) do
+        Cond(each[j], CR.FactionText(t))
         checks[#checks].sub = true
       end
+    elseif e.talk then
+      Add(done[i], CR.FactionText(e.talk), e.npc or spec.giver)
+      Note(e, done[i])
     else
       -- the quest on its own line, then what it wants underneath (one item per line). Handed in,
       -- or everything it wants in your bags ("ready"): just the quest line.
-      local done = ChainEntryDone(spec, e, known)
-      local got, ready = {}, not done and e.items and #e.items > 0
-      if not done then
-        for i, it in ipairs(e.items or {}) do
-          got[i] = Take(it[1], it[2])
-          if got[i] < it[2] then ready = false end
+      local got, ready = {}, not done[i] and e.items and #e.items > 0
+      if not done[i] then
+        for j, it in ipairs(e.items or {}) do
+          got[j] = Take(it[1], it[2])
+          if got[j] < it[2] then ready = false end
         end
       end
-      local label = e.final and spec.final or e.quest
+      local title = e.final and CR.FactionText(spec.final) or QuestTitle(e)
+      local label = title
       if ready then
         label = label .. CR.ColorText("  (ready)", "40ff40")
-      elseif not done and not e.final and QuestInLog(e.quest) == true then
+      elseif not done[i] and QuestInLog(title) == true then
         label = label .. Aside("in your log")
       end
-      Add(done, label, e.npc or (e.final and spec.finalNpc) or spec.giver)
-      if e.note and not done then
-        Cond(done, CR.FactionText(e.note))
-        checks[#checks].sub = true
-      end
-      for i, it in ipairs((done or ready) and {} or e.items or {}) do
-        local have = got[i]
+      Add(done[i], label, e.npc or (e.final and spec.finalNpc) or spec.giver)
+      Note(e, done[i])
+      for j, it in ipairs((done[i] or ready) and {} or e.items or {}) do
+        local have = got[j]
         local line = Add(have >= it[2], string.format("%d %s", it[2], CR.ItemName(it[1]))
           .. Aside(string.format("%d/%d", have, it[2])))
         line.sub = true

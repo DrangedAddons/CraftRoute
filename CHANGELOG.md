@@ -1,5 +1,13 @@
 # CraftRoute changelog
 
+## 1.21.0
+
+- Dragonscale and Elemental Leatherworking use the Tribal layout: a Prerequisites card (level, skill, patterns, materials, items, Buy All), then the quest card.
+  - Dragonscale: pick craft or buy under "Dragonscale quest items". Craft lists Pattern: Tough Scorpid Breastplate and Gloves (world drops in Tanaris - Buy on the AH), 36 Thick Leather, 40 Scorpid Scale, 12 Silken Thread, 10 Worn Dragonscale, then the two pieces with Craft. Buy lists the Worn Dragonscale and the finished pieces.
+  - Elemental: the four elementals (2 each), then the quest.
+- Quests tick from their quest IDs (5141 / 5145, 5144 / 5146).
+- Under the hood the spec checklist handles talk-to-the-trainer steps, faction-only steps and optional patterns, ready for Blacksmithing and Engineering.
+
 ## 1.20.3
 
 - Vendor buttons: back to Questie's vendor lists for every item, with Thick Leather on a blacklist (it's only sold in limited stock). The limited-stock tracking from 1.20.2 is gone.
