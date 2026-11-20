@@ -682,7 +682,7 @@ end
 --   { quest = "Title", ids = { A = id, H = id }, items = { {itemID, n}, ... } }  bring these
 --   { accept = { "Title", ... }, text = "line" }   pick up these quests (ticks once in the log)
 --   { final = true, items = { ... } }              spec.final, done once the spec is learned
--- text = the line instead of "<quest>: bring ...", npc = its Pin (default spec.giver).
+-- note = a line under the quest ("Take the letter to Una"), npc = its Pin (default spec.giver).
 -- spec.patterns = { { spells = { ... }, where = "who teaches them", npc = Pin }, ... } (craft only).
 local function FactionKey()
   return (UnitFactionGroup and UnitFactionGroup("player") == "Horde") and "H" or "A"
@@ -831,8 +831,8 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
   end
 end
 
--- The quest card: the chain in order, each quest with what it wants. Items whose pattern a quest
--- teaches (Wild Leather Vest / Helmet) get a Craft line under their quest.
+-- The quest card: the chain in order, each quest on a line with what it wants on the lines under it.
+-- Items whose pattern a quest teaches (Wild Leather Vest / Helmet) get Craft there.
 local function SpecChain(spec, known, rprofName, Cond, checks)
   local p = CR.professions[rprofName]
   local craft = spec.path == "craft"
@@ -840,11 +840,6 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
     Cond(ok, label)
     checks[#checks].place = LinePlace(npc)
     return checks[#checks]
-  end
-  local function ItemList(items)
-    local parts = {}
-    for _, it in ipairs(items) do table.insert(parts, it[2] .. " " .. CR.ItemName(it[1])) end
-    return table.concat(parts, ", ")
   end
   for _, e in ipairs(spec.chain or {}) do
     if e.accept then
@@ -859,23 +854,25 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
       end
       Add(ok, e.text and CR.FactionText(e.text) or ("Accept " .. table.concat(e.accept, ", ")), e.npc or spec.giver)
     else
+      -- the quest on its own line, then what it wants underneath (one item per line)
       local done = ChainEntryDone(spec, e, known)
-      local title = e.final and spec.final or e.quest
-      local label = e.text and CR.FactionText(e.text)
-        or (title .. ((e.items and #e.items > 0) and (": bring " .. ItemList(e.items)) or ""))
+      local label = e.final and spec.final or e.quest
       if not done and not e.final and QuestInLog(e.quest) == true then label = label .. Aside("in your log") end
       Add(done, label, e.npc or (e.final and spec.finalNpc) or spec.giver)
-      if craft then
-        for _, it in ipairs(e.items or {}) do
-          local r = RecipeFor(p, it[1])
-          if r and FromChain(r) then
-            local _, have = Owned(it[1])
-            local line = Add(done or have >= it[2], string.format("Craft %d %s", it[2], CR.ItemName(it[1]))
-              .. (done and "" or Aside(string.format("%d/%d", math.min(have, it[2]), it[2]))))
-            line.sub = true
-            line.craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
-                           learned = KnowsRecipe(rprofName, r.spell) }
-          end
+      if e.note then
+        Cond(done, CR.FactionText(e.note))
+        checks[#checks].sub = true
+      end
+      for _, it in ipairs(e.items or {}) do
+        local _, have = Owned(it[1])
+        local line = Add(done or have >= it[2], string.format("%d %s", it[2], CR.ItemName(it[1]))
+          .. (done and "" or Aside(string.format("%d/%d", math.min(have, it[2]), it[2]))))
+        line.sub = true
+        -- (items whose pattern the chain teaches - Wild Leather Vest / Helmet - are made here: Craft)
+        local r = craft and RecipeFor(p, it[1])
+        if r and FromChain(r) then
+          line.craft = { spell = r.spell, recipe = r, need = math.max(0, it[2] - have), prof = rprofName,
+                         learned = KnowsRecipe(rprofName, r.spell) }
         end
       end
     end

@@ -17,7 +17,7 @@ local TRIBAL_CHAIN = {
   { quest = "Wild Leather Boots", ids = { A = 2851, H = 2858 }, items = { { 8193, 2 }, { 8197, 2 }, { 8153, 2 } } },
   { quest = "Wild Leather Leggings", ids = { A = 2852, H = 2859 }, items = { { 8191, 2 }, { 8198, 2 }, { 8153, 2 } } },
   { quest = "Master of the Wild Leather", ids = { A = 2853, H = 2860 }, npc = "{A:Telonis}{H:Una}",
-    text = "Master of the Wild Leather: take the letter to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}" },
+    note = "Take the letter to {A:Telonis in Darnassus}{H:Una in Thunder Bluff}" },
   { final = true, items = { { 8211, 1 }, { 8214, 1 } } },
 }
 local TRIBAL_QUEST_TEXT = "The Wild Leather quests are from {A:Pratt McGrubben in Feathermoon Stronghold}"
