@@ -347,6 +347,14 @@ local function VendorPlaces(itemID)
   return places
 end
 
+-- Does Questie know a vendor (for this faction) who sells itemID? false without Questie.
+function CR.HasVendorPlaces(itemID)
+  if not (itemID and LibQuestieDB and ItemDB and NpcDB and type(NpcDB.name) == "function"
+    and type(NpcDB.friendlyToFaction) == "function" and type(NpcDB.spawns) == "function") then return false end
+  local ok, places = pcall(VendorPlaces, itemID)
+  return ok and type(places) == "table" and #places > 0
+end
+
 -- Pin the nearest vendor who sells itemID. The button stays "Vendor" when this cannot.
 function CR.PinVendorItem(itemID)
   if not itemID then return end
@@ -712,6 +720,8 @@ function CR.StepTask(st, profName)
           Prep(have >= it[2], name .. Aside(count))
           -- where to get it (a fishing spot): the line gets its own Pin (its tooltip names the spot)
           local spot = it[3]
+          -- no spot: the line gets Vendor / Buy (the card shows it when a vendor sells it)
+          if not spot then t.checks[#t.checks].buy = { item = it[1], need = it[2] } end
           if spot then
             t.checks[#t.checks].place = { name = CR.ItemName(it[1]) .. " - " .. spot.name, uiMapID = spot.uiMapID,
                                           x = spot.x, y = spot.y, zone = ZoneName(spot.uiMapID) }

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.18.0
+
+- "Get N item" lines on step cards (e.g. "Get 7 Bright Baubles" on Fishing) have the Vendor / Buy button. Vendor pins the nearest vendor that sells it (needs Questie). With that vendor open it turns into Buy, which opens the buy box for what you still need.
+
 ## 1.17.3
 
 - CraftRoute tells DrangedHub (the DrangedAddons window, `/dranged`) where its settings window, minimap button and other windows are, so the hub shows them on its CraftRoute page without needing its own entry for CraftRoute. No change without DrangedHub.

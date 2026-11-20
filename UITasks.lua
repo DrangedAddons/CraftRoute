@@ -67,6 +67,13 @@ function CR.CreateTaskCard(parent, width)
     pin:SetScript("OnLeave", GameTooltip_Hide)
     pin:Hide()
     card.checkPins[i] = pin
+    -- an objective to buy ("Get 7 Bright Baubles"): Vendor pins the nearest seller, Buy while one is open
+    local buy = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+    buy:SetSize(40, 20)
+    CR.ThemeRegisterButton(buy)
+    buy:Hide()
+    card.checkBuys = card.checkBuys or {}
+    card.checkBuys[i] = buy
   end
 
   -- skill progress for leveling steps (fishing)
@@ -224,13 +231,23 @@ function CR.CreateTaskCard(parent, width)
     for i, fs in ipairs(self.checks) do
       local c = task.checks[i]
       local pin = self.checkPins[i]
+      local buy = self.checkBuys[i]
       pin.place = c and c.place
       pin:SetShown(c and c.place and true or false)
+      local buyW = 0
+      if c and c.buy and not c.ok and not task.done and CR.SetBuyButton then
+        local id, need = c.buy.item, c.buy.need
+        local function Short(item) return math.max(0, need - (CR.BagsAndElsewhere(item))) end
+        buyW = CR.SetBuyButton(buy, id, function(b) CR.OpenBuy(id, Short(id), b, Short, card) end,
+          CR.HasVendorPlaces and CR.HasVendorPlaces(id))
+      else
+        buy:Hide()
+      end
       if c then
         local indent = (c.place or grid) and 46 or 0
         local hasTrain = self.trainBtn:IsShown() and i == trainLine
         fs:ClearAllPoints()
-        fs:SetWidth(w - indent - (hasTrain and 70 or 0))
+        fs:SetWidth(w - indent - (hasTrain and 70 or 0) - (buyW > 0 and buyW + 6 or 0))
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
@@ -238,6 +255,11 @@ function CR.CreateTaskCard(parent, width)
         if hasTrain then
           self.trainBtn:ClearAllPoints()
           self.trainBtn:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
+          textH = math.max(textH, grid and 17 or 18)
+        end
+        if buyW > 0 then
+          buy:ClearAllPoints()
+          buy:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
           textH = math.max(textH, grid and 17 or 18)
         end
         if grid then

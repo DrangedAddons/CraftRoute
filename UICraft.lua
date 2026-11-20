@@ -812,8 +812,8 @@ end
 
 -- A short reagent's button: "Buy" while a vendor that sells it is open (onClick opens the buy box),
 -- "Vendor" when it's a vendor item but no such vendor is open. Clicking Vendor pins the nearest
--- seller. Returns the width it takes, 0 when hidden.
-function CR.SetBuyButton(btn, itemID, onClick)
+-- seller. vendorKnown: the caller already knows vendors sell it. Returns the width it takes, 0 when hidden.
+function CR.SetBuyButton(btn, itemID, onClick, vendorKnown)
   btn.crBuyW = btn.crBuyW or tonumber(btn:GetWidth()) or 40
   if CR.MerchantSells(itemID) then
     btn:SetText("Buy")
@@ -823,7 +823,7 @@ function CR.SetBuyButton(btn, itemID, onClick)
     btn:SetScript("OnLeave", nil)
     btn:Show()
     return btn.crBuyW
-  elseif CR.IsVendorItem(itemID) then
+  elseif vendorKnown or CR.IsVendorItem(itemID) then
     btn:SetText("Vendor")
     btn:SetWidth(58)
     btn:SetScript("OnClick", function() CR.PinVendorItem(itemID) end)
