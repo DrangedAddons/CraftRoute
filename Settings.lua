@@ -438,3 +438,25 @@ ev:SetScript("OnEvent", function()
   CraftRouteDB.minimap = CraftRouteDB.minimap or {}
   CR.UpdateMinimapButton()
 end)
+
+-- DrangedHub (the DrangedAddons window, /dranged) shows this settings window on its CraftRoute page.
+-- This tells it where the window is, how much title bar to cut off, how to show and hide the
+-- minimap button (CraftRoute's own, not LibDBIcon's) and which other windows get a button there.
+-- A plain global table, so it works whichever of the two addons loads first.
+DrangedHubSpecs = DrangedHubSpecs or {}
+DrangedHubSpecs.CraftRoute = {
+  settings = { frame = "CraftRouteSettings", crop = 60 },
+  minimap = {
+    get = function() return not (CraftRouteDB and CraftRouteDB.minimap and CraftRouteDB.minimap.hide) end,
+    set = function(on)
+      if not CraftRouteDB then return end
+      CraftRouteDB.minimap = CraftRouteDB.minimap or {}
+      CraftRouteDB.minimap.hide = (not on) or nil
+      CR.UpdateMinimapButton()
+    end,
+  },
+  actions = {
+    { "CraftRoute window", function() SlashCmdList.CRAFTROUTE("window") end },
+    { "Materials", function() SlashCmdList.CRAFTROUTE("all") end },
+  },
+}

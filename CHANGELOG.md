@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.17.3
+
+- CraftRoute tells DrangedHub (the DrangedAddons window, `/dranged`) where its settings window, minimap button and other windows are, so the hub shows them on its CraftRoute page without needing its own entry for CraftRoute. No change without DrangedHub.
+
 ## 1.17.2
 
 - "Open trainer and vendor pages" only skips the chat page when the trainer or vendor option is the NPC's one and only option. Most trainers have more than one, and those now wait for you to choose.
