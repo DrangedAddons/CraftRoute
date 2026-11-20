@@ -9,8 +9,7 @@ local _, CR = ...
 local TRIBAL_CHAIN = {
   { quest = "Wild Leather Armor", ids = { A = 2847, H = 2854 }, items = { { 4304, 10 } } },
   { accept = { "Wild Leather Shoulders", "Wild Leather Vest", "Wild Leather Helmet", "Wild Leather Boots",
-               "Wild Leather Leggings" },
-    text = "Accept Wild Leather Shoulders, Vest, Helmet, Boots and Leggings" },
+               "Wild Leather Leggings" } },
   { quest = "Wild Leather Shoulders", ids = { A = 2848, H = 2855 }, items = { { 8173, 6 }, { 8153, 1 } } },
   { quest = "Wild Leather Vest", ids = { A = 2849, H = 2856 }, items = { { 8189, 2 }, { 8187, 2 }, { 8153, 1 } } },
   { quest = "Wild Leather Helmet", ids = { A = 2850, H = 2857 }, items = { { 8175, 2 }, { 8176, 2 }, { 8153, 1 } } },

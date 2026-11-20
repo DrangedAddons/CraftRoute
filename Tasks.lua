@@ -680,7 +680,7 @@ end
 -- quests). spec.path = "craft" (make the items: learn the patterns, buy the materials) or "buy"
 -- (buy the finished items). spec.chain, in order:
 --   { quest = "Title", ids = { A = id, H = id }, items = { {itemID, n}, ... } }  bring these
---   { accept = { "Title", ... }, text = "line" }   pick up these quests (ticks once in the log)
+--   { accept = { "Title", ... } }   "Accept these quests", each on a line under it (ticks once in the log)
 --   { final = true, items = { ... } }              spec.final, done once the spec is learned
 -- note = a line under the quest ("Take the letter to Una"), npc = its Pin (default spec.giver).
 -- spec.patterns = { { spells = { ... }, where = "who teaches them", npc = Pin }, ... } (craft only).
@@ -843,16 +843,19 @@ local function SpecChain(spec, known, rprofName, Cond, checks)
   end
   for _, e in ipairs(spec.chain or {}) do
     if e.accept then
-      local ok = known
-      if not ok then
-        ok = true
-        for _, title in ipairs(e.accept) do
-          local done = false
-          for _, q in ipairs(spec.chain) do if q.quest == title then done = ChainQuestDone(q) end end
-          if not done and QuestInLog(title) ~= true then ok = false end
-        end
+      -- "Accept these quests", then each quest on a line under it (in your log or handed in = ticked)
+      local ok, each = true, {}
+      for i, title in ipairs(e.accept) do
+        local done = known
+        for _, q in ipairs(spec.chain) do if q.quest == title and ChainQuestDone(q) then done = true end end
+        each[i] = done or QuestInLog(title) == true
+        if not each[i] then ok = false end
       end
-      Add(ok, e.text and CR.FactionText(e.text) or ("Accept " .. table.concat(e.accept, ", ")), e.npc or spec.giver)
+      Add(ok, e.text and CR.FactionText(e.text) or "Accept these quests", e.npc or spec.giver)
+      for i, title in ipairs(e.accept) do
+        Cond(each[i], title)
+        checks[#checks].sub = true
+      end
     else
       -- the quest on its own line, then what it wants underneath (one item per line)
       local done = ChainEntryDone(spec, e, known)

@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.19.5
+
+- Tribal quest card: "Accept these quests" has each quest on its own line under it, ticked once it's in your log or handed in. It no longer wraps one long line.
+
 ## 1.19.4
 
 - Tribal quest card: each quest is on its own line with its Pin, and what it wants goes on the lines under it, one item per line with have/need ("2 Turtle Scale Gloves  0/2"). No more long wrapped "quest: bring ..." lines. Master of the Wild Leather has "Take the letter to ..." under it. The Wild Leather Vest and Helmet lines under Tribal Leatherworking have Craft.
