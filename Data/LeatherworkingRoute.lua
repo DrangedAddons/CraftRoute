@@ -29,6 +29,7 @@ local function TribalSpec(path)
     giver = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}",
     patterns = { 10487, 10511, 10509, 10518, 10552, 10499, 10507, 10548, 10558 },
     patternItems = { [10509] = 8385 },   -- Pattern: Turtle Scale Gloves (sold by the quest giver)
+    patternNpcs = { [10509] = "{A:Pratt McGrubben}{H:Jangdor Swiftstrider}" },
     chain = TRIBAL_CHAIN }
 end
 local TRIBAL_CRAFT, TRIBAL_BUY = TribalSpec("craft"), TribalSpec("buy")

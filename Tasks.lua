@@ -747,12 +747,13 @@ end
 -- A recipe the chain itself teaches (a quest reward): not something to get ahead.
 local function FromChain(r) return r and (r.src or ""):find("^Quest reward") ~= nil end
 
--- Where to get a pattern: the nearest trainer, else a vendor that sells it.
-local function PatternPlace(rprofName, r)
+-- Where to get a pattern: the nearest trainer, else a vendor that sells it, else npc (the spec's
+-- spec.patternNpcs entry: who sells it when the recipe data doesn't say).
+local function PatternPlace(rprofName, r, npc)
   if (r.src or ""):find("Trainer") then return Nearest(Trainers(rprofName, RankFor(CR.LearnAt(r))), 1)[1] end
   local places = Nearest(RecipeVendors(rprofName, r.spell), 1)
   if #places == 0 then places = Nearest(NpcsInText(CR.FactionText(r.src or "")), 1) end
-  return places[1]
+  return places[1] or LinePlace(npc)
 end
 
 -- The specialization's Prerequisites card (specPart = "prep"): everything to sort out before the
@@ -788,7 +789,7 @@ local function SpecPrep(spec, known, rprofName, Cond, checks)
         local label = (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. r.name
           .. CR.ColorText("  (" .. learnAt .. ")", cur >= learnAt and "40ff40" or "ff4040")   -- skill it needs
         Cond(ok, label)
-        checks[#checks].place = PatternPlace(rprofName, r)
+        checks[#checks].place = PatternPlace(rprofName, r, spec.patternNpcs and spec.patternNpcs[spell])
         local item = spec.patternItems and spec.patternItems[spell]
         if item then checks[#checks].buy = { item = item, need = 1 } end
       end
@@ -1053,6 +1054,7 @@ function CR.StepTask(st, profName)
       local known = CR.KnowsSpec(st.spec)
       if st.specPart == "prep" then
         SpecPrep(st.spec, known, rprofName, Cond, t.checks)
+        t.cart = st.spec.name   -- (a cart button: one shopping list of everything on it, named this)
       elseif st.spec.chain then
         SpecChain(st.spec, known, rprofName, Cond, t.checks)
       else

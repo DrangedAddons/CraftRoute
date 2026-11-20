@@ -1,5 +1,10 @@
 # CraftRoute changelog
 
+## 1.20.0
+
+- Specialization Prerequisites card: a **Buy All** cart button at the top. It opens the cart with everything on the card you still need (less what's in your bags), then makes one Auctionator shopping list named after the spec. Vendor-sold items stay off it, like Buy Route - use their Vendor buttons.
+- Pattern: Turtle Scale Gloves has its Pin again (Pratt McGrubben / Jangdor Swiftstrider). Specs can name who sells a pattern when the recipe data doesn't say.
+
 ## 1.19.6
 
 - Tribal quest card: a quest whose items are all in your bags collapses to one line, marked "(ready)" in green. A quest that's missing something stays open and shows what's missing. Handed-in quests collapse to their ticked line.

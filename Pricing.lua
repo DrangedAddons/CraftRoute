@@ -365,6 +365,20 @@ function CR.ShowCart(suggested, items, onCreate)
 end
 
 -- The whole plan's missing materials.
+-- A shopping list of what a task card's lines still need (c.buy = { item, need }) - the spec
+-- Prerequisites card's cart button. Counted against your bags, like the lines' own Buy.
+function CR.CreateTaskShoppingList(task)
+  local wanted, seen = {}, {}
+  for _, c in ipairs(task.checks or {}) do
+    if c.buy and not c.ok and not seen[c.buy.item] then
+      seen[c.buy.item] = true
+      local bags = CR.BagsAndElsewhere(c.buy.item) or 0
+      table.insert(wanted, { id = c.buy.item, missing = math.max(0, c.buy.need - bags), name = CR.ItemName(c.buy.item) })
+    end
+  end
+  MakeShoppingList("CraftRoute: " .. (type(task.cart) == "string" and task.cart or task.title or "step"), wanted, "task:" .. tostring(task.key))
+end
+
 function CR.CreateShoppingList(plan)
   local wanted = {}
   for _, m in ipairs(plan.materials) do

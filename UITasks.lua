@@ -216,6 +216,25 @@ function CR.CreateTaskCard(parent, width)
   end)
   card.trainBtn:SetScript("OnLeave", GameTooltip_Hide)
 
+  -- a Prerequisites card: one shopping list of everything its lines still need (at its first line)
+  card.cartBtn = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+  card.cartBtn:SetSize(80, 20)
+  card.cartBtn:SetText("Buy All")
+  CR.ThemeRegisterButton(card.cartBtn)
+  CR.AddCartIcon(card.cartBtn)
+  card.cartBtn:SetScript("OnClick", function()
+    if card.task and CR.CreateTaskShoppingList then CR.CreateTaskShoppingList(card.task) end
+  end)
+  card.cartBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText("Shopping list")
+    GameTooltip:AddLine("Makes an Auctionator shopping list of everything on this card you still need to buy "
+      .. "(less what's in your bags). Vendor items are left off - use their Vendor buttons.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  card.cartBtn:SetScript("OnLeave", GameTooltip_Hide)
+  card.cartBtn:Hide()
+
   local KIND_LABEL = { train = "TRAINING", book = "BOOK", quest = "QUEST", recipe = "LEARN A RECIPE", buy = "SHOPPING",
                        guide = "NEXT STEP" }
 
@@ -254,6 +273,8 @@ function CR.CreateTaskCard(parent, width)
     self.trainBtn:SetShown(showTrain and trainLine ~= nil and trainLine > 0)
     self.trainBtn:SetEnabled((svc and category == "available") or (not svc and trainPin ~= nil))
 
+    local cartLine = (task.cart and not task.done and #task.checks > 0) and 1 or nil
+    self.cartBtn:SetShown(cartLine ~= nil)
     -- a checklist with a Pin on any line: a grid (Pins in their own column, text in the next)
     local grid = task.pinColumn
     for _, c in ipairs(task.checks) do if c.place then grid = true end end
@@ -296,8 +317,9 @@ function CR.CreateTaskCard(parent, width)
       if c then
         local indent = ((c.place or grid) and 46 or 0) + (c.sub and 16 or 0)
         local hasTrain = self.trainBtn:IsShown() and i == trainLine
+        local hasCart = i == cartLine
         fs:ClearAllPoints()
-        fs:SetWidth(w - indent - (hasTrain and 70 or 0) - (buyW > 0 and buyW + 6 or 0))
+        fs:SetWidth(w - indent - (hasTrain and 70 or 0) - (buyW > 0 and buyW + 6 or 0) - (hasCart and 86 or 0))
         fs:SetText((c.ok and TICK or CROSS) .. c.text)
         fs:SetTextColor(c.ok and 0.6 or 1, c.ok and 1 or 0.85, c.ok and 0.6 or 0.6)
         fs:Show()
@@ -305,6 +327,11 @@ function CR.CreateTaskCard(parent, width)
         if hasTrain then
           self.trainBtn:ClearAllPoints()
           self.trainBtn:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
+          textH = math.max(textH, grid and 17 or 18)
+        end
+        if hasCart then
+          self.cartBtn:ClearAllPoints()
+          self.cartBtn:SetPoint("TOPRIGHT", self, "TOPLEFT", w, y + (grid and 0 or 2))
           textH = math.max(textH, grid and 17 or 18)
         end
         if buyW > 0 then
