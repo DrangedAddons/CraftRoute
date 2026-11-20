@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.24.0
+
+- Craft view: a recipe a trainer teaches gets a Trainer button at the end of its first Pin line. It pins the nearest trainer, and turns into Train while a trainer that lists the recipe is open (grey until it can teach you). Recipes trainers don't teach (drops, quest rewards, vendor plans) don't get one.
+
 ## 1.23.1
 
 - With Mining, the ore line now asks for enough ore to smelt every bar you're short of, so Copper Ore reads 16/547 instead of a green 16/16. Before, it only counted the ore already in your bags. Bars made from other bars count down to the raw ore (Bronze Bar asks for Copper Ore and Tin Ore).

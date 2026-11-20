@@ -3251,6 +3251,7 @@ local function SetDestWidgets(on)
   if not on and f.destFilterPop then f.destFilterPop:Hide() end
   f.destInfo:Hide()
   for _, row in ipairs(f.destPins) do row:Hide() end
+  f.destTrain:Hide()
   if not on then f.favEmpty:Hide() end
   -- the enchant target slot: back in the recipe panel for the route
   if not on and f.enchant and f.enchant:GetParent() ~= f.schematic then
@@ -3649,6 +3650,8 @@ end
 local function FillDestDetail(info)
   local f = overlay
   for _, row in ipairs(f.destPins) do row:Hide() end
+  f.destTrain:Hide()
+  f.destTrain.train, f.destTrain.place = nil, nil
   f.destBottom = f.destInfo
   local st = info and info.selected
   if not st then
@@ -3681,7 +3684,26 @@ local function FillDestDetail(info)
     row:Show()
     anchor = row
   end
-  f.destBottom = anchor
+  -- a trainer teaches it: Train while a trainer that lists it is open (grey until it can teach
+  -- you), otherwise Trainer, pinning the nearest one - at the end of the first Pin line
+  if CR.RecipeTrainerTaught and CR.RecipeTrainerTaught(info.profName, r) then
+    local btn = f.destTrain
+    btn.train = { recipe = r.name, spell = r.spell }
+    btn.place = places and places[1]
+    local svc, category
+    if CR.TrainerService then svc, category = CR.TrainerService(btn.train) end
+    btn:SetText(svc and "Train" or "Trainer")
+    btn:SetEnabled((svc and category == "available") or (not svc and btn.place ~= nil))
+    btn:ClearAllPoints()
+    local row = f.destPins[1]
+    if row:IsShown() then
+      btn:SetPoint("LEFT", row.text, "RIGHT", 10, 0)
+    else
+      btn:SetPoint("TOPLEFT", f.destInfo, "BOTTOMLEFT", 0, -4)
+      f.destBottom = btn
+    end
+    btn:Show()
+  end
 end
 
 -- The Craft view, recipe layout: the recipe list on the left (favorites first), the clicked recipe
@@ -5789,6 +5811,45 @@ local function BuildOverlay()
     row:Hide()
     frame.destPins[i] = row
   end
+  -- Train / Trainer for a recipe a trainer teaches (FillDestDetail places it)
+  local train = CreateFrame("Button", nil, schematic, "UIPanelButtonTemplate")
+  train:SetSize(64, 18)
+  train:SetText("Trainer")
+  CR.ThemeRegisterButton(train)
+  train:SetScript("OnClick", function(self)
+    if not self.train then return end
+    if CR.TrainerService and CR.TrainerService(self.train) then
+      CR.TrainService(self.train)
+    elseif self.place and CR.PinPlace then
+      CR.PinPlace(self.place)
+    end
+  end)
+  train:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    local svc, category, cost
+    if CR.TrainerService then svc, category, cost = CR.TrainerService(self.train) end
+    if not svc then
+      GameTooltip:SetText("Trainer")
+      if self.place then
+        GameTooltip:AddLine("Click to pin the nearest trainer: " .. self.place.name
+          .. (self.place.zone and (", " .. self.place.zone) or "") .. ".", 1, 1, 1, true)
+      else
+        GameTooltip:AddLine("No trainer position known.", 1, 0.5, 0.3, true)
+      end
+      GameTooltip:AddLine("Talk to a trainer that teaches it and this becomes a Train button.", 1, 1, 1, true)
+    elseif category == "available" then
+      GameTooltip:SetText("Train")
+      GameTooltip:AddLine("Learn it from this trainer now" .. ((cost or 0) > 0 and (" for " .. CR.FormatMoney(cost)) or "")
+        .. ".", 1, 1, 1, true)
+    else
+      GameTooltip:SetText("Train")
+      GameTooltip:AddLine("This trainer has it, but can't teach you it yet (skill or level).", 1, 0.5, 0.3, true)
+    end
+    GameTooltip:Show()
+  end)
+  train:SetScript("OnLeave", GameTooltip_Hide)
+  train:Hide()
+  frame.destTrain = train
 
   frame.reagentsLabel = schematic:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   frame.reagentsLabel:SetPoint("TOPLEFT", schematic, "TOPLEFT", 26, -120)   -- where Blizzard's "Reagents:" sits under the icon

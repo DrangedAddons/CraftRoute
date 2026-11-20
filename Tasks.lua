@@ -1298,6 +1298,12 @@ function CR.RecipeSource(profName, r)
   return (r.pattern and (r.pattern .. ": ") or "") .. CR.FactionText(src), places
 end
 
+-- Does a trainer teach this recipe? (its source says so, or TrainerSpells has a training cost)
+function CR.RecipeTrainerTaught(profName, r)
+  if not r then return false end
+  return (r.src or ""):find("Trainer") ~= nil or TrainerCost(profName, r.spell) ~= nil
+end
+
 -- The route as things to do, in order: open tasks (each as { task = ... }) and crafts (the step
 -- itself). A craft whose recipe isn't learned yet is preceded by a "learn it" task. Finished
 -- tasks drop out.
