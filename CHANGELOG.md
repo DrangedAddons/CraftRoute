@@ -1,5 +1,11 @@
 # CraftRoute changelog
 
+## 1.25.0
+
+- Mining: a Learn Smelt Dark Iron step at 230. Gloom'Rel's quest The Spectral Chalice in Blackrock Depths wants 2 Star Ruby, 20 Gold Bar and 10 Truesilver Bar. The card lists the skill, each item with your count and Vendor/Buy, and the quest, and is done once you know Smelt Dark Iron. The tribute counts in the materials from wherever you are until then.
+- Mining: the 125-175 and 175-245 bands say to keep the Gold Bars, Truesilver Bars and Star Rubies for it.
+- Mining's materials named some bars after their smelting spell ("Smelt Gold", "Smelt Mithril"). They now use the bar's name.
+
 ## 1.24.1
 
 - Craft view recipe detail: the Pin rows are gone (1.24.0 left them overlapping the reagents). One button sits at the end of the source line, for the nearest place:

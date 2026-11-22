@@ -1172,7 +1172,25 @@ function CR.StepTask(st, profName)
       Prep(bags > 0 or (bmax or 0) >= b[3], "Buy " .. CR.ItemName(b[1]) .. ((bmax or 0) >= b[3] and Aside("read") or ""))
     end
     -- (a spec quest chain lists its own materials, before the quests)
+    -- a recipe a quest teaches for a tribute (Smelt Dark Iron): skill and level, the items, the
+    -- quest - done once the recipe is known
+    local taught
+    if st.learnsRecipe then
+      taught = KnowsRecipe(rprofName, st.learnsRecipe) == true
+      trained, need = taught, st.need
+      if st.need then table.insert(t.checks, Check(cur >= st.need or taught, NeedLine(skillName, st.need, cur))) end
+      if st.level then
+        local lvl = UnitLevel and UnitLevel("player") or 1
+        table.insert(t.checks, Check(lvl >= st.level or taught, NeedLine("Level", st.level, lvl)))
+      end
+    end
     if not (st.spec and st.spec.chain) then Objectives(trained) end
+    if st.learnsRecipe then
+      local r = CR.professions[rprofName] and CR.professions[rprofName].recipes[st.learnsRecipe]
+      Cond(taught, "Complete " .. (st.questName or "the quest") .. Aside("learns " .. (r and r.name or "the recipe")))
+      t.checks[#t.checks].place = st.questNpc and LinePlace(st.questNpc) or nil
+      t.kind = "quest"
+    end
     -- leveling that isn't crafting (fishing): done at the skill
     -- (a training / learning step's range only says when it applies - it's done once trained)
     -- (the solo Fishing guide's tips and shopping steps sit beside a "fish here" step over the
@@ -1183,7 +1201,8 @@ function CR.StepTask(st, profName)
       Cond(cur >= st.to, NeedLine(skillName, st.to, cur))
       -- over the guide's whole step (the plan's own range starts at your skill, so it'd never fill)
       t.progress = { from = st.stepFrom or st.from or 0, to = st.to, cur = cur }
-    elseif ((st.items and #st.items > 0) or (st.has and #st.has > 0)) and not st.trainCap and not st.learnStep then
+    elseif ((st.items and #st.items > 0) or (st.has and #st.has > 0)) and not st.trainCap and not st.learnStep
+      and not st.learnsRecipe then
       t.kind = "buy"
     end
     t.places = Nearest(NpcsInText(text))

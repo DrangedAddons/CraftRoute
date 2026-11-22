@@ -32,6 +32,9 @@ local NODES = {
   richthorium = Veins("Small Thorium Vein", "Rich Thorium Vein"),
 }
 
+local KEEP_DARK_IRON = " Keep 20 Gold Bars, 10 Truesilver Bars and 2 Star Rubies (Star Rubies come out of Mithril and "
+  .. "Truesilver veins): they're the tribute for Smelt Dark Iron at 230."
+
 -- One choice whose options are zones; each option becomes a gathering step over [from, to]. The
 -- band's advice, if any, goes in every zone's step - not a step of its own, which would only be a
 -- line to read with nothing to do. `also` adds more conditions to every step (the 1-65 zones are
@@ -123,13 +126,13 @@ Zones("iron", "125-175: Iron and Gold", 125, 175, {
   { "needles", "Thousand Needles", "Mine in Thousand Needles until 175 - the safest route around level 30." },
   { "desolace", "Desolace", "Mine in Desolace until 175." },
 }, "Iron Deposits need 125 and Gold Veins 155. Smelt Iron gives points to about 135, and Smelt Gold one per "
-  .. "bar from 155 to 170 - about 22 Gold Ore takes you to 175.")
+  .. "bar from 155 to 170 - about 22 Gold Ore takes you to 175." .. KEEP_DARK_IRON)
 
 Zones("mithril", "175-245: Mithril and Truesilver", 175, 245, {
   { "hinterlands", "The Hinterlands", "Mine in The Hinterlands until 245. Low levels: skip the area with level "
     .. "62 elites, and maybe the cave." },
   { "tanaris", "Tanaris", "Mine in Tanaris until 245 (below level 60: skip the 4 caves)." },
-}, "Mithril Deposits need 175 and Truesilver Deposits 230.")
+}, "Mithril Deposits need 175 and Truesilver Deposits 230." .. KEEP_DARK_IRON)
 
 Zones("thorium", "245-275: Mithril, Truesilver and Thorium", 245, 275, {
   { "ungoro", "Un'Goro Crater", "Mine in Un'Goro Crater until 275 - its two caves hold 2-3 veins each "
@@ -149,6 +152,17 @@ Zones("richthorium", "275-300: Thorium and Rich Thorium", 275, 300, {
   { "steppes", "Burning Steppes", "Mine in the Burning Steppes until 300. Its two caves have level 50 mobs - "
     .. "low levels may want to skip them." },
 }, "Rich Thorium Veins need 275.")
+
+-- Smelt Dark Iron: Gloom'Rel's quest The Spectral Chalice in Blackrock Depths (Mining 230), a
+-- tribute of 2 Star Ruby, 20 Gold Bar and 10 Truesilver Bar put in the chalice. Done once the
+-- recipe is known; until then the tribute counts in the materials from wherever you are.
+table.insert(steps, { kind = "guide", from = 230, to = 300, learnsRecipe = 14891, need = 230,
+  questName = "The Spectral Chalice", questNpc = "Gloom'Rel",
+  items = { { 7910, 2 }, { 3577, 20 }, { 6037, 10 } },
+  title = "Learn Smelt Dark Iron",
+  text = "Gloom'Rel, one of the Seven in Blackrock Depths, teaches Smelt Dark Iron for a tribute: put 2 Star "
+    .. "Ruby, 20 Gold Bar and 10 Truesilver Bar in the Spectral Chalice, then talk to him again. Dark Iron Ore "
+    .. "is mined in Blackrock Depths and Molten Core, and only smelts at the Black Forge in Blackrock Depths." })
 
 CR.RegisterRoute("Mining", {
   label = "Mining",
