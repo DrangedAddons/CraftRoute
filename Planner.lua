@@ -468,6 +468,10 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
     -- too): it's usually picked well past its skill (it needs level 30-40), then it shows at your
     -- current skill
     if CR.KnowsAnySpec(route) or (not route.sequential and st.from >= goal) then return nil end
+  elseif st.learnsRecipe then
+    -- an optional recipe a quest teaches (Smelt Dark Iron): stays until it's known, at your skill
+    -- once you're past its own (its "not now" copy sits at the route's end)
+    if (IsPlayerSpell and IsPlayerSpell(st.learnsRecipe)) or (not route.sequential and st.from > goal) then return nil end
   elseif c >= st.to or (not route.sequential and st.from >= goal) then
     return nil
   end
@@ -475,6 +479,7 @@ local function ClipStep(route, rprof, st, index, profName, cur, goal)
   if st.trainCap or st.learnStep then lo, hi = st.from, st.to end
   if st.spec and c > st.to then lo, hi = c, c end
   if st.changeSpec then lo, hi = st.from, st.to end
+  if st.learnsRecipe then lo = max(st.from, c); hi = max(lo, min(st.to, goal)) end
   local frac = (st.to > st.from) and (hi - lo) / (st.to - st.from) or 1
   local out = { kind = st.kind or "craft", from = lo, to = hi, skill = skillName, catches = st.catches,
                 note = st.note and CR.FactionText(st.note), text = st.text and CR.FactionText(st.text),

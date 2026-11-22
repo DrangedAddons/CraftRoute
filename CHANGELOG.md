@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.26.0
+
+- Mining: Smelt Dark Iron is optional now, with a choice: "Learn it at 230" or "Not now (at the end of the route)". Not now moves the card to the end, after the last band. Either way the card stays until you know the recipe, and the tribute stays in the materials so you keep the bars.
+
 ## 1.25.0
 
 - Mining: a Learn Smelt Dark Iron step at 230. Gloom'Rel's quest The Spectral Chalice in Blackrock Depths wants 2 Star Ruby, 20 Gold Bar and 10 Truesilver Bar. The card lists the skill, each item with your count and Vendor/Buy, and the quest, and is done once you know Smelt Dark Iron. The tribute counts in the materials from wherever you are until then.
