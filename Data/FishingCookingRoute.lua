@@ -23,6 +23,9 @@ local route = {
   source = "wow-professions.com (Forever beta)",
   sequential = true,
   recipeProf = "Cooking",
+  -- the recipe items the guide's steps buy ({ [spell] = item }): their lines get Vendor / Buy
+  recipeItems = { [7751] = 6325, [7752] = 6326, [7753] = 6328, [7755] = 6330, [20916] = 17062,
+                  [18241] = 13941, [18238] = 13939, [18243] = 13945, [18244] = 13946, [18247] = 13949 },
   skills = { F, C },
   routeEnd = 300,
   maxSkill = 300,

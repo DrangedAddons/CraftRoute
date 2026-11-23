@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.27.0
+
+- Fishing + Cooking: each recipe line on a guide card (Catfish, Longjaw, Baked Salmon and the rest) gets a Pin to its nearest seller and a Vendor / Buy button for the recipe. Vendor pins the nearest vendor that sells it; Buy shows while that vendor is open.
+
 ## 1.26.0
 
 - Mining: Smelt Dark Iron is optional now, with a choice: "Learn it at 230" or "Not now (at the end of the route)". Not now moves the card to the end, after the last band. Either way the card stays until you know the recipe, and the tribute stays in the materials so you keep the bars.

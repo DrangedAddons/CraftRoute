@@ -1015,6 +1015,7 @@ function CR.StepTask(st, profName)
   -- counted there as a later craft's reagents) and recipes to learn. Once the rank is trained,
   -- quest items handed in are gone - they show ticked.
   local rprofName = (CR.Route(profName) or {}).recipeProf or profName
+  local recipeItems = (CR.Route(profName) or {}).recipeItems
   local function Objectives(trainedNow)
     local cost = 0
     for _, list in ipairs({ st.items or {}, st.has or {} }) do
@@ -1047,6 +1048,12 @@ function CR.StepTask(st, profName)
       local known = KnowsRecipe(rprofName, spell)
       Prep(known == true, (RECIPE_WORD[rprofName] or "Recipe") .. ": " .. (r and r.name or ("recipe " .. spell))
         .. (known == nil and Aside("open " .. rprofName .. " to check") or ""))
+      -- Pin to its nearest seller, Vendor / Buy for its recipe item
+      if r and known ~= true then
+        t.checks[#t.checks].place = PatternPlace(rprofName, r)
+        local item = recipeItems and recipeItems[spell]
+        if item then t.checks[#t.checks].buy = { item = item, need = 1 } end
+      end
     end
   end
 
