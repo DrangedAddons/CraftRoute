@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.27.1
+
+- Stat filter: stats the recipe data and the item's tooltip both list (+7 Strength, resistances, block, Equip lines) were added together, so Veteran's Chain Shirt showed 14 Strength. The tooltip's value now replaces the data's.
+
 ## 1.27.0
 
 - Fishing + Cooking: each recipe line on a guide card (Catfish, Longjaw, Baked Salmon and the rest) gets a Pin to its nearest seller and a Vendor / Buy button for the recipe. Vendor pins the nearest vendor that sells it; Buy shows while that vendor is open.

@@ -247,7 +247,11 @@ function CR.ItemStats(r)
   end
   local fx = r.item and EffectText(r.item)
   if fx then
-    for l in fx:gmatch("[^\n]+") do ParseLine(t, l) end
+    -- the tooltip repeats the data's lines (+7 Strength, resistances, block): its value replaces
+    -- the data's for each stat it has, so nothing is counted twice
+    local live = {}
+    for l in fx:gmatch("[^\n]+") do ParseLine(live, l) end
+    for k, v in pairs(live) do t[k] = v end
     statsOf[r] = t   -- effects not in yet: work it out again next time
   elseif not r.item then
     statsOf[r] = t
