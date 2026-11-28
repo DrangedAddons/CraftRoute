@@ -68,14 +68,39 @@ local function Characters()
   CraftRouteDB.characters = CraftRouteDB.characters or {}
   return CraftRouteDB.characters
 end
+-- The same character saved under two keys: GetRealmName() is empty on some logins, so a
+-- character can have both "Name-" and "Name-Realm". Twins: same name, one of the realms empty.
+local function Twins(a, b)
+  if a == b then return true end
+  local na, ra = a:match("^(.-)%-(.*)$")
+  local nb, rb = b:match("^(.-)%-(.*)$")
+  return na ~= nil and na == nb and (ra == "" or rb == "")
+end
+-- the record to use for a character key: of it and its twins, the one saved last (seen), else
+-- the realm-less one (the newer kind: older records have the realm)
+local function Current(key)
+  local best, bestSeen
+  for k, c in pairs(Characters()) do
+    if Twins(k, key) then
+      local seen = c.seen or 0
+      if not best or seen > bestSeen or (seen == bestSeen and k:sub(-1) == "-") then best, bestSeen = k, seen end
+    end
+  end
+  return best or key
+end
 local function RecordCharacter()
   local key = MyKey()
   if not (key and CraftRouteDB) then return end
+  -- this character's other record (the realm-less or the realm one) is out of date: drop it
+  for k in pairs(Characters()) do
+    if k ~= key and Twins(k, key) then Characters()[k] = nil end
+  end
   -- (UnitClass's second value: the class's file name, MAGE - what the class colours go by)
   local class = UnitClass and select(2, UnitClass("player"))
   local c = Characters()[key] or {}
   c.name, c.class = UnitName("player"), class or c.class
   c.fullName = FullName() or c.fullName
+  c.seen = time and time() or c.seen
   c.profs = {}
   for prof, sk in pairs(CR.skill or {}) do
     c.profs[prof] = { rank = sk.rank or 0, maxRank = sk.maxRank or 0 }
@@ -184,6 +209,17 @@ local dragCol   -- the column heading being dragged
 local function AltKeys()
   local st = Settings()
   st.alts = st.alts or {}
+  -- columns added under a character's out-of-date record: moved to its current one, once each
+  local seen = {}
+  for i = #st.alts, 1, -1 do
+    local old = st.alts[i]
+    local char, prof = old:match("^alt:(.+):([^:]+)$")
+    local key = char and ("alt:" .. Current(char) .. ":" .. prof) or old
+    if key ~= old and st.goals and st.goals[old] then
+      st.goals[key], st.goals[old] = st.goals[key] or st.goals[old], nil
+    end
+    if seen[key] then table.remove(st.alts, i) else seen[key] = true; st.alts[i] = key end
+  end
   return st.alts
 end
 local function Ordered()
@@ -793,7 +829,9 @@ function OpenAdd()
   -- your other characters: their professions in a menu beside the row
   local me, others = MyKey(), {}
   for key, c in pairs(Characters()) do
-    if key ~= me and c.profs and next(c.profs) then table.insert(others, key) end
+    if key ~= me and not (me and Twins(key, me)) and Current(key) == key and c.profs and next(c.profs) then
+      table.insert(others, key)
+    end
   end
   table.sort(others)
   if #others > 0 then

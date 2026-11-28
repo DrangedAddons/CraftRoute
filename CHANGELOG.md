@@ -1,5 +1,9 @@
 # CraftRoute changelog
 
+## 1.27.2
+
+- All Materials, Alts menu: characters showed twice. The game gave no realm name on some logins, so a character was saved as both "Name-" and "Name-Realm". Each character now shows once, from its newest record; logging in drops its other record, and columns added from the old one move to the new one.
+
 ## 1.27.1
 
 - Stat filter: stats the recipe data and the item's tooltip both list (+7 Strength, resistances, block, Equip lines) were added together, so Veteran's Chain Shirt showed 14 Strength. The tooltip's value now replaces the data's.
